@@ -252,13 +252,6 @@ function OptimizedVideoCardImpl({ item, isActive, navBottomInset, onVideoStateCh
                 <Text style={styles.username}>@{item.username ?? 'user'}</Text>
               </TouchableOpacity>
               <Text style={styles.barberName}>{item.barber_name || 'Barber'}</Text>
-              {item.distance !== undefined && (
-                <Text style={styles.distanceText}>
-                  {item.distance < 1 
-                    ? `${Math.round(item.distance * 1000)}m away` 
-                    : `${item.distance.toFixed(1)}km away`}
-                </Text>
-              )}
             </View>
           </View>
           
@@ -440,6 +433,7 @@ const styles = StyleSheet.create({
   caption: { 
     color: 'white', 
     fontSize: 14, 
+    fontWeight: 'bold',
     opacity: 0.9,
     marginBottom: 8,
   },

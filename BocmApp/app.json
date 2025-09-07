@@ -11,6 +11,9 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.yaskhalil.bocm",
+      "entitlements": {
+        "aps-environment": "development"
+      },
       "infoPlist": {
         "NSCameraUsageDescription": "This app uses the camera to take photos for profile pictures and document uploads.",
         "NSPhotoLibraryUsageDescription": "This app accesses your photo library to select images for profile pictures and document uploads.",

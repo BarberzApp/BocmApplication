@@ -246,7 +246,7 @@ const styles = StyleSheet.create({
   },
   filterBarOverlay: {
     position: 'absolute',
-    top: 10, // Moved slightly higher
+    top: 50, // Lowered the filters
     left: 0,
     right: 0,
     zIndex: 1000,

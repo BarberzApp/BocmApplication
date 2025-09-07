@@ -8,19 +8,28 @@
       "developmentClient": true,
       "distribution": "internal",
       "ios": {
-        "resourceClass": "m-medium"
+        "resourceClass": "m-medium",
+        "entitlements": {
+          "aps-environment": "development"
+        }
       }
     },
     "preview": {
       "distribution": "internal",
       "ios": {
-        "resourceClass": "m-medium"
+        "resourceClass": "m-medium",
+        "entitlements": {
+          "aps-environment": "development"
+        }
       }
     },
     "production": {
       "autoIncrement": true,
       "ios": {
-        "resourceClass": "m-medium"
+        "resourceClass": "m-medium",
+        "entitlements": {
+          "aps-environment": "production"
+        }
       }
     }
   },

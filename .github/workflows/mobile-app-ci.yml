@@ -1,0 +1,76 @@
+name: Mobile App CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'BocmApp/**'
+      - '.github/workflows/mobile-app-ci.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'BocmApp/**'
+      - '.github/workflows/mobile-app-ci.yml'
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  # Lint and Type Check
+  mobile-lint-and-typecheck:
+    name: Mobile Lint & Type Check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./BocmApp
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'BocmApp/package-lock.json'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+  # EAS Build
+  eas-build:
+    name: EAS Build
+    runs-on: ubuntu-latest
+    needs: mobile-lint-and-typecheck
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'BocmApp/package-lock.json'
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        working-directory: ./BocmApp
+        run: npm ci
+
+      - name: Build app
+        working-directory: ./BocmApp
+        run: eas build --platform all --profile production --non-interactive

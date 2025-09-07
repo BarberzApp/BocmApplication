@@ -426,13 +426,21 @@ export default function BrowsePage() {
         if (profile) {
           // Calculate distance if user location is available
           let distance: number | undefined;
-          if (isLocationAvailable && barber.latitude && barber.longitude) {
-            distance = calculateDistance(
-              userLocation!.coords.latitude,
-              userLocation!.coords.longitude,
-              barber.latitude,
-              barber.longitude
-            );
+          if (isLocationAvailable) {
+            // Try to use stored coordinates first
+            if (barber.latitude && barber.longitude) {
+              distance = calculateDistance(
+                userLocation!.coords.latitude,
+                userLocation!.coords.longitude,
+                barber.latitude,
+                barber.longitude
+              );
+            } else if (profile.location) {
+              // If no coordinates, we'll skip distance calculation for now
+              // This prevents showing incorrect "closest" barbers
+              console.log(`📍 Barber ${profile.name} has location: ${profile.location} but no coordinates - skipping distance calculation`);
+              distance = undefined; // Don't show distance for barbers without coordinates
+            }
           }
           
           transformedBarbers.push({
@@ -489,6 +497,9 @@ export default function BrowsePage() {
         setBarbers(transformedBarbers);
         setFilteredBarbers(transformedBarbers);
         setBarbersPage(0);
+        
+        // Geocode barber locations in the background (don't wait for it)
+        geocodeBarberLocations(transformedBarbers).catch(console.error);
       } else {
         // Append new barbers to existing list
         setBarbers(prevBarbers => {
@@ -652,6 +663,60 @@ export default function BrowsePage() {
       return `${distance.toFixed(1)}km`;
     } else {
       return `${Math.round(distance)}km`;
+    }
+  };
+
+  // Simple geocoding function using Nominatim (free)
+  const geocodeLocation = async (locationText: string): Promise<{lat: number, lng: number} | null> => {
+    try {
+      const encodedLocation = encodeURIComponent(locationText);
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodedLocation}&limit=1`
+      );
+      const data = await response.json();
+      
+      if (data && data.length > 0) {
+        return {
+          lat: parseFloat(data[0].lat),
+          lng: parseFloat(data[0].lon)
+        };
+      }
+      return null;
+    } catch (error) {
+      console.error('Geocoding error:', error);
+      return null;
+    }
+  };
+
+  // Geocode barber locations that don't have coordinates
+  const geocodeBarberLocations = async (barbers: any[]) => {
+    const barbersToGeocode = barbers.filter(barber => 
+      !barber.latitude && !barber.longitude && barber.location
+    );
+    
+    console.log(`📍 Geocoding ${barbersToGeocode.length} barber locations...`);
+    
+    for (const barber of barbersToGeocode) {
+      try {
+        const coordinates = await geocodeLocation(barber.location);
+        if (coordinates) {
+          // Update the barber in the database with coordinates
+          const { error } = await supabase
+            .from('barbers')
+            .update({
+              latitude: coordinates.lat,
+              longitude: coordinates.lng,
+              updated_at: new Date().toISOString()
+            })
+            .eq('user_id', barber.userId);
+            
+          if (!error) {
+            console.log(`✅ Geocoded and saved coordinates for ${barber.name}: ${coordinates.lat}, ${coordinates.lng}`);
+          }
+        }
+      } catch (error) {
+        console.error(`❌ Failed to geocode ${barber.name}:`, error);
+      }
     }
   };
 
@@ -1126,7 +1191,17 @@ export default function BrowsePage() {
                 </Text>
               </View>
             ) : (
-              <ScrollView showsVerticalScrollIndicator={false}>
+              <ScrollView 
+                showsVerticalScrollIndicator={false}
+                refreshControl={
+                  <RefreshControl
+                    refreshing={barbersLoading}
+                    onRefresh={() => fetchBarbers(0)}
+                    tintColor={theme.colors.secondary}
+                    colors={[theme.colors.secondary]}
+                  />
+                }
+              >
                 {filteredBarbers.map((barber) => (
                   <View key={barber.id} style={tw`mb-6 mx-4`}>
                     {/* Barber Card - Web App Style */}
@@ -1223,17 +1298,6 @@ export default function BrowsePage() {
                             <Text style={[tw`text-sm ml-2`, { color: 'rgba(255,255,255,0.7)' }]}>
                               {barber.location}
                             </Text>
-                            {isLocationAvailable && barber.distance !== undefined && (
-                              <View style={tw`flex-row items-center ml-2`}>
-                                <View style={[
-                                  tw`w-1 h-1 rounded-full mr-1`,
-                                  { backgroundColor: theme.colors.secondary }
-                                ]} />
-                                <Text style={[tw`text-sm font-medium`, { color: theme.colors.secondary }]}>
-                                  {formatDistance(barber.distance)}
-                                </Text>
-                              </View>
-                            )}
                           </View>
                         )}
 

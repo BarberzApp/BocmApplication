@@ -14,7 +14,7 @@ import tw from 'twrnc';
 import { theme } from '../../lib/theme';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
-import { Button, Card, CardContent, LoadingSpinner } from '../ui';
+import { Button, Card, CardContent, LoadingSpinner, LocationInput } from '../ui';
 import { 
   User, 
   Mail, 
@@ -195,11 +195,49 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
           description: formData.description,
           is_public: formData.isPublic,
           sms_notifications: formData.sms_notifications,
-          push_token: formData.sms_notifications ? notificationService.getPushToken() : null,
         })
         .eq('id', user?.id);
 
       if (profileError) throw profileError;
+
+      // If user is a barber and location changed, try to geocode and save coordinates
+      if (isBarber && formData.location) {
+        try {
+          const encodedLocation = encodeURIComponent(formData.location);
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/search?format=json&q=${encodedLocation}&limit=1`
+          );
+          const data = await response.json();
+          
+          if (data && data.length > 0) {
+            const coordinates = {
+              latitude: parseFloat(data[0].lat),
+              longitude: parseFloat(data[0].lon)
+            };
+            
+            // Update barber table with coordinates
+            const { error: barberError } = await supabase
+              .from('barbers')
+              .update({
+                latitude: coordinates.latitude,
+                longitude: coordinates.longitude,
+                city: data[0].address?.city || data[0].address?.town || data[0].address?.village,
+                state: data[0].address?.state,
+                updated_at: new Date().toISOString()
+              })
+              .eq('user_id', user?.id);
+              
+            if (barberError) {
+              console.error('Error updating barber coordinates:', barberError);
+            } else {
+              console.log('✅ Barber coordinates updated:', coordinates);
+            }
+          }
+        } catch (geocodeError) {
+          console.error('Geocoding error:', geocodeError);
+          // Don't fail the save if geocoding fails
+        }
+      }
 
       // Update barber data if applicable
       if (isBarber && barberId) {
@@ -387,13 +425,20 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
               error={validationErrors.phone}
             />
 
-            <InputField
-              label="Location"
-              value={formData.location}
-              onChangeText={(text: string) => setFormData({ ...formData, location: text })}
-              placeholder="City, State"
-              icon={MapPin}
-            />
+            <View style={tw`mb-4`}>
+              <View style={tw`flex-row items-center mb-2`}>
+                <MapPin size={16} color={theme.colors.secondary} style={tw`mr-2`} />
+                <Text style={[tw`text-sm font-medium`, { color: theme.colors.foreground }]}>
+                  Location
+                </Text>
+              </View>
+              <LocationInput
+                value={formData.location}
+                onChange={(value: string) => setFormData({ ...formData, location: value })}
+                placeholder="Enter your location..."
+                error={validationErrors.location}
+              />
+            </View>
 
             <InputField
               label="Bio"

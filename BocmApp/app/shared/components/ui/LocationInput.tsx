@@ -47,7 +47,16 @@ export function LocationInput({
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState(false);
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceTimerRef = useRef<number | null>(null);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
 
   // Debounced search function
   const searchAddresses = async (query: string) => {
@@ -74,9 +83,15 @@ export function LocationInput({
       clearTimeout(debounceTimerRef.current);
     }
 
-    debounceTimerRef.current = setTimeout(() => {
-      searchAddresses(searchQuery);
-    }, 300);
+    // Only search if query is long enough and not empty
+    if (searchQuery && searchQuery.length >= 3) {
+      debounceTimerRef.current = setTimeout(() => {
+        searchAddresses(searchQuery);
+      }, 500); // Increased debounce time to 500ms
+    } else if (searchQuery.length === 0) {
+      // Clear suggestions immediately when input is empty
+      setSuggestions([]);
+    }
 
     return () => {
       if (debounceTimerRef.current) {
@@ -90,6 +105,16 @@ export function LocationInput({
     setModalVisible(false);
     setSearchQuery('');
     setSuggestions([]);
+  };
+
+  const handleCloseModal = () => {
+    setModalVisible(false);
+    setSearchQuery('');
+    setSuggestions([]);
+    // Clear any pending debounced searches
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
   };
 
   const formatSuggestion = (suggestion: Suggestion) => {
@@ -178,7 +203,7 @@ export function LocationInput({
             <Text style={[tw`text-lg font-semibold`, { color: theme.colors.foreground }]}>
               Select Location
             </Text>
-            <TouchableOpacity onPress={() => setModalVisible(false)}>
+            <TouchableOpacity onPress={handleCloseModal}>
               <X size={24} color={theme.colors.foreground} />
             </TouchableOpacity>
           </View>

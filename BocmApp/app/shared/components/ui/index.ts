@@ -40,4 +40,7 @@ export { NavigationMenu, NavigationMenuList, NavigationMenuItem, NavigationMenuT
 
 // Upload Components
 export { ImageUpload } from './ImageUpload';
-export { VideoUpload } from './VideoUpload'; 
+export { VideoUpload } from './VideoUpload';
+
+// Location Components
+export { LocationInput } from './LocationInput'; 

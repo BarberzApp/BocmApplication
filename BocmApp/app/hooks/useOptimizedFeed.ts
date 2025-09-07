@@ -100,6 +100,10 @@ export function useOptimizedFeed(opts: FeedOptions = {}) {
             cut.barbers.latitude,
             cut.barbers.longitude
           );
+        } else if (useLocation && userLocation && cut.barbers?.city) {
+          // If no coordinates, skip distance calculation to avoid false "closest" results
+          console.log(`📍 Cut from ${cut.barbers.city} has no coordinates - skipping distance calculation`);
+          distance = undefined;
         }
 
         return {
@@ -244,6 +248,28 @@ export function useOptimizedFeed(opts: FeedOptions = {}) {
       setLocationLoading(false);
     }
   }, [requestLocationPermission, refresh]);
+
+  // Simple geocoding function using Nominatim (free)
+  const geocodeLocation = useCallback(async (locationText: string): Promise<{lat: number, lng: number} | null> => {
+    try {
+      const encodedLocation = encodeURIComponent(locationText);
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodedLocation}&limit=1`
+      );
+      const data = await response.json();
+      
+      if (data && data.length > 0) {
+        return {
+          lat: parseFloat(data[0].lat),
+          lng: parseFloat(data[0].lon)
+        };
+      }
+      return null;
+    } catch (error) {
+      console.error('Geocoding error:', error);
+      return null;
+    }
+  }, []);
 
   // Fetch available specialties from barbers
   const fetchAvailableSpecialties = useCallback(async () => {
