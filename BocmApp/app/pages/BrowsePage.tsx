@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+// Test comment for Husky
 import {
   View,
   Text,
