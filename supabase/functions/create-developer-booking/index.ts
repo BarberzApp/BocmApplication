@@ -103,29 +103,27 @@ serve(async (req) => {
 
     // For developer accounts, no platform fees
     const platformFee = 0
-    const barberPayout = service.price + addonTotal // Developer gets full service + addons
-    const totalPrice = service.price + addonTotal // Developer accounts pay no platform fee
+    const barberPayout = service.price + addonTotal
+    const totalPrice = service.price + addonTotal
 
-    // Create the booking
     const bookingData = {
       barber_id: barberId,
       service_id: serviceId,
       date: date,
+      end_time: new Date(new Date(date).getTime() + service.duration * 60000).toISOString(),
       notes: notes || '',
       guest_name: guestName || null,
       guest_email: guestEmail || null,
       guest_phone: guestPhone || null,
       client_id: clientId || null,
       status: 'confirmed',
-      payment_status: 'succeeded', // Developer bookings are automatically paid
+      payment_status: 'succeeded',
       price: totalPrice,
-      addon_total: addonTotal, // Store the calculated addon total
+      addon_total: addonTotal,
       platform_fee: platformFee,
       barber_payout: barberPayout,
-      payment_intent_id: `dev_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Generate a unique ID
+      payment_intent_id: `dev_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     }
-
-    console.log('Creating developer booking with data:', bookingData)
 
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
@@ -134,11 +132,18 @@ serve(async (req) => {
       .single()
 
     if (bookingError) {
-      console.error('Error creating developer booking:', bookingError)
+      // Database trigger prevents conflicts - handle gracefully
+      const isConflict = bookingError.message?.includes('conflicts') || 
+                        bookingError.message?.includes('overlaps')
+      
       return new Response(
-        JSON.stringify({ error: 'Failed to create booking' }),
+        JSON.stringify({ 
+          error: isConflict 
+            ? 'This time slot is no longer available. Please select another time.'
+            : 'Failed to create booking'
+        }),
         { 
-          status: 500, 
+          status: isConflict ? 409 : 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       )

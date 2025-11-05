@@ -153,23 +153,24 @@ serve(async (req) => {
     const totalPrice = servicePrice + addonTotal + platformFee
     const barberPayout = servicePrice + addonTotal + (platformFee * 0.40) // 40% of fee + full service price
 
-    // Create the booking
+    // Get service duration for end_time calculation
+    const bookingEndTime = new Date(new Date(date).getTime() + service.duration * 60000)
+
     const bookingData = {
       barber_id: barberId,
       service_id: serviceId,
       date: date,
+      end_time: bookingEndTime.toISOString(),
       notes: notes || '',
       client_id: clientId,
       status: 'confirmed',
       payment_status: 'succeeded',
       price: totalPrice,
-      addon_total: addonTotal, // Store the calculated addon total
+      addon_total: addonTotal,
       platform_fee: platformFee,
       barber_payout: barberPayout,
       payment_intent_id: matchingPayment.id,
     }
-
-    console.log('Creating booking for payment:', bookingData)
 
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
@@ -178,11 +179,17 @@ serve(async (req) => {
       .single()
 
     if (bookingError) {
-      console.error('Error creating booking:', bookingError)
+      const isConflict = bookingError.message?.includes('conflicts') || 
+                        bookingError.message?.includes('overlaps')
+      
       return new Response(
-        JSON.stringify({ error: 'Failed to create booking' }),
+        JSON.stringify({ 
+          error: isConflict 
+            ? 'This time slot is no longer available. Please select another time.'
+            : 'Failed to create booking'
+        }),
         { 
-          status: 500, 
+          status: isConflict ? 409 : 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       )

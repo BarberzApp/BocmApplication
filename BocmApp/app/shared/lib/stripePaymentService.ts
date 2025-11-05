@@ -1,4 +1,5 @@
 import { Alert } from 'react-native';
+import { logger } from './logger';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || "";
 
@@ -25,8 +26,6 @@ class StripePaymentService {
   async createPaymentIntent(data: PaymentIntentData) {
     try {
       const url = `${API_URL}/api/payments/create-booking-intent`;
-      console.log('Creating payment intent with URL:', url);
-      
       const requestBody = {
         barberId: data.barberId,
         serviceId: data.serviceId,
@@ -38,8 +37,6 @@ class StripePaymentService {
         clientId: data.clientId || ''
       };
       
-      console.log('Request body:', JSON.stringify(requestBody, null, 2));
-      
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -50,9 +47,6 @@ class StripePaymentService {
       });
 
       const responseText = await response.text();
-      console.log('Response status:', response.status);
-      console.log('Response headers:', response.headers);
-      console.log('Response text:', responseText);
 
       if (!response.ok) {
         let errorMessage = 'Failed to create payment intent';
@@ -72,7 +66,7 @@ class StripePaymentService {
       
       return result.clientSecret;
     } catch (error) {
-      console.error('Error creating payment intent:', error);
+      logger.error('Error creating payment intent:', error);
       throw error;
     }
   }

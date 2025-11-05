@@ -1,3 +1,5 @@
+import { logger } from './logger';
+
 // Geocoding helper using OpenStreetMap Nominatim for React Native
 export async function geocodeAddress(address: string): Promise<{ lat: number, lon: number } | null> {
   const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`;
@@ -9,7 +11,7 @@ export async function geocodeAddress(address: string): Promise<{ lat: number, lo
     }
     return null;
   } catch (error) {
-    console.error('Error geocoding address:', error);
+    logger.error('Error geocoding address:', error);
     return null;
   }
 }
@@ -24,7 +26,7 @@ export async function getAddressSuggestionsNominatim(query: string): Promise<Arr
     const data = await response.json();
     return data || [];
   } catch (error) {
-    console.error('Error fetching Nominatim address suggestions:', error);
+    logger.error('Error fetching Nominatim address suggestions:', error);
     return [];
   }
 }
@@ -45,7 +47,7 @@ export async function getAddressSuggestions(query: string): Promise<Array<{ name
       lon: feature.geometry.coordinates[0],
     }));
   } catch (error) {
-    console.error('Error fetching address suggestions:', error);
+    logger.error('Error fetching address suggestions:', error);
     return [];
   }
 }
@@ -65,7 +67,7 @@ export async function reverseGeocode(lat: number, lon: number): Promise<{ name: 
     }
     return null;
   } catch (error) {
-    console.error('Error reverse geocoding:', error);
+    logger.error('Error reverse geocoding:', error);
     return null;
   }
 }
@@ -79,7 +81,7 @@ export async function validateAddress(address: string): Promise<boolean> {
     const data = await response.json();
     return Array.isArray(data) && data.length > 0;
   } catch (error) {
-    console.error('Error validating address:', error);
+    logger.error('Error validating address:', error);
     return false;
   }
 } 

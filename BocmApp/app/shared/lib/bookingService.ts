@@ -1,5 +1,6 @@
 // lib/bookingService.ts
 import { supabase } from './supabase';
+import { logger } from './logger';
 
 export interface Service {
   id: string;
@@ -54,23 +55,17 @@ export interface CreateBookingData {
 class BookingService {
   // Fetch services for a specific barber (using barber ID directly)
   async getBarberServices(barberId: string): Promise<Service[]> {
-    console.log('🔍 [BOOKING_SERVICE] Fetching services for barberId:', barberId);
-    
-    // Fetch services using the barber ID directly
     const { data, error } = await supabase
       .from('services')
       .select('*')
       .eq('barber_id', barberId)
       .order('price', { ascending: true });
 
-    console.log('📊 [BOOKING_SERVICE] Services query result:', { data, error });
-
     if (error) {
-      console.error('Error fetching services:', error);
+      logger.error('Error fetching services:', error);
       throw error;
     }
 
-    console.log('✅ [BOOKING_SERVICE] Services fetched successfully:', data);
     return data || [];
   }
 
@@ -90,7 +85,7 @@ class BookingService {
       .neq('status', 'cancelled');
 
     if (error) {
-      console.error('Error fetching bookings:', error);
+      logger.error('Error fetching bookings:', error);
       throw error;
     }
 
@@ -149,10 +144,22 @@ class BookingService {
 
   // Create a booking after payment
   async createBooking(bookingData: CreateBookingData): Promise<Booking> {
+    // Get service duration to calculate end_time
+    const { data: service } = await supabase
+      .from('services')
+      .select('duration')
+      .eq('id', bookingData.service_id)
+      .single()
+
+    const endTime = service 
+      ? new Date(new Date(bookingData.date).getTime() + service.duration * 60000).toISOString()
+      : null
+
     const { data, error } = await supabase
       .from('bookings')
       .insert({
         ...bookingData,
+        end_time: endTime,
         status: 'confirmed',
         payment_status: 'paid'
       })
@@ -160,7 +167,10 @@ class BookingService {
       .single();
 
     if (error) {
-      console.error('Error creating booking:', error);
+      // Check if error is due to conflict (database trigger)
+      if (error.message?.includes('conflicts') || error.message?.includes('overlaps')) {
+        throw new Error('This time slot is no longer available. Please select another time.')
+      }
       throw error;
     }
 
@@ -190,7 +200,7 @@ class BookingService {
       .order('date', { ascending: false });
 
     if (error) {
-      console.error('Error fetching user bookings:', error);
+      logger.error('Error fetching user bookings:', error);
       throw error;
     }
 
@@ -208,7 +218,7 @@ class BookingService {
       .eq('id', bookingId);
 
     if (error) {
-      console.error('Error cancelling booking:', error);
+      logger.error('Error cancelling booking:', error);
       throw error;
     }
   }
