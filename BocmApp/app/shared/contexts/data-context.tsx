@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
+import { logger } from '../lib/logger';
 import { Barber, Booking, Service, Availability, SpecialHours, TimeOff, BookingRestrictions, OnDemandSettings, Cut, CutComment, CutAnalytics, Payment, UserCalendarConnection, SyncedEvent, CalendarSyncLog, Notification, ServiceAddon, BookingAddon, OnDemandRequest, OnDemandSettings as OnDemandSettingsType } from '../types';
 
 // Database-specific types that match the actual database schema
@@ -171,7 +172,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
         setLoading(false)
       } catch (err) {
-        console.error('Error fetching data:', err)
+        logger.error('Error fetching data:', err)
         setError('Failed to load data')
         setLoading(false)
       }
@@ -193,7 +194,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         .eq('user_id', user_id)
 
       if (error) {
-        console.error('Error updating barber:', error)
+        logger.error('Error updating barber:', error)
         return
       }
 
@@ -204,7 +205,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
           : barber
       ))
     } catch (err) {
-      console.error('Error updating barber:', err)
+        logger.error('Error updating barber:', err)
     }
   }
 
@@ -217,7 +218,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         .single()
 
       if (error) {
-        console.error('Error creating booking:', error)
+        logger.error('Error creating booking:', error)
         throw error
       }
 
@@ -225,7 +226,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setBookings(prev => [...prev, data])
       return data.id
     } catch (err) {
-      console.error('Error creating booking:', err)
+        logger.error('Error creating booking:', err)
       throw err
     }
   }
@@ -238,7 +239,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         .eq('id', id)
 
       if (error) {
-        console.error('Error updating booking status:', error)
+        logger.error('Error updating booking status:', error)
         return
       }
 
@@ -249,7 +250,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
           : booking
       ))
     } catch (err) {
-      console.error('Error updating booking status:', err)
+        logger.error('Error updating booking status:', err)
     }
   }
 
@@ -261,7 +262,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         .eq('id', id)
 
       if (error) {
-        console.error('Error updating payment status:', error)
+        logger.error('Error updating payment status:', error)
         return
       }
 
@@ -272,7 +273,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
           : booking
       ))
     } catch (err) {
-      console.error('Error updating payment status:', err)
+        logger.error('Error updating payment status:', err)
     }
   }
 
@@ -292,13 +293,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
         .order('created_at', { ascending: false })
 
       if (error) {
-        console.error('Error fetching barbers:', error)
+        logger.error('Error fetching barbers:', error)
         return
       }
 
       setBarbers(data || [])
     } catch (err) {
-      console.error('Error fetching barbers:', err)
+        logger.error('Error fetching barbers:', err)
     }
   }
 
@@ -310,13 +311,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
         .order('created_at', { ascending: false })
 
       if (error) {
-        console.error('Error fetching bookings:', error)
+        logger.error('Error fetching bookings:', error)
         return
       }
 
       setBookings(data || [])
     } catch (err) {
-      console.error('Error fetching bookings:', err)
+        logger.error('Error fetching bookings:', err)
     }
   }
 
@@ -328,13 +329,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
         .order('created_at', { ascending: false })
 
       if (error) {
-        console.error('Error fetching services:', error)
+        logger.error('Error fetching services:', error)
         return
       }
 
       setServices(data || [])
     } catch (err) {
-      console.error('Error fetching services:', err)
+        logger.error('Error fetching services:', err)
     }
   }
 
@@ -347,13 +348,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
         .single()
 
       if (error) {
-        console.error('Error adding booking:', error)
+        logger.error('Error adding booking:', error)
         return
       }
 
       setBookings(prev => [...prev, data])
     } catch (err) {
-      console.error('Error adding booking:', err)
+        logger.error('Error adding booking:', err)
     }
   }
 
@@ -368,7 +369,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         .eq('id', id)
 
       if (error) {
-        console.error('Error updating booking:', error)
+        logger.error('Error updating booking:', error)
         return
       }
 
@@ -378,7 +379,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
           : booking
       ))
     } catch (err) {
-      console.error('Error updating booking:', err)
+        logger.error('Error updating booking:', err)
     }
   }
 
@@ -391,13 +392,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
         .single()
 
       if (error) {
-        console.error('Error adding service:', error)
+        logger.error('Error adding service:', error)
         return
       }
 
       setServices(prev => [...prev, data])
     } catch (err) {
-      console.error('Error adding service:', err)
+        logger.error('Error adding service:', err)
     }
   }
 
@@ -412,7 +413,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         .eq('id', id)
 
       if (error) {
-        console.error('Error updating service:', error)
+        logger.error('Error updating service:', error)
         return
       }
 
@@ -422,7 +423,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
           : service
       ))
     } catch (err) {
-      console.error('Error updating service:', err)
+        logger.error('Error updating service:', err)
     }
   }
 
@@ -435,13 +436,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
         .order('created_at', { ascending: false })
 
       if (error) {
-        console.error('Error fetching availability:', error)
+        logger.error('Error fetching availability:', error)
         return
       }
 
       setAvailability(data || [])
     } catch (err) {
-      console.error('Error fetching availability:', err)
+        logger.error('Error fetching availability:', err)
     }
   }
 
@@ -453,13 +454,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
         .order('created_at', { ascending: false })
 
       if (error) {
-        console.error('Error fetching special hours:', error)
+        logger.error('Error fetching special hours:', error)
         return
       }
 
       setSpecialHours(data || [])
     } catch (err) {
-      console.error('Error fetching special hours:', err)
+        logger.error('Error fetching special hours:', err)
     }
   }
 
@@ -471,13 +472,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
         .order('created_at', { ascending: false })
 
       if (error) {
-        console.error('Error fetching time off:', error)
+        logger.error('Error fetching time off:', error)
         return
       }
 
       setTimeOff(data || [])
     } catch (err) {
-      console.error('Error fetching time off:', err)
+        logger.error('Error fetching time off:', err)
     }
   }
 
@@ -489,13 +490,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
         .order('created_at', { ascending: false })
 
       if (error) {
-        console.error('Error fetching booking restrictions:', error)
+        logger.error('Error fetching booking restrictions:', error)
         return
       }
 
       setBookingRestrictions(data || [])
     } catch (err) {
-      console.error('Error fetching booking restrictions:', err)
+        logger.error('Error fetching booking restrictions:', err)
     }
   }
 
@@ -507,13 +508,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
         .order('created_at', { ascending: false })
 
       if (error) {
-        console.error('Error fetching ondemand settings:', error)
+        logger.error('Error fetching ondemand settings:', error)
         return
       }
 
       setOnDemandSettings(data || [])
     } catch (err) {
-      console.error('Error fetching ondemand settings:', err)
+        logger.error('Error fetching ondemand settings:', err)
     }
   }
 
@@ -525,13 +526,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
         .order('created_at', { ascending: false })
 
       if (error) {
-        console.error('Error fetching cuts:', error)
+        logger.error('Error fetching cuts:', error)
         return
       }
 
       setCuts(data || [])
     } catch (err) {
-      console.error('Error fetching cuts:', err)
+        logger.error('Error fetching cuts:', err)
     }
   }
 
@@ -543,13 +544,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
         .order('created_at', { ascending: false })
 
       if (error) {
-        console.error('Error fetching cut comments:', error)
+        logger.error('Error fetching cut comments:', error)
         return
       }
 
       setCutComments(data || [])
     } catch (err) {
-      console.error('Error fetching cut comments:', err)
+        logger.error('Error fetching cut comments:', err)
     }
   }
 
@@ -561,13 +562,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
         .order('created_at', { ascending: false })
 
       if (error) {
-        console.error('Error fetching cut analytics:', error)
+        logger.error('Error fetching cut analytics:', error)
         return
       }
 
       setCutAnalytics(data || [])
     } catch (err) {
-      console.error('Error fetching cut analytics:', err)
+        logger.error('Error fetching cut analytics:', err)
     }
   }
 
@@ -579,13 +580,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
         .order('created_at', { ascending: false })
 
       if (error) {
-        console.error('Error fetching payments:', error)
+        logger.error('Error fetching payments:', error)
         return
       }
 
       setPayments(data || [])
     } catch (err) {
-      console.error('Error fetching payments:', err)
+        logger.error('Error fetching payments:', err)
     }
   }
 
@@ -597,13 +598,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
         .order('created_at', { ascending: false })
 
       if (error) {
-        console.error('Error fetching calendar connections:', error)
+        logger.error('Error fetching calendar connections:', error)
         return
       }
 
       setCalendarConnections(data || [])
     } catch (err) {
-      console.error('Error fetching calendar connections:', err)
+        logger.error('Error fetching calendar connections:', err)
     }
   }
 
@@ -615,13 +616,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
         .order('created_at', { ascending: false })
 
       if (error) {
-        console.error('Error fetching synced events:', error)
+        logger.error('Error fetching synced events:', error)
         return
       }
 
       setSyncedEvents(data || [])
     } catch (err) {
-      console.error('Error fetching synced events:', err)
+        logger.error('Error fetching synced events:', err)
     }
   }
 
@@ -633,13 +634,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
         .order('created_at', { ascending: false })
 
       if (error) {
-        console.error('Error fetching calendar sync logs:', error)
+        logger.error('Error fetching calendar sync logs:', error)
         return
       }
 
       setCalendarSyncLogs(data || [])
     } catch (err) {
-      console.error('Error fetching calendar sync logs:', err)
+        logger.error('Error fetching calendar sync logs:', err)
     }
   }
 
@@ -651,13 +652,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
         .order('created_at', { ascending: false })
 
       if (error) {
-        console.error('Error fetching notifications:', error)
+        logger.error('Error fetching notifications:', error)
         return
       }
 
       setNotifications(data || [])
     } catch (err) {
-      console.error('Error fetching notifications:', err)
+        logger.error('Error fetching notifications:', err)
     }
   }
 
@@ -669,13 +670,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
         .order('created_at', { ascending: false })
 
       if (error) {
-        console.error('Error fetching service addons:', error)
+        logger.error('Error fetching service addons:', error)
         return
       }
 
       setServiceAddons(data || [])
     } catch (err) {
-      console.error('Error fetching service addons:', err)
+        logger.error('Error fetching service addons:', err)
     }
   }
 
@@ -687,13 +688,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
         .order('created_at', { ascending: false })
 
       if (error) {
-        console.error('Error fetching booking addons:', error)
+        logger.error('Error fetching booking addons:', error)
         return
       }
 
       setBookingAddons(data || [])
     } catch (err) {
-      console.error('Error fetching booking addons:', err)
+        logger.error('Error fetching booking addons:', err)
     }
   }
 
@@ -705,13 +706,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
         .order('created_at', { ascending: false })
 
       if (error) {
-        console.error('Error fetching ondemand requests:', error)
+        logger.error('Error fetching ondemand requests:', error)
         return
       }
 
       setOnDemandRequests(data || [])
     } catch (err) {
-      console.error('Error fetching ondemand requests:', err)
+        logger.error('Error fetching ondemand requests:', err)
     }
   }
 

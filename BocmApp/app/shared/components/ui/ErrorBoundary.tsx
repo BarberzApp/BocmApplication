@@ -5,6 +5,7 @@ import { theme } from '../../lib/theme';
 import tw from 'twrnc';
 import Button from './Button';
 import { Card, CardContent, CardHeader, CardTitle } from './Card';
+import { logger } from '../../lib/logger';
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -48,7 +49,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
+    logger.error('ErrorBoundary caught an error:', error, errorInfo);
 
     // Call custom error handler if provided
     this.props.onError?.(error, errorInfo);
@@ -56,7 +57,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     // Log to external service in production
     if (__DEV__ === false) {
       // TODO: Add error reporting service (Sentry, LogRocket, etc.)
-      console.error('Production error:', {
+      logger.error('Production error:', {
         message: error.message,
         stack: error.stack,
         componentStack: errorInfo.componentStack,
@@ -76,11 +77,11 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     const { retryCount } = this.state;
 
     if (retryCount >= maxRetries) {
-      console.error('Max retries exceeded');
+      logger.error('Max retries exceeded');
       return;
     }
 
-    console.log(`Retrying... Attempt ${retryCount + 1}/${maxRetries}`);
+    logger.log(`Retrying... Attempt ${retryCount + 1}/${maxRetries}`);
 
     this.setState((prev) => ({
       retryCount: prev.retryCount + 1,
@@ -210,7 +211,7 @@ function DefaultErrorFallback({
 export function useErrorHandler() {
   return {
     handleError: (error: Error, errorInfo?: React.ErrorInfo) => {
-      console.error('Error handled by useErrorHandler:', error, errorInfo);
+      logger.error('Error handled by useErrorHandler:', error, errorInfo);
       // Add any additional error handling logic here
     },
   };

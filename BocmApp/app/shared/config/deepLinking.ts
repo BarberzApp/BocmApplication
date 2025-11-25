@@ -1,5 +1,6 @@
 import { LinkingOptions } from '@react-navigation/native';
 import { DEEP_LINKING_CONFIG } from './routeMapping';
+import { logger } from '../lib/logger';
 
 export const linking: LinkingOptions<any> = {
   prefixes: DEEP_LINKING_CONFIG.prefixes,
@@ -105,7 +106,7 @@ export function generateDeepLink(route: string, params?: Record<string, string>)
 
 // Function to handle incoming deep links
 export function handleDeepLink(url: string) {
-  console.log('🔗 Handling deep link:', url);
+  logger.log('🔗 Handling deep link:', url);
   
   // Parse the URL and extract route and parameters
   const urlObj = new URL(url);
@@ -146,7 +147,7 @@ export function shareDeepLink(route: string, params?: Record<string, string>) {
   
   // In a real implementation, you would use a sharing library
   // For now, we'll just log the deep link
-  console.log('📤 Sharing deep link:', deepLink);
+  logger.log('📤 Sharing deep link:', deepLink);
   
   return deepLink;
 } 

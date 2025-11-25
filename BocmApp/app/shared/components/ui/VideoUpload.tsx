@@ -13,6 +13,7 @@ import { Play, Upload, X } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { theme } from '../../lib/theme';
 import tw from 'twrnc';
+import { logger } from '../../lib/logger';
 
 interface VideoUploadProps {
   onUploadComplete: (videoData: { url: string; title: string; description?: string }) => void;
@@ -59,7 +60,7 @@ export const VideoUpload: React.FC<VideoUploadProps> = ({
         setSelectedVideoUri(result.assets[0].uri);
       }
     } catch (error) {
-      console.error('Error picking video:', error);
+      logger.error('Error picking video:', error);
       onUploadError('Failed to select video');
     }
   };
@@ -83,7 +84,7 @@ export const VideoUpload: React.FC<VideoUploadProps> = ({
         setSelectedVideoUri(result.assets[0].uri);
       }
     } catch (error) {
-      console.error('Error recording video:', error);
+      logger.error('Error recording video:', error);
       onUploadError('Failed to record video');
     }
   };
@@ -135,7 +136,7 @@ export const VideoUpload: React.FC<VideoUploadProps> = ({
       setVideoTitle('');
       setVideoDescription('');
     } catch (error) {
-      console.error('Error uploading video:', error);
+      logger.error('Error uploading video:', error);
       onUploadError('Failed to upload video');
     } finally {
       setUploading(false);

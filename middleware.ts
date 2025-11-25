@@ -1,10 +1,20 @@
 import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { securityHeaders } from './src/lib/security-headers'
+import { csrfProtection } from './src/lib/csrf'
 
 export async function middleware(req: NextRequest) {
   try {
-    const res = NextResponse.next()
+    // Apply security headers first
+    const res = securityHeaders(req)
+    
+    // Apply CSRF protection for non-GET requests
+    const csrfResponse = csrfProtection(req)
+    if (csrfResponse.status !== 200) {
+      return csrfResponse
+    }
+    
     const supabase = createMiddlewareClient({ req, res })
 
     // Refresh session if expired - this is crucial for external redirects

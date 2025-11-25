@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     View,
     Text,
@@ -10,7 +10,6 @@ import {
     ActivityIndicator,
     KeyboardAvoidingView,
     Platform,
-    Modal,
     StatusBar,
     AppState,
 } from 'react-native';
@@ -22,25 +21,17 @@ import { RootStackParamList } from '../shared/types';
 import { supabase } from '../shared/lib/supabase';
 import { useAuth } from '../shared/hooks/useAuth';
 import { theme } from '../shared/lib/theme';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '../shared/components/ui';
+import { logger } from '../shared/lib/logger';
+import { Card, CardContent} from '../shared/components/ui';
 import { 
     CheckCircle, 
-    AlertCircle, 
-    Loader2, 
     CreditCard, 
     Building, 
     Scissors, 
     X, 
     Instagram, 
-    Twitter, 
-    Music, 
-    Facebook,
-    ChevronLeft,
-    ChevronRight,
     Plus,
     Trash2,
-    User,
-    Mail,
     Phone,
     MapPin,
     Sparkles
@@ -157,7 +148,7 @@ export default function BarberOnboardingPage() {
             if (!user) return;
             
             try {
-                console.log('Fetching profile data for user:', user.id);
+                logger.log('Fetching profile data for user:', user.id);
                 
                 // Fetch barber profile data
                 const { data: barberData, error: barberError } = await supabase
@@ -166,10 +157,10 @@ export default function BarberOnboardingPage() {
                     .eq('user_id', user.id)
                     .single();
 
-                console.log('Barber data fetched:', barberData, 'Error:', barberError);
+                // Barber data fetched
 
                 if (barberData) {
-                    console.log('Setting barber data in form');
+                    // Setting barber data in form
                     setFormData(prev => ({
                         ...prev,
                         businessName: barberData.business_name || '',
@@ -192,7 +183,7 @@ export default function BarberOnboardingPage() {
                     .single();
 
                 if (profileError && profileError.code !== 'PGRST116') {
-                    console.error('Error fetching profile data:', profileError);
+                    logger.error('Error fetching profile data:', profileError);
                 }
 
                 // Fetch services
@@ -204,7 +195,7 @@ export default function BarberOnboardingPage() {
                         .eq('barber_id', barberData.id);
 
                     if (servicesError) {
-                        console.error('Error fetching services:', servicesError);
+                        logger.error('Error fetching services:', servicesError);
                     } else if (Array.isArray(existingServices)) {
                         services = existingServices.map(s => ({
                             name: s.name || '',
@@ -228,7 +219,7 @@ export default function BarberOnboardingPage() {
                     setStripeStatus(null);
                 }
             } catch (error) {
-                console.error('Error fetching profile data:', error);
+                logger.error('Error fetching profile data:', error);
             }
         };
 
@@ -243,7 +234,7 @@ export default function BarberOnboardingPage() {
             if (!user) return;
             
             try {
-                console.log('Checking if onboarding is already complete...');
+                // Checking if onboarding is already complete
                 
                 // Fetch barber data to check completion
                 const { data: barberData, error: barberError } = await supabase
@@ -253,26 +244,21 @@ export default function BarberOnboardingPage() {
                     .single();
 
                 if (barberError) {
-                    console.error('Error checking onboarding status:', barberError);
+                    logger.error('Error checking onboarding status:', barberError);
                     return;
                 }
 
-                console.log('Onboarding completion check:', {
-                    onboarding_complete: barberData?.onboarding_complete,
-                    businessName: barberData?.business_name,
-                    bio: barberData?.bio,
-                    specialties: barberData?.specialties
-                });
+                // Onboarding completion check
 
                 // If onboarding is marked as complete, skip to main app
                 if (barberData?.onboarding_complete) {
-                    console.log('Onboarding is already complete! Redirecting to main app...');
+                    logger.log('Onboarding is already complete - redirecting to main app');
                     setOnboardingComplete(true);
                     navigation.navigate('MainTabs' as any);
                     return;
                 }
             } catch (error) {
-                console.error('Error checking onboarding completion:', error);
+                logger.error('Error checking onboarding completion:', error);
             }
         };
 
@@ -284,7 +270,7 @@ export default function BarberOnboardingPage() {
     // Check if user is a barber
     useEffect(() => {
         if (user && userProfile?.role !== 'barber') {
-            console.log('User is not a barber, redirecting to home');
+            logger.log('User is not a barber, redirecting to home');
             navigation.navigate('Home');
         }
     }, [user, userProfile, navigation]);
@@ -296,8 +282,6 @@ export default function BarberOnboardingPage() {
                 if (!user) return;
                 
                 try {
-                    console.log('Checking Stripe status on app focus...');
-                    
                     const { data: barber, error } = await supabase
                         .from('barbers')
                         .select('stripe_account_id, stripe_account_status, stripe_account_ready')
@@ -305,14 +289,12 @@ export default function BarberOnboardingPage() {
                         .single();
                     
                     if (error) {
-                        console.error('Error checking Stripe status:', error);
+                        logger.error('Error checking Stripe status:', error);
                         return;
                     }
                     
-                    console.log('Current Stripe status:', barber);
-                    
                     if (barber?.stripe_account_id && (barber.stripe_account_ready || barber.stripe_account_status === 'active')) {
-                        console.log('Stripe account is ready!');
+                        logger.log('Stripe account is ready');
                         
                         // Update form data to reflect Stripe is connected
                         setFormData(prev => ({ ...prev, stripeConnected: true }));
@@ -338,7 +320,7 @@ export default function BarberOnboardingPage() {
                         );
                     }
                 } catch (error) {
-                    console.error('Error in checkStripeStatus:', error);
+                    logger.error('Error in checkStripeStatus:', error);
                 }
             };
             
@@ -359,8 +341,6 @@ export default function BarberOnboardingPage() {
                 // App came back to foreground, check Stripe status
                 const checkStripeStatus = async () => {
                     try {
-                        console.log('App became active, checking Stripe status...');
-                        
                         const { data: barber, error } = await supabase
                             .from('barbers')
                             .select('stripe_account_id, stripe_account_status, stripe_account_ready')
@@ -368,19 +348,19 @@ export default function BarberOnboardingPage() {
                             .single();
                         
                         if (error) {
-                            console.error('Error checking Stripe status on app state change:', error);
+                            logger.error('Error checking Stripe status on app state change:', error);
                             return;
                         }
                         
                         if (barber?.stripe_account_id && (barber.stripe_account_ready || barber.stripe_account_status === 'active')) {
-                            console.log('Stripe account is ready (app state change)!');
+                            logger.log('Stripe account is ready (app state change)');
                             
                             // Update form data to reflect Stripe is connected
                             setFormData(prev => ({ ...prev, stripeConnected: true }));
                             setStripeStatus(barber.stripe_account_status);
                         }
                     } catch (error) {
-                        console.error('Error in app state change Stripe check:', error);
+                        logger.error('Error in app state change Stripe check:', error);
                     }
                 };
                 
@@ -517,12 +497,11 @@ export default function BarberOnboardingPage() {
         // Final submission
         setLoading(true);
         try {
-            console.log('Submitting onboarding data:', formData);
+            logger.log('Submitting onboarding data');
 
             // Single upsert operation for barber profile
             if (user?.role === 'barber') {
-                console.log('Current session user id:', user.id);
-                console.log('user_id to upsert:', user.id);
+                // Upserting barber profile for user
                 
                 // Check if barber row exists
                 const { data: existingBarber, error: checkError } = await supabase
@@ -532,9 +511,9 @@ export default function BarberOnboardingPage() {
                     .single();
 
                 if (existingBarber) {
-                    console.log('Barber row already exists for user_id:', user.id, '- updating.');
+                    // Barber row already exists - updating
                 } else {
-                    console.log('Creating new barber row for user_id:', user.id);
+                    // Creating new barber row
                 }
 
                 const { error: upsertError } = await supabase
@@ -553,7 +532,7 @@ export default function BarberOnboardingPage() {
                     }, { onConflict: 'user_id' });
 
                 if (upsertError) {
-                    console.error('Failed to upsert barber profile during onboarding:', upsertError);
+                    logger.error('Failed to upsert barber profile during onboarding:', upsertError);
                     throw upsertError;
                 }
             }
@@ -569,7 +548,7 @@ export default function BarberOnboardingPage() {
                 .eq('id', user?.id);
 
             if (profileError) {
-                console.error('Profile update error:', profileError);
+                logger.error('Profile update error:', profileError);
                 throw new Error('Failed to update profile');
             }
 
@@ -583,7 +562,7 @@ export default function BarberOnboardingPage() {
                     .single();
 
                 if (barberError) {
-                    console.error('Error getting barber ID for services:', barberError);
+                    logger.error('Error getting barber ID for services:', barberError);
                     throw new Error('Failed to get barber ID');
                 }
 
@@ -606,12 +585,12 @@ export default function BarberOnboardingPage() {
                     .insert(servicesToInsert);
 
                 if (servicesError) {
-                    console.error('Error updating services:', servicesError);
+                    logger.error('Error updating services:', servicesError);
                     throw new Error('Failed to update services');
                 }
             }
 
-            console.log('Onboarding completed successfully');
+            logger.log('Onboarding completed successfully');
             setOnboardingComplete(true);
             
             // Check if Stripe is connected to determine navigation
@@ -635,7 +614,7 @@ export default function BarberOnboardingPage() {
             }
             
         } catch (error) {
-            console.error('Error during onboarding submission:', error);
+            logger.error('Error during onboarding submission:', error);
             Alert.alert('Error', 'Failed to save your information. Please try again.');
         } finally {
             setLoading(false);
@@ -649,13 +628,12 @@ export default function BarberOnboardingPage() {
         
         // Add a timeout to prevent infinite loading
         const timeoutId = setTimeout(() => {
-            console.log('Stripe Connect timeout - resetting loading state');
+            logger.log('Stripe Connect timeout - resetting loading state');
             setStripeLoading(false);
         }, 30000); // 30 second timeout
         
         try {
-            console.log('Starting Stripe Connect process for user:', user?.id);
-            console.log('API_BASE_URL:', API_BASE_URL);
+            logger.log('Starting Stripe Connect process');
             
             // First, get the barber ID for this user
             const { data: barber, error: barberError } = await supabase
@@ -668,15 +646,10 @@ export default function BarberOnboardingPage() {
                 throw new Error('Barber profile not found. Please complete your profile first.');
             }
             
-            console.log('Found barber ID:', barber.id);
-            
             const requestBody = { 
                 barberId: barber.id,
                 email: user?.email
             };
-            console.log('Sending request body:', requestBody);
-            
-            console.log('Calling Supabase Edge Function for Stripe Connect...');
             
             // Call the Supabase Edge Function directly with user session
             const { data: stripeResponse, error } = await supabase.functions.invoke('stripe-connect', {
@@ -687,26 +660,20 @@ export default function BarberOnboardingPage() {
             });
             
             if (error) {
-                console.error('Supabase function error:', error);
+                logger.error('Supabase function error:', error);
                 throw new Error(error.message || 'Failed to connect Stripe account');
             }
             
-            console.log('Supabase function response:', stripeResponse);
-            
             // Use the response data directly
             const data = stripeResponse;
-            console.log('Stripe Connect response:', data);
 
             if (data.url) {
                 // Open Stripe onboarding in browser
                 const result = await WebBrowser.openBrowserAsync(data.url);
                 
                 // After browser closes, check if Stripe account is now active
-                console.log('Browser result:', result);
-                
                 // Check the Stripe account status directly from database
                 try {
-                    console.log('Checking Stripe account status in database...');
                     
                     const { data: updatedBarber, error: statusError } = await supabase
                         .from('barbers')
@@ -715,19 +682,15 @@ export default function BarberOnboardingPage() {
                         .single();
                     
                     if (statusError) {
-                        console.error('Error checking barber status:', statusError);
+                        logger.error('Error checking barber status:', statusError);
                         throw new Error('Could not check Stripe account status');
                     }
                     
-                    console.log('Updated barber data:', updatedBarber);
-                    
                     if (updatedBarber?.stripe_account_id) {
                         // Stripe account ID exists in database
-                        console.log('Stripe account ID found in database:', updatedBarber.stripe_account_id);
-                        
                         // Check if account is ready (you can add more sophisticated checks here)
                         if (updatedBarber.stripe_account_ready || updatedBarber.stripe_account_status === 'active') {
-                            console.log('Stripe account is ready and active');
+                            logger.log('Stripe account is ready and active');
                             
                             // Mark onboarding as complete
                             setFormData(prev => ({ ...prev, stripeConnected: true }));
@@ -749,7 +712,7 @@ export default function BarberOnboardingPage() {
                             );
                         } else {
                             // Stripe account exists but not fully set up
-                            console.log('Stripe account exists but not fully set up');
+                            logger.log('Stripe account exists but not fully set up');
                             Alert.alert(
                                 'Setup In Progress',
                                 'Your Stripe account has been created but setup is still in progress. You can complete it later in your settings.',
@@ -765,7 +728,7 @@ export default function BarberOnboardingPage() {
                         }
                     } else {
                         // No Stripe account ID found
-                        console.log('No Stripe account ID found in database');
+                        logger.log('No Stripe account ID found in database');
                         Alert.alert(
                             'Setup In Progress',
                             'Your Stripe account setup is in progress. You can complete it later in your settings.',
@@ -780,7 +743,7 @@ export default function BarberOnboardingPage() {
                         );
                     }
                 } catch (statusError) {
-                    console.error('Error checking Stripe status:', statusError);
+                    logger.error('Error checking Stripe status:', statusError);
                     Alert.alert(
                         'Setup In Progress',
                         'Your Stripe account setup is in progress. You can complete it later in your settings.',
@@ -798,7 +761,7 @@ export default function BarberOnboardingPage() {
                 throw new Error('No redirect URL received from Stripe');
             }
         } catch (error) {
-            console.error('Error creating Stripe account:', error);
+            logger.error('Error creating Stripe account:', error);
             Alert.alert('Error', error instanceof Error ? error.message : 'Failed to connect Stripe account. Please try again.');
         } finally {
             clearTimeout(timeoutId);

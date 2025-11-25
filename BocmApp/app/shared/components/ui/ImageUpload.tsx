@@ -13,6 +13,7 @@ import { Camera, Upload, X } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { theme } from '../../lib/theme';
 import tw from 'twrnc';
+import { logger } from '../../lib/logger';
 
 interface ImageUploadProps {
   onUploadComplete: (url: string) => void;
@@ -64,7 +65,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
         await uploadImage(result.assets[0].uri);
       }
     } catch (error) {
-      console.error('Error picking image:', error);
+      logger.error('Error picking image:', error);
       onUploadError('Failed to select image');
     }
   };
@@ -87,7 +88,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
         await uploadImage(result.assets[0].uri);
       }
     } catch (error) {
-      console.error('Error taking photo:', error);
+      logger.error('Error taking photo:', error);
       onUploadError('Failed to take photo');
     }
   };
@@ -125,7 +126,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
 
       onUploadComplete(publicUrl);
     } catch (error) {
-      console.error('Error uploading image:', error);
+      logger.error('Error uploading image:', error);
       onUploadError('Failed to upload image');
     } finally {
       setUploading(false);

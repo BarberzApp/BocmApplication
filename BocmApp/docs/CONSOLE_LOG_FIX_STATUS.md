@@ -25,18 +25,30 @@ All console statements in `app/shared/lib/` have been replaced with the logger u
 
 ---
 
+## ✅ **FIXED: Pages & Components** (In Progress)
+
+| File | Status | Count Fixed |
+|------|--------|-------------|
+| ✅ `BrowsePage.tsx` | **FIXED** | 29 statements |
+| ✅ `BookingForm.tsx` (components) | **FIXED** | 34 statements |
+| ✅ `BarberOnboardingPage.tsx` | **FIXED** | 51 statements |
+
+**Subtotal Fixed:** **114 console statements**
+
+---
+
 ## ⚠️ **REMAINING: Pages, Components, Hooks, Contexts**
 
 Console statements still exist in:
 
 | Location | Count | Priority |
 |----------|-------|----------|
-| `app/pages/` | **194** | 🔴 HIGH |
-| `app/shared/components/` | **105** | 🟠 MEDIUM |
+| `app/pages/` | **~114** | 🔴 HIGH |
+| `app/shared/components/` | **~71** | 🟠 MEDIUM |
 | `app/hooks/` + `app/shared/hooks/` | **144** | 🟠 MEDIUM |
 | `app/shared/contexts/` | **55** | 🟡 LOW |
 
-**Total Remaining:** **547 console statements**
+**Total Remaining:** **~384 console statements** (down from 547)
 
 ---
 
@@ -77,7 +89,8 @@ grep -r "console\.\(log\|error\|warn\)" app/shared/components/ --include="*.tsx"
 ## Completion Status
 
 - **Shared/lib files:** ✅ **100% Complete** (8/8 files fixed)
-- **Overall progress:** ⚠️ **~3% Complete** (8 files fixed, ~300+ files remaining)
+- **Pages/Components:** ⚠️ **In Progress** (3 files fixed, 114 statements removed)
+- **Overall progress:** ⚠️ **~17% Complete** (11 files fixed, ~384 statements remaining)
 
 ---
 

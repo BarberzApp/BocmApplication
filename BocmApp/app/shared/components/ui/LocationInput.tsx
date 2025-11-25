@@ -12,6 +12,7 @@ import tw from 'twrnc';
 import { MapPin, ChevronDown, X } from 'lucide-react-native';
 import { theme } from '../../lib/theme';
 import { getAddressSuggestionsNominatim } from '../../lib/geocode';
+import { logger } from '../../lib/logger';
 
 interface LocationInputProps {
   value: string;
@@ -70,7 +71,7 @@ export function LocationInput({
       const results = await getAddressSuggestionsNominatim(query);
       setSuggestions(results);
     } catch (error) {
-      console.error('Error searching addresses:', error);
+      logger.error('Error searching addresses:', error);
       setSuggestions([]);
     } finally {
       setLoading(false);

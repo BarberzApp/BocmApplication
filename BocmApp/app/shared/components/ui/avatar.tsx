@@ -3,6 +3,7 @@ import { View, Text, Image, TouchableOpacity } from 'react-native';
 import { User } from 'lucide-react-native';
 import { theme } from '../../lib/theme';
 import tw from 'twrnc';
+import { logger } from '../../lib/logger';
 
 interface AvatarProps {
   src?: string;
@@ -83,7 +84,7 @@ const Avatar: React.FC<AvatarProps> = ({
           style={[tw`w-full h-full`, getSizeStyles()]}
           resizeMode="cover"
           onError={(error) => {
-            console.log('Avatar image error:', error.nativeEvent.error);
+            logger.log('Avatar image error:', error.nativeEvent.error);
           }}
         />
       ) : fallback ? (

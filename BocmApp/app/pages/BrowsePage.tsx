@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-// Test comment for Husky
 import {
   View,
   Text,
@@ -23,6 +22,7 @@ import tw from 'twrnc';
 import { theme } from '../shared/lib/theme';
 import { supabase } from '../shared/lib/supabase';
 import { useAuth } from '../shared/hooks/useAuth';
+import { logger } from '../shared/lib/logger';
 import {
   Search,
   MapPin,
@@ -120,14 +120,14 @@ function BarberRating({ barberId }: { barberId: string }) {
           .eq('is_public', true);
 
         if (error) {
-          console.error('Error fetching likes:', error);
+          logger.error('Error fetching likes:', error);
           return;
         }
 
         const totalLikes = data?.reduce((sum, cut) => sum + (cut.likes || 0), 0) || 0;
         setLikesCount(totalLikes);
       } catch (error) {
-        console.error('Error fetching likes count:', error);
+        logger.error('Error fetching likes count:', error);
       } finally {
         setLikesLoading(false);
       }
@@ -194,7 +194,7 @@ function ReviewsList({ barberId }: { barberId: string }) {
   const [loading, setLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
   
-  console.log('ReviewsList - barberId:', barberId, 'reviews:', reviews, 'loading:', loading, 'hasLoaded:', hasLoaded);
+  // ReviewsList component - removed debug logging
   
   // Only fetch reviews when component mounts (when modal opens)
   useEffect(() => {
@@ -206,7 +206,7 @@ function ReviewsList({ barberId }: { barberId: string }) {
   const fetchReviews = async () => {
     if (!barberId) return;
     
-    console.log('🔍 Fetching reviews for barber ID:', barberId);
+    logger.log('Fetching reviews for barber ID:', barberId);
     setLoading(true);
     
     try {
@@ -238,10 +238,8 @@ function ReviewsList({ barberId }: { barberId: string }) {
         .eq('is_public', true)
         .order('created_at', { ascending: false });
 
-      console.log('📊 Reviews query result:', { data, error });
-
       if (error) {
-        console.error('Error fetching reviews:', error);
+        logger.error('Error fetching reviews:', error);
         Alert.alert('Error', 'Failed to load reviews.');
         return;
       }
@@ -249,7 +247,7 @@ function ReviewsList({ barberId }: { barberId: string }) {
       setReviews(data || []);
       setHasLoaded(true);
     } catch (error) {
-      console.error('Error fetching reviews:', error);
+      logger.error('Error fetching reviews:', error);
       Alert.alert('Error', 'Failed to load reviews.');
     } finally {
       setLoading(false);
@@ -363,7 +361,7 @@ export default function BrowsePage() {
       const from = page * BATCH_SIZE;
       const to = from + BATCH_SIZE - 1;
       
-      console.log(`📦 Fetching barbers batch ${page + 1} (${from}-${to})`);
+      logger.log(`Fetching barbers batch ${page + 1} (${from}-${to})`);
       
       // Fetch barbers with their profiles and ratings
       const { data: barbersData, error: barbersError } = await supabase
@@ -391,7 +389,7 @@ export default function BrowsePage() {
         .order('created_at', { ascending: false });
 
       if (barbersError) {
-        console.error('Error fetching barbers:', barbersError);
+        logger.error('Error fetching barbers:', barbersError);
         return;
       }
 
@@ -413,7 +411,7 @@ export default function BrowsePage() {
         .eq('is_public', true);
 
       if (profilesError) {
-        console.error('Error fetching profiles:', profilesError);
+        logger.error('Error fetching profiles:', profilesError);
         return;
       }
 
@@ -439,7 +437,7 @@ export default function BrowsePage() {
             } else if (profile.location) {
               // If no coordinates, we'll skip distance calculation for now
               // This prevents showing incorrect "closest" barbers
-              console.log(`📍 Barber ${profile.name} has location: ${profile.location} but no coordinates - skipping distance calculation`);
+              logger.log(`Barber ${profile.name} has location but no coordinates - skipping distance calculation`);
               distance = undefined; // Don't show distance for barbers without coordinates
             }
           }
@@ -469,12 +467,7 @@ export default function BrowsePage() {
             distance: distance,
           });
           
-          // Debug logging
-          console.log('Barber data:', {
-            name: profile.name,
-            avatarUrl: profile.avatar_url,
-            coverPhotoUrl: profile.coverphoto
-          });
+          // Debug logging removed for production
         }
       });
 
@@ -486,7 +479,7 @@ export default function BrowsePage() {
           if (b.distance === undefined) return -1;
           return a.distance - b.distance;
         });
-        console.log('📍 Barbers sorted by distance');
+        logger.log('Barbers sorted by distance');
       }
       
       // Check if we have more barbers to load
@@ -500,7 +493,7 @@ export default function BrowsePage() {
         setBarbersPage(0);
         
         // Geocode barber locations in the background (don't wait for it)
-        geocodeBarberLocations(transformedBarbers).catch(console.error);
+        geocodeBarberLocations(transformedBarbers).catch((err) => logger.error('Geocoding error:', err));
       } else {
         // Append new barbers to existing list
         setBarbers(prevBarbers => {
@@ -511,12 +504,12 @@ export default function BrowsePage() {
         setBarbersPage(page);
       }
       
-      console.log(`✅ Loaded ${transformedBarbers.length} barbers (batch ${page + 1})`);
+      logger.log(`Loaded ${transformedBarbers.length} barbers (batch ${page + 1})`);
       if (!hasMore) {
-        console.log('🏁 No more barbers to load');
+        logger.log('No more barbers to load');
       }
     } catch (error) {
-      console.error('Error fetching barbers:', error);
+      logger.error('Error fetching barbers:', error);
     } finally {
       if (page === 0) {
         setBarbersLoading(false);
@@ -563,7 +556,7 @@ export default function BrowsePage() {
       
       return true;
     } catch (error) {
-      console.error('Error requesting location permission:', error);
+      logger.error('Error requesting location permission:', error);
       Alert.alert('Error', 'Failed to get location permission. Please try again.');
       return false;
     } finally {
@@ -596,11 +589,7 @@ export default function BrowsePage() {
       
       setUserLocation(location);
       setUseLocation(true);
-      console.log('📍 User location obtained:', {
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-        accuracy: location.coords.accuracy
-      });
+      logger.log('User location obtained');
       
       // Refresh barbers with location-based sorting
       await fetchBarbers(0);
@@ -613,7 +602,7 @@ export default function BrowsePage() {
       );
       
     } catch (error) {
-      console.error('Error getting user location:', error);
+      logger.error('Error getting user location:', error);
       Alert.alert(
         'Location Error', 
         'Failed to get your current location. Please check your GPS settings and try again.',
@@ -684,7 +673,7 @@ export default function BrowsePage() {
       }
       return null;
     } catch (error) {
-      console.error('Geocoding error:', error);
+      logger.error('Geocoding error:', error);
       return null;
     }
   };
@@ -695,7 +684,7 @@ export default function BrowsePage() {
       !barber.latitude && !barber.longitude && barber.location
     );
     
-    console.log(`📍 Geocoding ${barbersToGeocode.length} barber locations...`);
+    logger.log(`Geocoding ${barbersToGeocode.length} barber locations...`);
     
     for (const barber of barbersToGeocode) {
       try {
@@ -712,11 +701,11 @@ export default function BrowsePage() {
             .eq('user_id', barber.userId);
             
           if (!error) {
-            console.log(`✅ Geocoded and saved coordinates for ${barber.name}: ${coordinates.lat}, ${coordinates.lng}`);
+            logger.log(`Geocoded and saved coordinates for ${barber.name}`);
           }
         }
       } catch (error) {
-        console.error(`❌ Failed to geocode ${barber.name}:`, error);
+        logger.error(`Failed to geocode ${barber.name}:`, error);
       }
     }
   };
@@ -728,7 +717,7 @@ export default function BrowsePage() {
     if (!hasMoreBarbers || barbersLoadingMore) return;
     
     const nextPage = barbersPage + 1;
-    console.log(`📦 Loading more barbers (page ${nextPage + 1})`);
+    logger.log(`Loading more barbers (page ${nextPage + 1})`);
     await fetchBarbers(nextPage, true);
   };
 
@@ -755,7 +744,7 @@ export default function BrowsePage() {
         .limit(50);
 
       if (cutsError) {
-        console.error('Error fetching cuts:', cutsError);
+        logger.error('Error fetching cuts:', cutsError);
         return;
       }
 
@@ -811,7 +800,7 @@ export default function BrowsePage() {
       ];
       setAllSpecialties(specialties);
     } catch (error) {
-      console.error('Error fetching posts:', error);
+      logger.error('Error fetching posts:', error);
     } finally {
       setPostsLoading(false);
     }
@@ -1261,7 +1250,7 @@ export default function BrowsePage() {
                                 style={tw`w-full h-full`}
                                 resizeMode="cover"
                                 onError={(error) => {
-                                  console.log('Profile image error:', error.nativeEvent.error);
+                                  logger.error('Profile image error:', error.nativeEvent.error);
                                 }}
                               />
                             ) : (
@@ -1385,7 +1374,7 @@ export default function BrowsePage() {
                               }
                             ]}
                             onPress={() => {
-                              console.log('Reviews button clicked for barber:', barber.id, barber.name);
+                              // Reviews button clicked - removed debug logging
                               setSelectedBarberForReviews(barber.id);
                               setShowReviews(true);
                             }}

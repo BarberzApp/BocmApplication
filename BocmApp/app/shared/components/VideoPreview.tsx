@@ -10,6 +10,7 @@ import { Video, ResizeMode } from 'expo-av';
 import { Avatar } from './ui';
 import tw from 'twrnc';
 import { theme } from '../lib/theme';
+import { logger } from '../lib/logger';
 
 const { width } = Dimensions.get('window');
 
@@ -52,7 +53,7 @@ export default function VideoPreview({
         // The Video component will show the first frame when paused
         setFrameUrl(videoUrl);
       } catch (error) {
-        console.log('Error loading video for frame extraction:', error);
+        logger.log('Error loading video for frame extraction:', error);
         setFrameUrl(null);
       } finally {
         setIsLoading(false);
@@ -96,10 +97,10 @@ export default function VideoPreview({
             isMuted={true}
             isLooping={false}
             onError={(error) => {
-              console.log('Video load error:', error);
+              logger.log('Video load error:', error);
               setFrameUrl(null);
             }}
-            onLoad={() => console.log('Video frame loaded successfully for:', title)}
+            onLoad={() => logger.log('Video frame loaded successfully for:', title)}
           />
         ) : (
           <View style={[

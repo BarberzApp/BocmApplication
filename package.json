@@ -7,6 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "security:audit": "npm audit",
+    "security:fix": "npm audit fix",
+    "security:check": "npm audit --audit-level=moderate",
     "cypress:open": "cypress open",
     "cypress:run": "cypress run",
     "android": "expo run:android",
@@ -112,7 +115,7 @@
     "tailwindcss-animate": "^1.0.7",
     "twrnc": "^4.9.1",
     "vaul": "^0.9.6",
-    "zod": "^3.25.64",
+    "zod": "^3.25.76",
     "zustand": "^5.0.6"
   },
   "devDependencies": {

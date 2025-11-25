@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { supabase } from '../lib/supabase'
+import { logger } from '../lib/logger'
 
 // Types
 export type UserRole = "client" | "barber"
@@ -76,18 +77,18 @@ export const useAuthStore = create<AuthStore>()(
     // Initialize auth state
     initialize: async () => {
       try {
-        console.log('[AUTH] initialize: starting');
+        logger.log('[AUTH] initialize: starting');
         set({ isLoading: true, status: "loading" })
         
         // Check current session from Supabase
         const { data: { session } } = await supabase.auth.getSession()
-        console.log('[AUTH] initialize: session', session);
+        logger.log('[AUTH] initialize: session', session);
         
         if (session?.user) {
-          console.log('[AUTH] initialize: found session for user', session.user.email)
+          logger.log('[AUTH] initialize: found session for user', session.user.email)
           await get().fetchUserProfile(session.user.id)
         } else {
-          console.log('[AUTH] initialize: no active session found')
+          logger.log('[AUTH] initialize: no active session found')
           set({ 
             user: null, 
             isLoading: false, 
@@ -98,7 +99,7 @@ export const useAuthStore = create<AuthStore>()(
 
         // Listen for auth state changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-          console.log('[AUTH] auth state change:', event, session?.user?.email)
+          logger.log('[AUTH] auth state change:', event, session?.user?.email)
           
           if (event === 'SIGNED_IN' && session?.user) {
             await get().fetchUserProfile(session.user.id)
@@ -114,9 +115,9 @@ export const useAuthStore = create<AuthStore>()(
 
         // Store subscription for cleanup (we'll handle cleanup elsewhere)
         // Note: In a real app, you might want to store this subscription and clean it up on app unmount
-        console.log('[AUTH] initialize: auth subscription set up')
+        logger.log('[AUTH] initialize: auth subscription set up')
       } catch (error) {
-        console.error('[AUTH] initialize error:', error)
+        logger.error('[AUTH] initialize error:', error)
         set({ 
           user: null, 
           isLoading: false, 
@@ -129,7 +130,7 @@ export const useAuthStore = create<AuthStore>()(
     // Fetch user profile from database
     fetchUserProfile: async (userId: string) => {
       try {
-        console.log('[AUTH] fetchUserProfile: fetching profile for user', userId)
+        logger.log('[AUTH] fetchUserProfile: fetching profile for user', userId)
         
         const { data: profile, error } = await supabase
           .from('profiles')
@@ -138,7 +139,7 @@ export const useAuthStore = create<AuthStore>()(
           .single()
 
         if (error) {
-          console.error('[AUTH] fetchUserProfile error:', error)
+          logger.error('[AUTH] fetchUserProfile error:', error)
           set({ 
             user: null, 
             isLoading: false, 
@@ -170,7 +171,7 @@ export const useAuthStore = create<AuthStore>()(
             avatar_url: profile.avatar_url,
           }
 
-          console.log('[AUTH] fetchUserProfile: user profile loaded', user)
+          logger.log('[AUTH] fetchUserProfile: user profile loaded', user)
           set({ 
             user, 
             isLoading: false, 
@@ -178,7 +179,7 @@ export const useAuthStore = create<AuthStore>()(
             isInitialized: true 
           })
         } else {
-          console.log('[AUTH] fetchUserProfile: no profile found')
+          logger.log('[AUTH] fetchUserProfile: no profile found')
           set({ 
             user: null, 
             isLoading: false, 
@@ -187,7 +188,7 @@ export const useAuthStore = create<AuthStore>()(
           })
         }
       } catch (error) {
-        console.error('[AUTH] fetchUserProfile error:', error)
+        logger.error('[AUTH] fetchUserProfile error:', error)
         set({ 
           user: null, 
           isLoading: false, 
@@ -200,7 +201,7 @@ export const useAuthStore = create<AuthStore>()(
     // Login action
     login: async (email: string, password: string) => {
       try {
-        console.log('[AUTH] login: attempting login for', email)
+        logger.log('[AUTH] login: attempting login for', email)
         set({ isLoading: true })
         
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -209,13 +210,13 @@ export const useAuthStore = create<AuthStore>()(
         })
 
         if (error) {
-          console.error('[AUTH] login error:', error)
+          logger.error('[AUTH] login error:', error)
           set({ isLoading: false })
           return false
         }
 
         if (data.user) {
-          console.log('[AUTH] login: successful login for', data.user.email)
+          logger.log('[AUTH] login: successful login for', data.user.email)
           await get().fetchUserProfile(data.user.id)
           return true
         }
@@ -223,7 +224,7 @@ export const useAuthStore = create<AuthStore>()(
         set({ isLoading: false })
         return false
       } catch (error) {
-        console.error('[AUTH] login error:', error)
+        logger.error('[AUTH] login error:', error)
         set({ isLoading: false })
         return false
       }
@@ -232,7 +233,7 @@ export const useAuthStore = create<AuthStore>()(
     // Register action
     register: async (name: string, email: string, password: string, role: UserRole, businessName?: string) => {
       try {
-        console.log('[AUTH] register: attempting registration for', email)
+        logger.log('[AUTH] register: attempting registration for', email)
         set({ isLoading: true })
         
         const { data, error } = await supabase.auth.signUp({
@@ -248,13 +249,13 @@ export const useAuthStore = create<AuthStore>()(
         })
 
         if (error) {
-          console.error('[AUTH] register error:', error)
+          logger.error('[AUTH] register error:', error)
           set({ isLoading: false })
           return false
         }
 
         if (data.user) {
-          console.log('[AUTH] register: successful registration for', data.user.email)
+          logger.log('[AUTH] register: successful registration for', data.user.email)
           
           // Create profile in database
           const { error: profileError } = await supabase
@@ -271,7 +272,7 @@ export const useAuthStore = create<AuthStore>()(
             ])
 
           if (profileError) {
-            console.error('[AUTH] register: profile creation error:', profileError)
+            logger.error('[AUTH] register: profile creation error:', profileError)
             set({ isLoading: false })
             return false
           }
@@ -289,7 +290,7 @@ export const useAuthStore = create<AuthStore>()(
               ])
 
             if (barberError) {
-              console.error('[AUTH] register: barber creation error:', barberError)
+              logger.error('[AUTH] register: barber creation error:', barberError)
             }
           }
 
@@ -300,7 +301,7 @@ export const useAuthStore = create<AuthStore>()(
         set({ isLoading: false })
         return false
       } catch (error) {
-        console.error('[AUTH] register error:', error)
+        logger.error('[AUTH] register error:', error)
         set({ isLoading: false })
         return false
       }
@@ -309,15 +310,15 @@ export const useAuthStore = create<AuthStore>()(
     // Logout action
     logout: async () => {
       try {
-        console.log('[AUTH] logout: signing out user')
+        logger.log('[AUTH] logout: signing out user')
         set({ isLoading: true })
         
         const { error } = await supabase.auth.signOut()
         
         if (error) {
-          console.error('[AUTH] logout error:', error)
+          logger.error('[AUTH] logout error:', error)
         } else {
-          console.log('[AUTH] logout: successful logout')
+          logger.log('[AUTH] logout: successful logout')
         }
 
         set({ 
@@ -327,7 +328,7 @@ export const useAuthStore = create<AuthStore>()(
           showLoginModal: false 
         })
       } catch (error) {
-        console.error('[AUTH] logout error:', error)
+        logger.error('[AUTH] logout error:', error)
         set({ 
           user: null, 
           isLoading: false, 
@@ -343,7 +344,7 @@ export const useAuthStore = create<AuthStore>()(
         const { user } = get()
         if (!user) return
 
-        console.log('[AUTH] updateProfile: updating profile for user', user.id)
+        logger.log('[AUTH] updateProfile: updating profile for user', user.id)
         
         const { error } = await supabase
           .from('profiles')
@@ -360,15 +361,15 @@ export const useAuthStore = create<AuthStore>()(
           .eq('id', user.id)
 
         if (error) {
-          console.error('[AUTH] updateProfile error:', error)
+          logger.error('[AUTH] updateProfile error:', error)
           return
         }
 
         // Update local state
         set({ user: { ...user, ...data } })
-        console.log('[AUTH] updateProfile: profile updated successfully')
+        logger.log('[AUTH] updateProfile: profile updated successfully')
       } catch (error) {
-        console.error('[AUTH] updateProfile error:', error)
+        logger.error('[AUTH] updateProfile error:', error)
       }
     },
 
@@ -387,14 +388,14 @@ export const useAuthStore = create<AuthStore>()(
           .eq('id', user.id)
 
         if (error) {
-          console.error('[AUTH] addToFavorites error:', error)
+          logger.error('[AUTH] addToFavorites error:', error)
           return
         }
 
         set({ user: { ...user, favorites: newFavorites } })
-        console.log('[AUTH] addToFavorites: added barber to favorites')
+        logger.log('[AUTH] addToFavorites: added barber to favorites')
       } catch (error) {
-        console.error('[AUTH] addToFavorites error:', error)
+        logger.error('[AUTH] addToFavorites error:', error)
       }
     },
 
@@ -413,14 +414,14 @@ export const useAuthStore = create<AuthStore>()(
           .eq('id', user.id)
 
         if (error) {
-          console.error('[AUTH] removeFromFavorites error:', error)
+          logger.error('[AUTH] removeFromFavorites error:', error)
           return
         }
 
         set({ user: { ...user, favorites: newFavorites } })
-        console.log('[AUTH] removeFromFavorites: removed barber from favorites')
+        logger.log('[AUTH] removeFromFavorites: removed barber from favorites')
       } catch (error) {
-        console.error('[AUTH] removeFromFavorites error:', error)
+        logger.error('[AUTH] removeFromFavorites error:', error)
       }
     },
   }))

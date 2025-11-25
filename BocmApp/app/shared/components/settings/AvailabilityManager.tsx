@@ -12,6 +12,7 @@ import tw from 'twrnc';
 import { theme } from '../../lib/theme';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
+import { logger } from '../../lib/logger';
 import { Card, CardContent, LoadingSpinner } from '../ui';
 import { 
   Calendar,
@@ -116,7 +117,7 @@ export function AvailabilityManager({ barberId, onUpdate }: AvailabilityManagerP
         setSchedule(loadedSchedule);
       }
     } catch (error) {
-      console.error('Error loading availability:', error);
+      logger.error('Error loading availability:', error);
       Alert.alert('Error', 'Failed to load availability');
     } finally {
       setIsLoading(false);
@@ -157,7 +158,7 @@ export function AvailabilityManager({ barberId, onUpdate }: AvailabilityManagerP
       Alert.alert('Success', 'Availability updated successfully');
       onUpdate?.();
     } catch (error) {
-      console.error('Error saving availability:', error);
+      logger.error('Error saving availability:', error);
       Alert.alert('Error', 'Failed to save availability');
     } finally {
       setIsSaving(false);

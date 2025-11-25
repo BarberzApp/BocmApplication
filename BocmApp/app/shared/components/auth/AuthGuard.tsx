@@ -3,6 +3,7 @@ import { View, ActivityIndicator } from 'react-native';
 import { useAuth } from '../../hooks/useAuth';
 import { useSafeNavigation } from '../../hooks/useSafeNavigation';
 import { theme } from '../../lib/theme';
+import { logger } from '../../lib/logger';
 import tw from 'twrnc';
 
 interface AuthGuardProps {
@@ -26,14 +27,14 @@ export function AuthGuard({
     if (!loading) {
       // Check if user is authenticated
       if (!user) {
-        console.log('🔒 AuthGuard: User not authenticated, redirecting to login');
+        logger.log('🔒 AuthGuard: User not authenticated, redirecting to login');
         push(fallbackRoute);
         return;
       }
 
       // Check if user has required role
       if (requiredRole && userProfile?.role !== requiredRole) {
-        console.log(`🔒 AuthGuard: User role ${userProfile?.role} does not match required role ${requiredRole}`);
+        logger.log(`🔒 AuthGuard: User role ${userProfile?.role} does not match required role ${requiredRole}`);
         
         // Redirect based on user role
         switch (userProfile?.role) {

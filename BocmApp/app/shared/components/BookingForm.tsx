@@ -35,6 +35,7 @@ import { useAuth } from '../hooks/useAuth';
 import { theme } from '../lib/theme';
 import { supabase } from '../lib/supabase';
 import { notificationService, formatAppointmentTime } from '../lib/notifications';
+import { logger } from '../lib/logger';
 
 type BookingFormNavigationProp = NativeStackNavigationProp<RootStackParamList, 'BookingCalendar'>;
 
@@ -116,7 +117,7 @@ export default function BookingForm({
       const matchingService = services.find(service => service.id === preSelectedService.id);
       if (matchingService) {
         setSelectedService(matchingService);
-        console.log('[BOOKING_FORM] Auto-selected service:', matchingService.name);
+        logger.log('Auto-selected service:', matchingService.name);
         // Auto-advance to next step if service is pre-selected
         if (currentStep === 1) {
           setTimeout(() => {
@@ -135,24 +136,19 @@ export default function BookingForm({
 
   const fetchServices = async () => {
     try {
-      console.log('🔍 [BOOKING_FORM] Fetching services for barberId:', barberId);
       setLoading(true);
       
-      // Add timeout to prevent infinite loading
       const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new Error('Request timeout')), 10000)
       );
       
-      // Fetch services first (critical) with timeout
       const servicesData = await Promise.race([
         bookingService.getBarberServices(barberId),
         timeoutPromise
       ]) as Service[];
-      console.log('✅ [BOOKING_FORM] Services fetched successfully:', servicesData);
       
-      // Check if services exist
       if (!servicesData || servicesData.length === 0) {
-        console.warn('⚠️ [BOOKING_FORM] No services found for this barber');
+        logger.warn('No services found for this barber');
         Alert.alert('No Services', 'This barber has no services available for booking.');
         onClose();
         return;
@@ -166,14 +162,13 @@ export default function BookingForm({
           fetchAddons(),
           timeoutPromise
         ]) as ServiceAddon[];
-        console.log('✅ [BOOKING_FORM] Add-ons fetched successfully:', addonsData);
         setAddons(addonsData);
       } catch (addonError) {
-        console.warn('⚠️ [BOOKING_FORM] Add-ons fetch failed, continuing without add-ons:', addonError);
+        logger.warn('Add-ons fetch failed, continuing without add-ons:', addonError);
         setAddons([]);
       }
     } catch (error) {
-      console.error('❌ [BOOKING_FORM] Error fetching services:', error);
+      logger.error('Error fetching services:', error);
       Alert.alert('Error', 'Failed to load services. Please try again.');
     } finally {
       setLoading(false);
@@ -192,49 +187,39 @@ export default function BookingForm({
       if (error) throw error;
       return data || [];
     } catch (error) {
-      console.error('Error fetching add-ons:', error);
+      logger.error('Error fetching add-ons:', error);
       return [];
     }
   };
 
   const fetchBarberStatus = async () => {
     try {
-      console.log('🔍 [BOOKING_FORM] Fetching barber status for barberId:', barberId);
       const { data, error } = await supabase
         .from('barbers')
         .select('is_developer')
         .eq('id', barberId)
         .single();
 
-      console.log('[BOOKING_FORM] Barber data:', data);
-      console.log('[BOOKING_FORM] Barber error:', error);
-
       if (error) {
-        console.log('[BOOKING_FORM] Error fetching barber status:', error);
+        logger.error('Error fetching barber status:', error);
         setIsDeveloperAccount(false);
         return;
       }
 
       setIsDeveloperAccount(data?.is_developer || false);
-      console.log('[BOOKING_FORM] Is developer account:', data?.is_developer || false);
     } catch (error) {
-      console.error('[BOOKING_FORM] Error fetching barber status:', error);
+      logger.error('Error fetching barber status:', error);
       setIsDeveloperAccount(false);
     }
   };
 
   const fetchTimeSlots = async () => {
     if (!selectedDate || !selectedService) {
-      console.log('[BOOKING_FORM] Cannot fetch time slots - missing date or service');
+      // Cannot fetch time slots - missing date or service
       return;
     }
 
     try {
-      console.log('[BOOKING_FORM] Fetching time slots for:', {
-        barberId,
-        date: format(selectedDate, 'yyyy-MM-dd'),
-        serviceDuration: selectedService.duration
-      });
       setLoadingSlots(true);
       const dateStr = format(selectedDate, 'yyyy-MM-dd');
       const slots = await bookingService.getAvailableSlots(
@@ -242,10 +227,9 @@ export default function BookingForm({
         dateStr,
         selectedService.duration
       );
-      console.log('[BOOKING_FORM] Time slots fetched successfully:', slots);
       setTimeSlots(slots);
     } catch (error) {
-      console.error('[BOOKING_FORM] Error fetching time slots:', error);
+      logger.error('Error fetching time slots:', error);
       Alert.alert('Error', 'Failed to load available times. Please try again.');
     } finally {
       setLoadingSlots(false);
@@ -306,30 +290,17 @@ export default function BookingForm({
   };
 
   const handleCreateBooking = async () => {
-    console.log('[BOOKING_FORM] Starting booking creation...');
-    console.log('[BOOKING_FORM] Current state:', {
-      selectedService,
-      selectedDate,
-      selectedTime,
-      user: !!user,
-      isDeveloperAccount,
-      guestInfo
-    });
-
     if (!selectedService || !selectedDate || !selectedTime) {
-      console.log('[BOOKING_FORM] Missing required fields');
       Alert.alert('Error', 'Please complete all required fields.');
       return;
     }
 
     if (!user && !isDeveloperAccount) {
-      console.log('[BOOKING_FORM] User not signed in and not developer account');
       Alert.alert('Error', 'Please sign in to book with this barber.');
       return;
     }
 
     if (!user && isDeveloperAccount && (!guestInfo.name || !guestInfo.email || !guestInfo.phone)) {
-      console.log('[BOOKING_FORM] Missing guest information');
       Alert.alert('Error', 'Please fill in all guest information.');
       return;
     }
@@ -341,15 +312,7 @@ export default function BookingForm({
       const [hours, minutes] = selectedTime.split(':');
       bookingDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
-      console.log('[BOOKING_FORM] Booking date:', bookingDate.toISOString());
-
       if (isDeveloperAccount) {
-        console.log('[BOOKING_FORM] Creating developer booking via API...');
-        console.log('[BOOKING_FORM] Service being used:', {
-          id: selectedService.id,
-          name: selectedService.name,
-          price: selectedService.price
-        });
         
         // Use the developer booking Edge Function (same as rest of app)
         const response = await fetch(`${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/create-developer-booking`, {
@@ -377,26 +340,17 @@ export default function BookingForm({
           throw new Error(data.error || 'Failed to create developer booking');
         }
 
-        console.log('[BOOKING_FORM] Developer booking created successfully:', data.booking);
+        logger.log('Developer booking created successfully');
         Alert.alert(
           'Success!',
           'Your booking has been created successfully (developer mode - no payment required).',
           [{ text: 'OK', onPress: () => onBookingCreated(data.booking) }]
         );
       } else {
-        console.log('[BOOKING_FORM] Creating regular booking with payment...');
-        // Regular booking requires payment first
         if (!user) {
           Alert.alert('Error', 'Please sign in to book with this barber.');
           return;
         }
-
-        console.log('[BOOKING_FORM] Creating payment intent for Stripe Payment Sheet...');
-        console.log('[BOOKING_FORM] Service being used:', {
-          id: selectedService.id,
-          name: selectedService.name,
-          price: selectedService.price
-        });
         
         // Initialize Stripe
         await initStripe({
@@ -426,7 +380,7 @@ export default function BookingForm({
           throw new Error(data.error || 'Failed to create payment intent');
         }
 
-        console.log('[BOOKING_FORM] Payment intent created:', data);
+        logger.log('Payment intent created');
 
         // Confirm payment in-app (secure)
         const { error: paymentError } = await confirmPayment(data.clientSecret, {
@@ -434,13 +388,13 @@ export default function BookingForm({
         });
 
         if (paymentError) {
-          console.error('[BOOKING_FORM] Payment error:', paymentError);
+          logger.error('Payment error:', paymentError);
           Alert.alert('Payment Failed', paymentError.message || 'Payment could not be completed.');
           return;
         }
 
         // Payment successful - booking will be created by webhook
-        console.log('[BOOKING_FORM] Payment successful! Booking will be created automatically via webhook.');
+        logger.log('Payment successful - booking will be created via webhook');
         
         Alert.alert(
           'Payment Successful!',
@@ -458,7 +412,7 @@ export default function BookingForm({
 
       onClose();
     } catch (error) {
-      console.error('[BOOKING_FORM] Error creating booking:', error);
+      logger.error('Error creating booking:', error);
       Alert.alert('Error', 'Failed to create booking. Please try again.');
     } finally {
       setBookingLoading(false);
