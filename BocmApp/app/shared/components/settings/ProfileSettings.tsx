@@ -40,6 +40,7 @@ import {
   extractHandle 
 } from '../../utils/settings.utils';
 import { notificationService } from '../../lib/notifications';
+import { logger } from '../../lib/logger';
 
 
 interface ProfileSettingsProps {
@@ -142,7 +143,7 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
         });
       }
     } catch (error) {
-      console.error('Error fetching profile:', error);
+      logger.error('Error fetching profile:', error);
       Alert.alert('Error', 'Failed to load profile data');
     } finally {
       setIsLoading(false);
@@ -228,13 +229,13 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
               .eq('user_id', user?.id);
               
             if (barberError) {
-              console.error('Error updating barber coordinates:', barberError);
+              logger.error('Error updating barber coordinates:', barberError);
             } else {
-              console.log('✅ Barber coordinates updated:', coordinates);
+              logger.log('✅ Barber coordinates updated:', coordinates);
             }
           }
         } catch (geocodeError) {
-          console.error('Geocoding error:', geocodeError);
+          logger.error('Geocoding error:', geocodeError);
           // Don't fail the save if geocoding fails
         }
       }
@@ -260,7 +261,7 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
       Alert.alert('Success', 'Profile updated successfully!');
       onUpdate?.();
     } catch (error) {
-      console.error('Error updating profile:', error);
+      logger.error('Error updating profile:', error);
       Alert.alert('Error', 'Failed to update profile');
     } finally {
       setIsLoading(false);
@@ -279,7 +280,7 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
     try {
       if (!formData.sms_notifications) {
         // Enable push notifications
-        console.log('🔔 Requesting push notification permissions...');
+        logger.log('🔔 Requesting push notification permissions...');
         
         // Initialize notifications and request permissions
         await notificationService.initialize();
@@ -294,7 +295,7 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
         );
       } else {
         // Disable push notifications
-        console.log('🔕 Disabling push notifications...');
+        logger.log('🔕 Disabling push notifications...');
         
         // Update local state
         setFormData({ ...formData, sms_notifications: false });
@@ -306,7 +307,7 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
         );
       }
     } catch (error) {
-      console.error('Error toggling push notifications:', error);
+      logger.error('Error toggling push notifications:', error);
       Alert.alert(
         'Error',
         'Failed to update push notification settings. Please try again.',

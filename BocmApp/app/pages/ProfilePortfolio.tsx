@@ -37,6 +37,7 @@ import {
   Share2,
 } from 'lucide-react-native';
 import { supabase } from '../shared/lib/supabase';
+import { logger } from '../shared/lib/logger';
 import VideoPreview from '../shared/components/VideoPreview';
 import { ImageUpload } from '../shared/components/ui/ImageUpload';
 import { VideoUpload } from '../shared/components/ui/VideoUpload';
@@ -138,8 +139,8 @@ export default function ProfilePortfolio() {
 
     try {
       setLoading(true);
-      console.log('🔄 Fetching profile data for user:', user.id);
-      console.log('👤 User profile role:', userProfile?.role);
+      logger.log('🔄 Fetching profile data for user:', user.id);
+      logger.log('👤 User profile role:', userProfile?.role);
 
       // Fetch user profile
       const { data: profileData, error: profileError } = await supabase
@@ -149,7 +150,7 @@ export default function ProfilePortfolio() {
         .single();
 
       if (profileError) {
-        console.error('Error fetching profile:', profileError);
+        logger.error('Error fetching profile:', profileError);
       } else {
         setProfile(profileData);
       }
@@ -163,7 +164,7 @@ export default function ProfilePortfolio() {
             .single();
 
           if (barberError) {
-            console.error('Error fetching barber profile:', barberError);
+            logger.error('Error fetching barber profile:', barberError);
           } else {
             setBarberProfile(barberData);
             
@@ -184,9 +185,9 @@ export default function ProfilePortfolio() {
                 .order('created_at', { ascending: false });
 
               if (cutsError) {
-                console.error('Error fetching cuts:', cutsError);
+                logger.error('Error fetching cuts:', cutsError);
               } else {
-                console.log('📹 Fetched cuts:', cutsData?.length || 0);
+                logger.log('📹 Fetched cuts:', cutsData?.length || 0);
                 const formattedCuts = (cutsData || []).map((cut: any) => ({
                   ...cut,
                   barber: {
@@ -206,9 +207,9 @@ export default function ProfilePortfolio() {
                 .order('name', { ascending: true });
 
               if (servicesError) {
-                console.error('Error fetching services:', servicesError);
+                logger.error('Error fetching services:', servicesError);
               } else {
-                console.log('💇 Fetched services:', servicesData?.length || 0);
+                logger.log('💇 Fetched services:', servicesData?.length || 0);
                 // Update barberProfile with services
                 setBarberProfile(prev => prev ? {
                   ...prev,
@@ -247,7 +248,7 @@ export default function ProfilePortfolio() {
           .eq('action_type', 'like');
 
         if (likedError) {
-          console.error('Error fetching liked cuts:', likedError);
+          logger.error('Error fetching liked cuts:', likedError);
         } else {
           const formattedLikedCuts = (likedData || []).map((item: any) => {
             const cutData = item.cuts;
@@ -278,7 +279,7 @@ export default function ProfilePortfolio() {
           .order('date', { ascending: false });
 
         if (bookingsError) {
-          console.error('Error fetching bookings:', bookingsError);
+          logger.error('Error fetching bookings:', bookingsError);
         } else {
           const formattedBookings = (bookingsData || []).map((booking: any) => ({
             ...booking,
@@ -292,7 +293,7 @@ export default function ProfilePortfolio() {
         }
       }
     } catch (error) {
-      console.error('Error fetching profile data:', error);
+      logger.error('Error fetching profile data:', error);
     } finally {
       setLoading(false);
     }

@@ -15,6 +15,7 @@ import tw from 'twrnc';
 import { RootStackParamList } from '../shared/types';
 import { supabase } from '../shared/lib/supabase';
 import { useAuth } from '../shared/hooks/useAuth';
+import { logger } from '../shared/lib/logger';
 import { theme } from '../shared/lib/theme';
 import { ProfileSettings } from '../shared/components/settings/ProfileSettings';
 import { ServicesSettings } from '../shared/components/settings/ServicesSettings';
@@ -77,7 +78,7 @@ export default function SettingsPage() {
         .single();
 
       if (profileError && profileError.code !== 'PGRST116') {
-        console.error('Error fetching profile:', profileError);
+        logger.error('Error fetching profile:', profileError);
       }
 
       if (isBarber) {
@@ -88,7 +89,7 @@ export default function SettingsPage() {
           .single();
 
         if (barberError && barberError.code !== 'PGRST116') {
-          console.error('Error fetching barber data:', barberError);
+          logger.error('Error fetching barber data:', barberError);
         }
 
         if (barber) {
@@ -129,7 +130,7 @@ export default function SettingsPage() {
         });
       }
     } catch (error) {
-      console.error('Error loading settings data:', error);
+      logger.error('Error loading settings data:', error);
       Alert.alert('Error', 'Failed to load settings data');
     } finally {
       setIsLoading(false);

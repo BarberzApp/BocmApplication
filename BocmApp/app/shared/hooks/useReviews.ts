@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { Review, ReviewStats } from '../types';
 import { Alert } from 'react-native';
+import { logger } from '../lib/logger';
 
 export function useReviews(barberId?: string) {
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -13,7 +14,7 @@ export function useReviews(barberId?: string) {
   const fetchReviews = useCallback(async (id?: string) => {
     if (!id) return;
     
-    console.log('🔍 Fetching reviews for barber ID:', id);
+    logger.log('🔍 Fetching reviews for barber ID:', id);
     
     try {
       setLoading(true);
@@ -47,13 +48,13 @@ export function useReviews(barberId?: string) {
         .eq('is_moderated', true)
         .order('created_at', { ascending: false });
 
-      console.log('📊 Reviews query result:', { data, error });
+      logger.log('📊 Reviews query result:', { data, error });
 
       if (error) throw error;
 
       setReviews(data || []);
     } catch (error) {
-      console.error('Error fetching reviews:', error);
+      logger.error('Error fetching reviews:', error);
       Alert.alert('Error', 'Failed to load reviews.');
     } finally {
       setLoading(false);
@@ -64,7 +65,7 @@ export function useReviews(barberId?: string) {
   const fetchReviewStats = useCallback(async (id?: string) => {
     if (!id) return;
     
-    console.log('📈 Fetching review stats for barber ID:', id);
+    logger.log('📈 Fetching review stats for barber ID:', id);
     
     try {
       const { data, error } = await supabase
@@ -74,7 +75,7 @@ export function useReviews(barberId?: string) {
         .eq('is_public', true)
         .eq('is_moderated', true);
 
-      console.log('📊 Review stats query result:', { data, error });
+      logger.log('📊 Review stats query result:', { data, error });
 
       if (error) throw error;
 
@@ -97,10 +98,10 @@ export function useReviews(barberId?: string) {
         recent_reviews: recentReviews as Review[]
       };
 
-      console.log('📈 Calculated stats:', statsData);
+      logger.log('📈 Calculated stats:', statsData);
       setStats(statsData);
     } catch (error) {
-      console.error('Error fetching review stats:', error);
+      logger.error('Error fetching review stats:', error);
     }
   }, []);
 
@@ -141,7 +142,7 @@ export function useReviews(barberId?: string) {
       Alert.alert('Success', 'Review submitted successfully!');
       return data;
     } catch (error) {
-      console.error('Error submitting review:', error);
+      logger.error('Error submitting review:', error);
       Alert.alert('Error', 'Failed to submit review. Please try again.');
       throw error;
     } finally {
@@ -175,7 +176,7 @@ export function useReviews(barberId?: string) {
       Alert.alert('Success', 'Review updated successfully!');
       return data;
     } catch (error) {
-      console.error('Error updating review:', error);
+      logger.error('Error updating review:', error);
       Alert.alert('Error', 'Failed to update review. Please try again.');
       throw error;
     } finally {
@@ -203,7 +204,7 @@ export function useReviews(barberId?: string) {
 
       Alert.alert('Success', 'Review deleted successfully!');
     } catch (error) {
-      console.error('Error deleting review:', error);
+      logger.error('Error deleting review:', error);
       Alert.alert('Error', 'Failed to delete review. Please try again.');
       throw error;
     } finally {

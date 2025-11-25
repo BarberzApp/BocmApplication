@@ -11,11 +11,14 @@ import {
   Dimensions,
   SafeAreaView,
 } from 'react-native';
-import { useRoute, useNavigation } from '@react-navigation/native';
+import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../shared/types';
 import { ArrowLeft, Calendar, MapPin, Star, Video as VideoIcon, Heart, Users, History, Camera, Loader2, Eye, Clock, Share2 } from 'lucide-react-native';
 import tw from 'twrnc';
 import { theme } from '../shared/lib/theme';
 import { supabase } from '../shared/lib/supabase';
+import { logger } from '../shared/lib/logger';
 import VideoPreview from '../shared/components/VideoPreview';
 import {
   Button,
@@ -108,10 +111,13 @@ interface Cut {
   };
 }
 
+type ProfilePreviewNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ProfilePreview'>;
+type ProfilePreviewRouteProp = RouteProp<RootStackParamList, 'ProfilePreview'>;
+
 export default function ProfilePreview() {
-  const navigation = useNavigation();
-  const route = useRoute();
-  const { barberId } = route.params as { barberId: string };
+  const navigation = useNavigation<ProfilePreviewNavigationProp>();
+  const route = useRoute<ProfilePreviewRouteProp>();
+  const { barberId } = route.params;
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [barberProfile, setBarberProfile] = useState<BarberProfile | null>(null);
   const [cuts, setCuts] = useState<Cut[]>([]);
@@ -131,36 +137,94 @@ export default function ProfilePreview() {
     try {
       setLoading(true);
       
-      // Fetch profile data
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', barberId)
-        .single();
-
-      if (profileError) {
-        console.error('Error fetching profile:', profileError);
-        return;
-      }
-
-      if (profileData) {
-        setProfile(profileData);
-      }
-
-      // Fetch barber data
-      const { data: barberData, error: barberError } = await supabase
+      // barberId could be:
+      // 1. barbers.id (most common - passed from BrowsePage)
+      // 2. barbers.user_id (which is profiles.id)
+      // 3. profiles.id (direct profile ID)
+      
+      // First, try to fetch barber by ID (most common case - barberId is barbers.id)
+      let { data: barberData, error: barberError } = await supabase
         .from('barbers')
         .select('*')
-        .eq('user_id', barberId)
-        .single();
+        .eq('id', barberId)
+        .maybeSingle();
 
-      if (barberError) {
-        console.error('Error fetching barber data:', barberError);
-        // Continue without barber data - might be a client profile
-        setCuts([]);
-        setServices([]);
-        setPosts([]);
+      // If not found by ID, try by user_id (in case barberId is a profile ID)
+      if (!barberData && !barberError) {
+        const { data: barberByUserId, error: errorByUserId } = await supabase
+          .from('barbers')
+          .select('*')
+          .eq('user_id', barberId)
+          .maybeSingle();
+        if (barberByUserId) {
+          logger.log('Found barber by user_id:', barberId);
+        }
+        barberData = barberByUserId;
+        barberError = errorByUserId;
+      } else if (barberData) {
+        logger.log('Found barber by id:', barberId);
+      }
+
+      // Fetch profile data
+      let profileData = null;
+      let profileError = null;
+
+      if (barberData) {
+        // We have barber data, fetch profile using barber's user_id
+        const { data: profile, error: error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', barberData.user_id)
+          .maybeSingle();
+        profileData = profile;
+        profileError = error;
+      } else {
+        // No barber found, try to fetch profile directly (might be a client profile or barberId is a profile ID)
+        const { data: profile, error: error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', barberId)
+          .maybeSingle();
+        profileData = profile;
+        profileError = error;
+      }
+
+      // Handle profile fetch errors
+      if (profileError) {
+        // Check if it's a "no rows" error (PGRST116)
+        if (profileError.code === 'PGRST116') {
+          logger.error('Profile not found:', barberId);
+          Alert.alert(
+            'Profile Not Found',
+            'The profile you are looking for does not exist or has been removed.',
+            [{ text: 'OK', onPress: () => navigation.goBack() }]
+          );
+          return;
+        }
+        logger.error('Error fetching profile:', profileError);
+        Alert.alert(
+          'Error',
+          'Failed to load profile. Please try again.',
+          [{ text: 'OK' }]
+        );
         return;
+      }
+
+      if (!profileData) {
+        logger.error('Profile data is null');
+        Alert.alert(
+          'Profile Not Found',
+          'The profile you are looking for does not exist.',
+          [{ text: 'OK', onPress: () => navigation.goBack() }]
+        );
+        return;
+      }
+
+      setProfile(profileData);
+
+      // Handle barber data (might not exist if it's a client profile)
+      if (barberError && barberError.code !== 'PGRST116') {
+        logger.error('Error fetching barber data:', barberError);
       }
 
       if (barberData) {
@@ -182,7 +246,7 @@ export default function ProfilePreview() {
           .order('created_at', { ascending: false });
 
         if (cutsError) {
-          console.error('Error fetching cuts:', cutsError);
+          logger.error('Error fetching cuts:', cutsError);
         } else if (cutsData) {
           const formattedCuts = (cutsData || []).map((cut: any) => ({
             ...cut,
@@ -203,7 +267,7 @@ export default function ProfilePreview() {
           .order('name');
 
         if (servicesError) {
-          console.error('Error fetching services:', servicesError);
+          logger.error('Error fetching services:', servicesError);
         } else if (servicesData) {
           setServices(servicesData);
         }
@@ -212,8 +276,20 @@ export default function ProfilePreview() {
       // For now, posts will be empty (could be portfolio images in the future)
       setPosts([]);
 
+      // If no barber data, set empty arrays for barber-specific content
+      if (!barberData) {
+        setCuts([]);
+        setServices([]);
+        setPosts([]);
+      }
+
     } catch (error) {
-      console.error('Error fetching profile data:', error);
+      logger.error('Error fetching profile data:', error);
+      Alert.alert(
+        'Error',
+        'An unexpected error occurred while loading the profile. Please try again.',
+        [{ text: 'OK' }]
+      );
     } finally {
       setLoading(false);
     }
@@ -398,11 +474,12 @@ export default function ProfilePreview() {
                          ]}
                          onPress={() => {
                            // Navigate to booking calendar for this specific service
-                           navigation.navigate('BookingCalendar' as never, {
+                           if (!profile) return;
+                           navigation.navigate('BookingCalendar', {
                              barberId: route.params.barberId,
                              barberName: profile.name,
                              preSelectedService: service,
-                           } as never);
+                           });
                          }}
                        >
                          <View
@@ -531,10 +608,11 @@ export default function ProfilePreview() {
             ]}
             onPress={() => {
               // Navigate to booking calendar
-              navigation.navigate('BookingCalendar' as never, {
+              if (!profile) return;
+              navigation.navigate('BookingCalendar', {
                 barberId: route.params.barberId,
                 barberName: profile.name,
-              } as never);
+              });
             }}
           >
             <Text style={[tw`font-semibold text-sm`, { color: theme.colors.background }]}>

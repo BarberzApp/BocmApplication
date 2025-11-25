@@ -23,6 +23,7 @@ import { theme } from '../shared/lib/theme';
 import { supabase } from '../shared/lib/supabase';
 import { useAuth } from '../shared/hooks/useAuth';
 import { logger } from '../shared/lib/logger';
+import ProfilePreview from './ProfilePreview';
 import {
   Search,
   MapPin,
@@ -1390,12 +1391,14 @@ export default function BrowsePage() {
                               { backgroundColor: theme.colors.secondary }
                             ]}
                             onPress={() => {
+                              
                               setSelectedBarber({
                                 barberId: barber.id,
                                 barberName: barber.name,
                                 name: barber.name
                               });
-                              setShowBookingForm(true);
+                              navigation.navigate('ProfilePreview', { barberId: barber.id});
+                             // setShowBookingForm(true);
                             }}
                           >
                             <Text style={[tw`font-semibold text-sm`, { color: theme.colors.primary }]}>

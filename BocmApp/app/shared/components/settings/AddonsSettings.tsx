@@ -14,6 +14,7 @@ import tw from 'twrnc';
 import { theme } from '../../lib/theme';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
+import { logger } from '../../lib/logger';
 import { Button, Card, CardContent, LoadingSpinner } from '../ui';
 import { 
   Plus, 
@@ -65,7 +66,7 @@ export function AddonsSettings({ onUpdate }: AddonsSettingsProps) {
         loadAddons(data.id);
       }
     } catch (error) {
-      console.error('Error loading barber ID:', error);
+      logger.error('Error loading barber ID:', error);
       Alert.alert('Error', 'Failed to load barber information.');
     }
   };
@@ -81,7 +82,7 @@ export function AddonsSettings({ onUpdate }: AddonsSettingsProps) {
       if (error) throw error;
       setAddons(data || []);
     } catch (error) {
-      console.error('Error loading add-ons:', error);
+      logger.error('Error loading add-ons:', error);
       Alert.alert('Error', 'Failed to load add-ons.');
     }
   };
@@ -144,7 +145,7 @@ export function AddonsSettings({ onUpdate }: AddonsSettingsProps) {
       resetForm();
       onUpdate?.();
     } catch (error) {
-      console.error('Error saving add-on:', error);
+      logger.error('Error saving add-on:', error);
       Alert.alert('Error', 'Failed to save add-on.');
     } finally {
       setIsLoading(false);
@@ -173,7 +174,7 @@ export function AddonsSettings({ onUpdate }: AddonsSettingsProps) {
               await loadAddons(barberId!);
               onUpdate?.();
             } catch (error) {
-              console.error('Error deleting add-on:', error);
+              logger.error('Error deleting add-on:', error);
               Alert.alert('Error', 'Failed to delete add-on.');
             }
           },

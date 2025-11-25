@@ -11,6 +11,7 @@ import {
 import { Star, Send, X } from 'lucide-react-native';
 import tw from 'twrnc';
 import { useReviews } from '../hooks/useReviews';
+import { logger } from '../lib/logger';
 
 interface ReviewFormProps {
   barberId: string;
@@ -58,7 +59,7 @@ export function ReviewForm({
       onSuccess?.();
       onClose();
     } catch (error) {
-      console.error('Error submitting review:', error);
+      logger.error('Error submitting review:', error);
     }
   };
 

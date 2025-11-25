@@ -21,6 +21,7 @@ import { Scissors, User, ArrowLeft, Eye, EyeOff, Check } from 'lucide-react-nati
 import { RootStackParamList } from '../shared/types';
 import { supabase } from '../shared/lib/supabase';
 import { theme } from '../shared/lib/theme';
+import { logger } from '../shared/lib/logger';
 import { AnimatedBackground } from '../shared/components/AnimatedBackground';
 import { AnimatedText } from '../shared/components/AnimatedText';
 import { ActionButton } from '../shared/components/ActionButton';
@@ -94,12 +95,12 @@ export default function SignUpPage() {
 
         setIsLoading(true);
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        console.log('=== Registration Process Started ===');
-        console.log('Registration Data:', { name: fullName, email, role: userType, businessName });
+        logger.log('=== Registration Process Started ===');
+        logger.log('Registration Data:', { name: fullName, email, role: userType, businessName });
 
         try {
             // Create auth user with metadata
-            console.log('Creating auth user...');
+            logger.log('Creating auth user...');
             const { data: authData, error: authError } = await supabase.auth.signUp({
                 email,
                 password,
@@ -113,7 +114,7 @@ export default function SignUpPage() {
             });
 
             if (authError) {
-                console.error('Auth Error:', authError);
+                logger.error('Auth Error:', authError);
                 
                 // Check for user already registered error
                 if (authError.message?.includes('User already registered')) {
@@ -131,11 +132,11 @@ export default function SignUpPage() {
                 return;
             }
 
-            console.log('Auth Data:', authData);
+            logger.log('Auth Data:', authData);
 
             // Check if email confirmation is required
             if (authData.user && !authData.session) {
-                console.log('Email confirmation required');
+                logger.log('Email confirmation required');
                 Alert.alert(
                     'Check Your Email',
                     'We\'ve sent you a confirmation email. Please verify your email address to complete registration.',
@@ -150,7 +151,7 @@ export default function SignUpPage() {
             }
 
             if (!authData.user) {
-                console.error('No user returned from signup');
+                logger.error('No user returned from signup');
                 setErrors({ general: 'Registration failed. Please try again.' });
                 return;
             }
@@ -170,13 +171,13 @@ export default function SignUpPage() {
                 });
 
             if (profileError) {
-                console.error('Profile creation error:', profileError);
+                logger.error('Profile creation error:', profileError);
                 // Don't fail registration, profile will be created on first login
             }
 
             // For barbers, try to create business profile
             if (userType === 'barber' && businessName) {
-                console.log('Creating business profile...');
+                logger.log('Creating business profile...');
                 const { error: businessError } = await supabase
                     .from('barbers')
                     .insert({
@@ -188,12 +189,12 @@ export default function SignUpPage() {
                     });
 
                 if (businessError) {
-                    console.error('Business Profile Creation Failed:', businessError);
+                    logger.error('Business Profile Creation Failed:', businessError);
                     // Don't fail registration, barber row will be created on first login
                 }
             }
 
-            console.log('Registration completed successfully');
+            logger.log('Registration completed successfully');
             
             // Navigate based on user type
             if (authData.session) {
@@ -218,7 +219,7 @@ export default function SignUpPage() {
             }
 
         } catch (error) {
-            console.error('Registration Process Failed:', error);
+            logger.error('Registration Process Failed:', error);
             setErrors({ general: 'An unexpected error occurred. Please try again.' });
         } finally {
             setIsLoading(false);
@@ -240,7 +241,7 @@ export default function SignUpPage() {
         try {
             Alert.alert('Coming Soon', 'Google Sign-Up will be available soon!');
         } catch (error) {
-            console.error('Google sign-up error:', error);
+            logger.error('Google sign-up error:', error);
         }
     };
 

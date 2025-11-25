@@ -4,6 +4,7 @@ import { Video, ResizeMode, AVPlaybackStatusSuccess } from 'expo-av';
 import { Heart, MessageCircle, Share2, User, Play, Pause, Calendar } from 'lucide-react-native';
 import type { FeedItem, VideoState } from '../types/feed.types';
 import { useNavigation } from '@react-navigation/native';
+import { logger } from '../shared/lib/logger';
 
 const { height, width } = Dimensions.get('window');
 
@@ -43,11 +44,11 @@ function OptimizedVideoCardImpl({ item, isActive, navBottomInset, onVideoStateCh
     
     if (isActive) {
       // Simple play like web: video.play()
-      inst.playAsync().catch(console.error);
+      inst.playAsync().catch((err) => logger.error('Video play error:', err));
       setVideoState('playing');
     } else {
       // Simple pause like web: video.pause()
-      inst.pauseAsync().catch(console.error);
+      inst.pauseAsync().catch((err) => logger.error('Video pause error:', err));
       setVideoState('paused');
     }
     
@@ -71,7 +72,7 @@ function OptimizedVideoCardImpl({ item, isActive, navBottomInset, onVideoStateCh
         setIsHolding(true);
         onHoldToPause?.(item.id, true);
         // Simple pause like web: video.pause()
-        videoRef.current?.pauseAsync().catch(console.error);
+        videoRef.current?.pauseAsync().catch((err) => logger.error('Video pause error:', err));
       }
     }, 1000);
   }, [isActive, onHoldToPause]);
@@ -86,7 +87,7 @@ function OptimizedVideoCardImpl({ item, isActive, navBottomInset, onVideoStateCh
       setIsHolding(false);
       onHoldToPause?.(item.id, false);
       // Resume playback when releasing hold, regardless of active state
-      videoRef.current?.playAsync().catch(console.error);
+      videoRef.current?.playAsync().catch((err) => logger.error('Video play error:', err));
     }
   }, [isHolding, onHoldToPause]);
 
@@ -109,7 +110,7 @@ function OptimizedVideoCardImpl({ item, isActive, navBottomInset, onVideoStateCh
         { text: 'Cancel', style: 'cancel' },
         { text: 'Share', onPress: () => {
           // TODO: Implement share functionality
-          console.log('Sharing video:', item.id);
+          logger.log('Sharing video:', item.id);
         }}
       ]
     );
@@ -158,7 +159,7 @@ function OptimizedVideoCardImpl({ item, isActive, navBottomInset, onVideoStateCh
       }
     } else if ('error' in status) {
       setVideoState('error');
-      console.error('Video error:', status.error);
+      logger.error('Video error:', status.error);
     }
   }, []);
 

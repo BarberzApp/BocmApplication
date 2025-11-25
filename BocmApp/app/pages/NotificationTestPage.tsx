@@ -15,6 +15,7 @@ import * as Haptics from 'expo-haptics';
 import { ArrowLeft, Bell, Clock, Calendar, DollarSign, X, Check, Scissors } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { theme } from '../shared/lib/theme';
+import { logger } from '../shared/lib/logger';
 import { AnimatedBackground } from '../shared/components/AnimatedBackground';
 import { useNotifications } from '../shared/hooks/useNotifications';
 
@@ -207,7 +208,7 @@ export default function NotificationTestPage() {
     
     try {
       const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "https://www.bocmstyle.com";
-      console.log('Testing API connection to:', API_BASE_URL);
+      logger.log('Testing API connection to:', API_BASE_URL);
       
       const response = await fetch(`${API_BASE_URL}/api/connect/create-account`, {
         method: 'POST',
@@ -220,9 +221,9 @@ export default function NotificationTestPage() {
         }),
       });
       
-      console.log('API Response status:', response.status);
+      logger.log('API Response status:', response.status);
       const data = await response.json();
-      console.log('API Response data:', data);
+      logger.log('API Response data:', data);
       
       if (response.ok) {
         Alert.alert('Success', 'API connection working!');
@@ -230,7 +231,7 @@ export default function NotificationTestPage() {
         Alert.alert('API Error', data.error || 'Unknown error');
       }
     } catch (error) {
-      console.error('API Test Error:', error);
+      logger.error('API Test Error:', error);
       Alert.alert('Network Error', error instanceof Error ? error.message : 'Failed to connect to API');
     } finally {
       setLoading(false);
@@ -244,10 +245,10 @@ export default function NotificationTestPage() {
     try {
       // Test deep link opening
       const deepLink = 'bocm://stripe-connect/return?account_id=test_deep_link_123';
-      console.log('Testing deep link:', deepLink);
+      logger.log('Testing deep link:', deepLink);
       
       const canOpen = await Linking.canOpenURL(deepLink);
-      console.log('Can open deep link:', canOpen);
+      logger.log('Can open deep link:', canOpen);
       
       if (canOpen) {
         await Linking.openURL(deepLink);
@@ -256,7 +257,7 @@ export default function NotificationTestPage() {
         Alert.alert('Error', 'Cannot open deep link. App may not be installed or deep link not configured.');
       }
     } catch (error) {
-      console.error('Deep link test error:', error);
+      logger.error('Deep link test error:', error);
       Alert.alert('Error', 'Failed to test deep link');
     } finally {
       setLoading(false);

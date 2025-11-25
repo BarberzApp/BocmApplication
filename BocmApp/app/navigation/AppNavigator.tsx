@@ -23,7 +23,7 @@ import ProfilePreview from '../pages/ProfilePreview';
 import tw from 'twrnc';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import CalendarPage from '../pages/CalendarPage';
-import CutsPage from '../pages/CutsPage';
+// import CutsPage from '../pages/CutsPage'; // TikTok-style feed commented out
 import { linking } from '../shared/config/deepLinking';
 import { AuthGuard, BarberGuard } from '../shared/components/auth/AuthGuard';
 import { ROUTE_MAPPING, isRouteProtected, getRouteRole } from '../shared/config/routeMapping';
@@ -37,10 +37,13 @@ function GlassyTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const isSmallScreen = screenWidth < 375;
   
   // Get the center item (Cuts) and other items
-  const centerIndex = 2; // Cuts is the center item
-  const leftItems = state.routes.slice(0, centerIndex);
-  const centerItem = state.routes[centerIndex];
-  const rightItems = state.routes.slice(centerIndex + 1);
+  // const centerIndex = 2; // Cuts is the center item - commented out since Cuts tab is disabled
+  // const leftItems = state.routes.slice(0, centerIndex);
+  // const centerItem = state.routes[centerIndex];
+  // const rightItems = state.routes.slice(centerIndex + 1);
+  
+  // All items are now regular items (no center highlight)
+  const allItems = state.routes;
 
   // Responsive sizing
   const navHeight = isSmallScreen ? 45 : 45;
@@ -69,8 +72,8 @@ function GlassyTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
         }
       ]}
     >
-      {/* Left navigation items */}
-      {leftItems.map((route, index) => {
+      {/* Navigation items */}
+      {allItems.map((route, index) => {
         const { options } = descriptors[route.key];
         const label = typeof options.tabBarLabel === 'string' ? options.tabBarLabel : route.name;
         const isFocused = state.index === index;
@@ -88,6 +91,8 @@ function GlassyTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
         let IconComponent = Search;
         if (route.name === 'Browse') IconComponent = Search;
         if (route.name === 'Calendar') IconComponent = Calendar;
+        if (route.name === 'Profile') IconComponent = User;
+        if (route.name === 'Settings') IconComponent = SettingsIcon;
 
         return (
           <TouchableOpacity
@@ -125,8 +130,8 @@ function GlassyTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
         );
       })}
 
-      {/* Center item (Cuts) - highlighted */}
-      {centerItem && (() => {
+      {/* Center item (Cuts) - commented out since Cuts tab is disabled */}
+      {/* {centerItem && (() => {
         const { options } = descriptors[centerItem.key];
         const label = typeof options.tabBarLabel === 'string' ? options.tabBarLabel : centerItem.name;
         const isFocused = state.index === centerIndex;
@@ -163,7 +168,6 @@ function GlassyTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
               }
             ]}
           >
-            {/* Enhanced glow effect */}
             <View style={[
               tw`absolute inset-0 rounded-3xl`,
               { backgroundColor: 'rgba(180, 138, 60, 0.3)', opacity: 0.6 }
@@ -187,10 +191,10 @@ function GlassyTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             </Text>
           </TouchableOpacity>
         );
-      })()}
+      })()} */}
 
-      {/* Right navigation items */}
-      {rightItems.map((route, index) => {
+      {/* Right navigation items - commented out since we're using allItems now */}
+      {/* {rightItems.map((route, index) => {
         const { options } = descriptors[route.key];
         const label = typeof options.tabBarLabel === 'string' ? options.tabBarLabel : route.name;
         const actualIndex = centerIndex + 1 + index;
@@ -244,7 +248,7 @@ function GlassyTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             </Text>
           </TouchableOpacity>
         );
-      })}
+      })} */}
     </BlurView>
   );
 }
@@ -286,14 +290,15 @@ function MainTabs() {
             tabBarIcon: ({ color, size }) => <Calendar color={color} size={size} />, 
           }}
         />
-        <Tab.Screen
+        {/* TikTok-style feed page commented out */}
+        {/* <Tab.Screen
           name="Cuts"
           component={CutsPage}
           options={{
             tabBarLabel: 'Cuts',
             tabBarIcon: ({ color, size }) => <Video color={color} size={size + 2} />, 
           }}
-        />
+        /> */}
         <Tab.Screen
           name="Profile"
           component={ProfilePortfolio}

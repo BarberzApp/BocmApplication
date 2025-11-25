@@ -13,6 +13,7 @@ import tw from 'twrnc';
 import { theme } from '../../lib/theme';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
+import { logger } from '../../lib/logger';
 import { Button, Card, CardContent, LoadingSpinner } from '../ui';
 import { 
   Plus, 
@@ -66,7 +67,7 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
         loadServices(data.id);
       }
     } catch (error) {
-      console.error('Error loading barber ID:', error);
+      logger.error('Error loading barber ID:', error);
       Alert.alert('Error', 'Failed to load barber information.');
     }
   };
@@ -83,7 +84,7 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
       if (error) throw error;
       if (data) setServices(data);
     } catch (error) {
-      console.error('Error loading services:', error);
+      logger.error('Error loading services:', error);
       Alert.alert('Error', 'Failed to load services.');
     } finally {
       setIsLoading(false);
@@ -148,7 +149,7 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
       resetForm();
       onUpdate?.();
     } catch (error) {
-      console.error('Error saving service:', error);
+      logger.error('Error saving service:', error);
       Alert.alert('Error', 'Failed to save service.');
     } finally {
       setIsLoading(false);
@@ -178,7 +179,7 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
               await loadServices(barberId!);
               onUpdate?.();
             } catch (error) {
-              console.error('Error deleting service:', error);
+              logger.error('Error deleting service:', error);
               Alert.alert('Error', 'Failed to delete service.');
             } finally {
               setIsLoading(false);

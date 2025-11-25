@@ -18,7 +18,7 @@ export const linking: LinkingOptions<any> = {
         screens: {
           Browse: 'browse',
           Calendar: 'calendar',
-          Cuts: 'reels',
+          // Cuts: 'reels', // Commented out - TikTok-style feed disabled
           Profile: 'profile',
           Settings: 'settings',
         },
@@ -62,7 +62,7 @@ export const deepLinkPatterns = {
   // Main app patterns
   browse: 'bocm://browse',
   calendar: 'bocm://calendar',
-  reels: 'bocm://reels',
+  // reels: 'bocm://reels', // Commented out - TikTok-style feed disabled
   profile: 'bocm://profile',
   settings: 'bocm://settings',
   
@@ -79,7 +79,7 @@ export const deepLinkPatterns = {
   // Web app equivalent patterns (for cross-platform linking)
   webBrowse: 'https://bocm.app/browse',
   webCalendar: 'https://bocm.app/calendar',
-  webReels: 'https://bocm.app/reels',
+  // webReels: 'https://bocm.app/reels', // Commented out - TikTok-style feed disabled
   webProfile: 'https://bocm.app/profile',
   webSettings: 'https://bocm.app/settings',
   webBook: (barberId?: string) => barberId ? `https://bocm.app/book/${barberId}` : 'https://bocm.app/book',
@@ -122,7 +122,7 @@ export function handleDeepLink(url: string) {
     '/terms': 'Terms',
     '/browse': 'Browse',
     '/calendar': 'Calendar',
-    '/reels': 'Cuts',
+    // '/reels': 'Cuts', // Commented out - TikTok-style feed disabled
     '/profile': 'Profile',
     '/settings': 'Settings',
     '/book': 'BookingCalendar',

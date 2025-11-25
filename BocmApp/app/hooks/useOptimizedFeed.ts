@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import * as Location from 'expo-location';
 import { supabase } from '../shared/lib/supabase';
+import { logger } from '../shared/lib/logger';
 import type { FeedItem, FeedOptions } from '../types/feed.types';
 
 export function useOptimizedFeed(opts: FeedOptions = {}) {
@@ -38,7 +39,7 @@ export function useOptimizedFeed(opts: FeedOptions = {}) {
       const from = page * pageSize;
       const to = from + pageSize - 1;
 
-      console.log(`📡 Fetching cuts page ${page} (${from}-${to})${selectedSpecialty ? ` for specialty: ${selectedSpecialty}` : ''}`);
+      logger.log(`📡 Fetching cuts page ${page} (${from}-${to})${selectedSpecialty ? ` for specialty: ${selectedSpecialty}` : ''}`);
 
       let query = supabase
         .from('cuts')
@@ -102,7 +103,7 @@ export function useOptimizedFeed(opts: FeedOptions = {}) {
           );
         } else if (useLocation && userLocation && cut.barbers?.city) {
           // If no coordinates, skip distance calculation to avoid false "closest" results
-          console.log(`📍 Cut from ${cut.barbers.city} has no coordinates - skipping distance calculation`);
+          logger.log(`📍 Cut from ${cut.barbers.city} has no coordinates - skipping distance calculation`);
           distance = undefined;
         }
 
@@ -136,12 +137,12 @@ export function useOptimizedFeed(opts: FeedOptions = {}) {
           if (b.distance === undefined) return -1;
           return a.distance - b.distance;
         });
-        console.log('📍 Cuts sorted by distance');
+        logger.log('📍 Cuts sorted by distance');
       } else {
         // Only randomize on initial load to maintain consistency
         if (page === 0) {
           feedItems.sort(() => Math.random() - 0.5);
-          console.log('🎲 Randomized initial feed order');
+          logger.log('🎲 Randomized initial feed order');
         }
       }
 
@@ -159,15 +160,15 @@ export function useOptimizedFeed(opts: FeedOptions = {}) {
         pageRef.current += 1;
       }
 
-      console.log(`✅ Loaded ${feedItems.length} cuts`);
+      logger.log(`✅ Loaded ${feedItems.length} cuts`);
 
     } catch (err: any) {
       if (err.name === 'AbortError') {
-        console.log('🛑 Feed fetch cancelled');
+        logger.log('🛑 Feed fetch cancelled');
         return;
       }
       
-      console.error('❌ Feed fetch error:', err);
+      logger.error('❌ Feed fetch error:', err);
       setError(err.message || 'Failed to load videos');
     } finally {
       setLoading(false);
@@ -196,7 +197,7 @@ export function useOptimizedFeed(opts: FeedOptions = {}) {
       // Check if location services are enabled
       const isEnabled = await Location.hasServicesEnabledAsync();
       if (!isEnabled) {
-        console.log('Location services disabled');
+        logger.log('Location services disabled');
         return false;
       }
       
@@ -205,13 +206,13 @@ export function useOptimizedFeed(opts: FeedOptions = {}) {
       setLocationPermission(status);
       
       if (status !== 'granted') {
-        console.log('Location permission denied');
+        logger.log('Location permission denied');
         return false;
       }
       
       return true;
     } catch (error) {
-      console.error('Error requesting location permission:', error);
+      logger.error('Error requesting location permission:', error);
       return false;
     } finally {
       setLocationLoading(false);
@@ -234,7 +235,7 @@ export function useOptimizedFeed(opts: FeedOptions = {}) {
       
       setUserLocation(location);
       setUseLocation(true);
-      console.log('📍 User location obtained for cuts:', {
+      logger.log('📍 User location obtained for cuts:', {
         latitude: location.coords.latitude,
         longitude: location.coords.longitude
       });
@@ -243,7 +244,7 @@ export function useOptimizedFeed(opts: FeedOptions = {}) {
       refresh();
       
     } catch (error) {
-      console.error('Error getting user location for cuts:', error);
+      logger.error('Error getting user location for cuts:', error);
     } finally {
       setLocationLoading(false);
     }
@@ -266,7 +267,7 @@ export function useOptimizedFeed(opts: FeedOptions = {}) {
       }
       return null;
     } catch (error) {
-      console.error('Geocoding error:', error);
+      logger.error('Geocoding error:', error);
       return null;
     }
   }, []);
@@ -281,7 +282,7 @@ export function useOptimizedFeed(opts: FeedOptions = {}) {
         .neq('specialties', '{}');
 
       if (error) {
-        console.error('Error fetching specialties:', error);
+        logger.error('Error fetching specialties:', error);
         return;
       }
 
@@ -297,9 +298,9 @@ export function useOptimizedFeed(opts: FeedOptions = {}) {
 
       const specialtiesArray = Array.from(allSpecialties).sort();
       setAvailableSpecialties(specialtiesArray);
-      console.log(`📋 Found ${specialtiesArray.length} available specialties:`, specialtiesArray);
+      logger.log(`📋 Found ${specialtiesArray.length} available specialties:`, specialtiesArray);
     } catch (error) {
-      console.error('Error fetching available specialties:', error);
+      logger.error('Error fetching available specialties:', error);
     }
   }, []);
 
@@ -310,7 +311,7 @@ export function useOptimizedFeed(opts: FeedOptions = {}) {
       
       // If we're within 2 items of the end, prefetch
       if (lastItemIndex % pageSize >= pageSize - 2) {
-        console.log('🔄 Prefetching next page...');
+        logger.log('🔄 Prefetching next page...');
         fetchPage();
       }
     }

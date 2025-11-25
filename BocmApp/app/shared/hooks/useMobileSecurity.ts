@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Alert, Platform } from 'react-native'
+import { logger } from '../lib/logger'
 import { 
   MobileSecurity, 
   MobileSecurityLogger, 
@@ -31,7 +32,7 @@ export const useMobileSecurity = () => {
         lastCheck: status.lastSecurityCheck,
       })
     } catch (error) {
-      console.error('Security check failed:', error)
+      logger.error('Security check failed:', error)
       MobileSecurityLogger.logSecurityEvent(
         'security_check_failed',
         'high',
@@ -54,7 +55,7 @@ export const useMobileSecurity = () => {
       
       return true
     } catch (error) {
-      console.error('Secure login error:', error)
+      logger.error('Secure login error:', error)
       Alert.alert('Error', 'Login failed. Please try again.')
       return false
     }
@@ -78,7 +79,7 @@ export const useMobileSecurity = () => {
       
       return true
     } catch (error) {
-      console.error('Secure registration error:', error)
+      logger.error('Secure registration error:', error)
       Alert.alert('Error', 'Registration failed. Please try again.')
       return false
     }
@@ -91,7 +92,7 @@ export const useMobileSecurity = () => {
       await SecureStorage.clear()
       Alert.alert('Success', 'Logged out securely')
     } catch (error) {
-      console.error('Secure logout error:', error)
+      logger.error('Secure logout error:', error)
       Alert.alert('Error', 'Logout failed')
     }
   }, [])
@@ -102,7 +103,7 @@ export const useMobileSecurity = () => {
       await SecureStorage.setItem(key, data)
       return true
     } catch (error) {
-      console.error('Failed to store secure data:', error)
+      logger.error('Failed to store secure data:', error)
       MobileSecurityLogger.logSecurityEvent(
         'secure_storage_failed',
         'medium',
@@ -117,7 +118,7 @@ export const useMobileSecurity = () => {
     try {
       return await SecureStorage.getItem<T>(key)
     } catch (error) {
-      console.error('Failed to retrieve secure data:', error)
+      logger.error('Failed to retrieve secure data:', error)
       MobileSecurityLogger.logSecurityEvent(
         'secure_retrieval_failed',
         'medium',
@@ -148,7 +149,7 @@ export const useMobileSecurity = () => {
     try {
       return await MobileSecurity.hashData(data)
     } catch (error) {
-      console.error('Hashing failed:', error)
+      logger.error('Hashing failed:', error)
       return null
     }
   }, [])
@@ -158,7 +159,7 @@ export const useMobileSecurity = () => {
     try {
       return await SecureAuth.isDeviceSecure()
     } catch (error) {
-      console.error('Device security check failed:', error)
+      logger.error('Device security check failed:', error)
       return false
     }
   }, [])
@@ -168,7 +169,7 @@ export const useMobileSecurity = () => {
     try {
       return await MobileSecurityLogger.getSecurityEvents()
     } catch (error) {
-      console.error('Failed to get security events:', error)
+      logger.error('Failed to get security events:', error)
       return []
     }
   }, [])
@@ -237,7 +238,7 @@ export const useSecureAPI = () => {
       
       return result
     } catch (error) {
-      console.error('Secure API request failed:', error)
+      logger.error('Secure API request failed:', error)
       setError(error.message)
       return null
     } finally {

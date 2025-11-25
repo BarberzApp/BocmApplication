@@ -35,6 +35,7 @@ import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterv
 import { supabase } from '../shared/lib/supabase';
 import { useAuth } from '../shared/hooks/useAuth';
 import { theme } from '../shared/lib/theme';
+import { logger } from '../shared/lib/logger';
 import { ReviewForm } from '../shared/components/ReviewForm';
 import { bookingService } from '../shared/lib/bookingService';
 
@@ -256,7 +257,7 @@ export default function CalendarPage() {
 
       setTimeSlots(slots);
     } catch (error) {
-      console.error('Error fetching time slots:', error);
+      logger.error('Error fetching time slots:', error);
       setTimeSlots([]);
     } finally {
       setLoadingTimeSlots(false);
@@ -267,7 +268,7 @@ export default function CalendarPage() {
   useFocusEffect(
     React.useCallback(() => {
       if (user && userRole) {
-        console.log('🔄 [CALENDAR] Page focused - refreshing data...');
+        logger.log('🔄 [CALENDAR] Page focused - refreshing data...');
         fetchBookings(userRole);
       }
     }, [user, userRole])
@@ -275,7 +276,7 @@ export default function CalendarPage() {
 
   const fetchUserRole = async () => {
     try {
-      console.log('🔍 [CALENDAR] Fetching user role for user ID:', user?.id);
+      logger.log('🔍 [CALENDAR] Fetching user role for user ID:', user?.id);
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('role')
@@ -283,15 +284,15 @@ export default function CalendarPage() {
         .single();
       
       if (error) {
-        console.error('Error fetching user role:', error);
+        logger.error('Error fetching user role:', error);
         return null;
       }
       
-      console.log('✅ [CALENDAR] User role detected:', profile.role);
+      logger.log('✅ [CALENDAR] User role detected:', profile.role);
       setUserRole(profile.role as 'client' | 'barber');
       return profile.role as 'client' | 'barber';
     } catch (error) {
-      console.error('Error fetching user role:', error);
+      logger.error('Error fetching user role:', error);
       return null;
     }
   };
@@ -300,10 +301,10 @@ export default function CalendarPage() {
     try {
       setLoading(true);
       const userRoleToUse = role || userRole;
-      console.log('Fetching bookings for user:', user?.id, 'with role:', userRoleToUse);
+      logger.log('Fetching bookings for user:', user?.id, 'with role:', userRoleToUse);
       
       if (userRoleToUse === 'barber') {
-        console.log('🔍 [CALENDAR] Fetching barber data for user ID:', user?.id);
+        logger.log('🔍 [CALENDAR] Fetching barber data for user ID:', user?.id);
         // Fetch the barber's ID from the barbers table
         const { data: barberData, error: barberError } = await supabase
           .from('barbers')
@@ -311,20 +312,20 @@ export default function CalendarPage() {
           .eq('user_id', user?.id)
           .single();
         
-        console.log('📊 [CALENDAR] Barber data result:', { barberData, barberError });
+        logger.log('📊 [CALENDAR] Barber data result:', { barberData, barberError });
         
         if (barberError || !barberData) {
-          console.log('❌ [CALENDAR] No barber found for user');
+          logger.log('❌ [CALENDAR] No barber found for user');
           return;
         }
 
-        console.log('✅ [CALENDAR] Barber ID found:', barberData.id);
+        logger.log('✅ [CALENDAR] Barber ID found:', barberData.id);
         
         let bookings: any[] = [];
         
         if (barberViewMode === 'appointments') {
           // Fetch appointments where barber is providing service (clients coming to barber)
-          console.log('📅 [CALENDAR] Fetching barber appointments (clients coming in)');
+          logger.log('📅 [CALENDAR] Fetching barber appointments (clients coming in)');
           const { data: appointmentsData, error: appointmentsError } = await supabase
             .from('bookings')
             .select('*')
@@ -332,15 +333,15 @@ export default function CalendarPage() {
             .order('date', { ascending: true });
 
           if (appointmentsError) {
-            console.error('❌ [CALENDAR] Error fetching barber appointments:', appointmentsError);
+            logger.error('❌ [CALENDAR] Error fetching barber appointments:', appointmentsError);
             return;
           }
           
           bookings = appointmentsData || [];
-          console.log('✅ [CALENDAR] Found', bookings.length, 'appointments for barber');
+          logger.log('✅ [CALENDAR] Found', bookings.length, 'appointments for barber');
         } else {
           // Fetch bookings where barber is the client (barber going somewhere)
-          console.log('📅 [CALENDAR] Fetching barber bookings (barber going somewhere)');
+          logger.log('📅 [CALENDAR] Fetching barber bookings (barber going somewhere)');
           const { data: bookingsData, error: bookingsError } = await supabase
             .from('bookings')
             .select('*')
@@ -349,18 +350,18 @@ export default function CalendarPage() {
             .order('date', { ascending: true });
 
           if (bookingsError) {
-            console.error('❌ [CALENDAR] Error fetching barber bookings:', bookingsError);
+            logger.error('❌ [CALENDAR] Error fetching barber bookings:', bookingsError);
             return;
           }
           
           bookings = bookingsData || [];
-          console.log('✅ [CALENDAR] Found', bookings.length, 'bookings for barber as client');
+          logger.log('✅ [CALENDAR] Found', bookings.length, 'bookings for barber as client');
         }
 
         // Process barber bookings
         await processBookings(bookings, userRoleToUse);
       } else if (userRoleToUse === 'client') {
-        console.log('🔍 [CALENDAR] Fetching client bookings for user ID:', user?.id);
+        logger.log('🔍 [CALENDAR] Fetching client bookings for user ID:', user?.id);
         // Fetch bookings for this client
         const { data: bookings, error } = await supabase
           .from('bookings')
@@ -369,19 +370,19 @@ export default function CalendarPage() {
           .eq('payment_status', 'succeeded') // Only show successful payments
           .order('date', { ascending: true });
 
-        console.log('📊 [CALENDAR] Client bookings query result:', { bookings, error });
+        logger.log('📊 [CALENDAR] Client bookings query result:', { bookings, error });
 
         if (error || !bookings) {
-          console.error('❌ [CALENDAR] Error fetching client bookings:', error);
+          logger.error('❌ [CALENDAR] Error fetching client bookings:', error);
           return;
         }
 
-        console.log('✅ [CALENDAR] Found', bookings.length, 'bookings for client');
+        logger.log('✅ [CALENDAR] Found', bookings.length, 'bookings for client');
         // Process client bookings
         await processBookings(bookings, userRoleToUse);
       }
     } catch (error) {
-      console.error('Error in fetchBookings:', error);
+      logger.error('Error in fetchBookings:', error);
     } finally {
       setLoading(false);
     }
@@ -503,7 +504,7 @@ export default function CalendarPage() {
 
       setEvents(events);
     } catch (error) {
-      console.error('Error processing bookings:', error);
+      logger.error('Error processing bookings:', error);
       Alert.alert('Error', 'Failed to load calendar events');
     }
   };
@@ -605,7 +606,7 @@ export default function CalendarPage() {
       setShowEventDialog(false);
       fetchBookings(); // Refresh events
     } catch (error) {
-      console.error('Error marking as missed:', error);
+      logger.error('Error marking as missed:', error);
       Vibration.vibrate([100, 100]); // Error haptic feedback
       Alert.alert('Error', 'Failed to mark appointment as missed');
     } finally {
@@ -630,7 +631,7 @@ export default function CalendarPage() {
       setShowEventDialog(false);
       fetchBookings(); // Refresh events
     } catch (error) {
-      console.error('Error marking as completed:', error);
+      logger.error('Error marking as completed:', error);
       Vibration.vibrate([100, 100]); // Error haptic feedback
       Alert.alert('Error', 'Failed to mark appointment as completed');
     } finally {
@@ -680,7 +681,7 @@ export default function CalendarPage() {
               setShowEventDialog(false);
               fetchBookings(); // Refresh events
             } catch (error) {
-              console.error('Error cancelling booking:', error);
+              logger.error('Error cancelling booking:', error);
               Vibration.vibrate([100, 100]); // Error haptic feedback
               Alert.alert('Error', 'Failed to cancel booking. Please try again.');
             }
@@ -731,7 +732,7 @@ export default function CalendarPage() {
         .single();
 
       if (barberError) {
-        console.error('Barber not found:', barberError);
+        logger.error('Barber not found:', barberError);
         Alert.alert(
           'Profile Setup Required', 
           'You need to complete your barber profile setup first. Please go to Settings to set up your profile.',
@@ -757,7 +758,7 @@ export default function CalendarPage() {
         .order('name');
 
       if (servicesError) {
-        console.error('Error fetching services:', servicesError);
+        logger.error('Error fetching services:', servicesError);
         setServices([]);
         return;
       }
@@ -775,7 +776,7 @@ export default function CalendarPage() {
         );
       }
     } catch (error) {
-      console.error('Error fetching services:', error);
+      logger.error('Error fetching services:', error);
       setServices([]);
     }
   };
@@ -864,7 +865,7 @@ export default function CalendarPage() {
       });
       fetchBookings(); // Refresh calendar
     } catch (error) {
-      console.error('Error creating manual appointment:', error);
+      logger.error('Error creating manual appointment:', error);
       Alert.alert('Error', 'Failed to create appointment');
     } finally {
       setIsSubmitting(false);
@@ -1700,7 +1701,7 @@ export default function CalendarPage() {
                 </Text>
                 <TouchableOpacity
                   onPress={() => {
-                    console.log('Date picker button pressed, showing simple alert');
+                    logger.log('Date picker button pressed, showing simple alert');
                     Alert.alert(
                       'Select Date',
                       'Choose a date for the appointment',
@@ -1708,28 +1709,28 @@ export default function CalendarPage() {
                         {
                           text: 'Today',
                           onPress: () => {
-                            console.log('Selected Today');
+                            logger.log('Selected Today');
                             handleDateSelect(new Date());
                           }
                         },
                         {
                           text: 'Tomorrow',
                           onPress: () => {
-                            console.log('Selected Tomorrow');
+                            logger.log('Selected Tomorrow');
                             handleDateSelect(new Date(Date.now() + 24 * 60 * 60 * 1000));
                           }
                         },
                         {
                           text: 'Next Week',
                           onPress: () => {
-                            console.log('Selected Next Week');
+                            logger.log('Selected Next Week');
                             handleDateSelect(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
                           }
                         },
                         {
                           text: 'Cancel',
                           style: 'cancel',
-                          onPress: () => console.log('Cancelled date selection')
+                          onPress: () => logger.log('Cancelled date selection')
                         }
                       ]
                     );
