@@ -17,17 +17,19 @@ const Particle: React.FC<ParticleProps> = ({ delay, duration, startX, startY, si
   const animatedValue = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    // Speed up particle animation by reducing duration
+    const fastDuration = duration * 0.5; 
     const animation = Animated.loop(
       Animated.sequence([
         Animated.timing(animatedValue, {
           toValue: 1,
-          duration,
+          duration: fastDuration,
           delay,
           useNativeDriver: true,
         }),
         Animated.timing(animatedValue, {
           toValue: 0,
-          duration,
+          duration: fastDuration,
           useNativeDriver: true,
         }),
       ])
@@ -36,7 +38,7 @@ const Particle: React.FC<ParticleProps> = ({ delay, duration, startX, startY, si
     animation.start();
 
     return () => animation.stop();
-  }, []);
+  }, [duration]);
 
   const translateY = animatedValue.interpolate({
     inputRange: [0, 1],
@@ -79,17 +81,19 @@ const LargeFloatingElement: React.FC<{ delay: number; index: number }> = ({ dela
   const animatedValue = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    // Speed up floating elements by 50%
+    const baseDuration = (10000 + index * 2000) * 0.5;
     const animation = Animated.loop(
       Animated.sequence([
         Animated.timing(animatedValue, {
           toValue: 1,
-          duration: 10000 + index * 2000,
+          duration: baseDuration,
           delay,
           useNativeDriver: true,
         }),
         Animated.timing(animatedValue, {
           toValue: 0,
-          duration: 10000 + index * 2000,
+          duration: baseDuration,
           useNativeDriver: true,
         }),
       ])
@@ -147,10 +151,10 @@ export const AnimatedBackground: React.FC = () => {
     }).start();
   }, []);
 
-  // Generate particles
+  // Generate particles - faster durations
   const particles = Array.from({ length: 8 }, (_, i) => ({
-    delay: Math.random() * 5000,
-    duration: Math.random() * 8000 + 6000,
+    delay: Math.random() * 2500, // Reduced from 5000
+    duration: (Math.random() * 8000 + 6000) * 0.5, // 50% faster
     startX: Math.random() * width,
     startY: Math.random() * height,
     size: Math.random() * 4 + 2,

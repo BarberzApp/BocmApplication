@@ -38,9 +38,17 @@ import { RootStackParamList } from '../shared/types';
 import StaircaseGrid from '../shared/components/StaircaseGrid';
 import BookingForm from '../shared/components/BookingForm';
 import { useReviews } from '../shared/hooks/useReviews';
+import { useLocationManager } from '../shared/hooks/useLocationManager';
 import { ReviewCard } from '../shared/components/ReviewCard';
 import { ReviewForm } from '../shared/components/ReviewForm';
 import { Star } from 'lucide-react-native';
+import { getDistanceToItem, sortByDistance, formatDistance } from '../shared/lib/locationUtils';
+import {
+  getLocationPreferences,
+  setLocationEnabled,
+  updateLastLocation,
+  getLastLocation,
+} from '../shared/lib/locationPreferences';
 
 const { width } = Dimensions.get('window');
 
@@ -318,11 +326,16 @@ export default function BrowsePage() {
   const [barbersLoadingMore, setBarbersLoadingMore] = useState(false);
   const BATCH_SIZE = 10;
   
-  // Location state
-  const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
-  const [locationPermission, setLocationPermission] = useState<Location.PermissionStatus | null>(null);
-  const [locationLoading, setLocationLoading] = useState(false);
-  const [useLocation, setUseLocation] = useState(false);
+  // Location management using custom hook
+  const {
+    userLocation,
+    locationPermission,
+    locationLoading,
+    useLocation,
+    toggleLocation: toggleLocationHook,
+    getUserLocation,
+    loadLocationPreferences,
+  } = useLocationManager();
   
   // Review system state
   const [selectedBarberForReviews, setSelectedBarberForReviews] = useState<string | null>(null);
@@ -339,8 +352,9 @@ export default function BrowsePage() {
 
   useEffect(() => {
     fetchPosts();
+    loadLocationPreferences();
     fetchBarbers(0); // Load first batch
-  }, []);
+  }, [loadLocationPreferences]);
 
   // Debounce search query
   useEffect(() => {
@@ -351,12 +365,33 @@ export default function BrowsePage() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const fetchBarbers = async (page = 0, append = false) => {
+  // Wrapper for toggleLocation that refreshes barbers
+  const toggleLocation = async () => {
+    const wasUsingLocation = useLocation;
+    await toggleLocationHook();
+    
+    // Refresh barbers after toggling
+    // If turning OFF location, skip nearby fetch
+    if (wasUsingLocation) {
+      fetchBarbers(0, false, true); // Skip nearby fetch when turning off
+    } else {
+      fetchBarbers(0, false, false); // Use nearby fetch when turning on
+    }
+  };
+
+  const fetchBarbers = async (page = 0, append = false, skipNearbyFetch = false) => {
     try {
       if (page === 0) {
         setBarbersLoading(true);
       } else {
         setBarbersLoadingMore(true);
+      }
+      
+      // If location is enabled and we have coordinates, use the nearby endpoint
+      // BUT skip if this is a fallback call to prevent infinite loop
+      if (useLocation && userLocation?.coords && page === 0 && !skipNearbyFetch) {
+        await fetchNearbyBarbers(userLocation.coords.latitude, userLocation.coords.longitude);
+        return;
       }
       
       const from = page * BATCH_SIZE;
@@ -425,23 +460,14 @@ export default function BrowsePage() {
         // Only include barbers that have a public profile
         if (profile) {
           // Calculate distance if user location is available
-          let distance: number | undefined;
-          if (isLocationAvailable) {
-            // Try to use stored coordinates first
-            if (barber.latitude && barber.longitude) {
-              distance = calculateDistance(
-                userLocation!.coords.latitude,
-                userLocation!.coords.longitude,
-                barber.latitude,
-                barber.longitude
-              );
-            } else if (profile.location) {
-              // If no coordinates, we'll skip distance calculation for now
-              // This prevents showing incorrect "closest" barbers
-              logger.log(`Barber ${profile.name} has location but no coordinates - skipping distance calculation`);
-              distance = undefined; // Don't show distance for barbers without coordinates
-            }
-          }
+          const distance = useLocation && userLocation?.coords
+            ? getDistanceToItem(
+                { latitude: userLocation.coords.latitude, longitude: userLocation.coords.longitude },
+                barber.latitude && barber.longitude
+                  ? { latitude: barber.latitude, longitude: barber.longitude }
+                  : undefined
+              )
+            : undefined;
           
           transformedBarbers.push({
             id: barber.id,
@@ -465,22 +491,19 @@ export default function BrowsePage() {
             longitude: barber.longitude,
             city: barber.city,
             state: barber.state,
-            distance: distance,
+            distance,
           });
-          
-          // Debug logging removed for production
         }
       });
 
-      // Sort by distance if location is enabled
-      if (isLocationAvailable) {
-        transformedBarbers.sort((a, b) => {
-          if (a.distance === undefined && b.distance === undefined) return 0;
-          if (a.distance === undefined) return 1;
-          if (b.distance === undefined) return -1;
-          return a.distance - b.distance;
-        });
-        logger.log('Barbers sorted by distance');
+      // Sort by distance if location is enabled, and filter out barbers without coordinates
+      if (useLocation && userLocation && userLocation.coords) {
+        // Filter out barbers without coordinates
+        const barbersWithLocation = transformedBarbers.filter(barber => barber.distance !== undefined);
+        // Sort by distance (closest first)
+        const sorted = sortByDistance(barbersWithLocation);
+        transformedBarbers.length = 0;
+        transformedBarbers.push(...sorted);
       }
       
       // Check if we have more barbers to load
@@ -520,142 +543,6 @@ export default function BrowsePage() {
     }
   };
 
-  // Location functions
-  const requestLocationPermission = async () => {
-    try {
-      setLocationLoading(true);
-      
-      // Check if location services are enabled
-      const isEnabled = await Location.hasServicesEnabledAsync();
-      if (!isEnabled) {
-        Alert.alert(
-          'Location Services Disabled',
-          'Please enable location services in your device settings to find barbers near you.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Open Settings', onPress: () => Linking.openSettings() }
-          ]
-        );
-        return false;
-      }
-      
-      // Request location permission
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      setLocationPermission(status);
-      
-      if (status !== 'granted') {
-        Alert.alert(
-          'Location Permission Required',
-          'Location permission is required to find barbers near you. Please grant permission in settings.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Open Settings', onPress: () => Linking.openSettings() }
-          ]
-        );
-        return false;
-      }
-      
-      return true;
-    } catch (error) {
-      logger.error('Error requesting location permission:', error);
-      Alert.alert('Error', 'Failed to get location permission. Please try again.');
-      return false;
-    } finally {
-      setLocationLoading(false);
-    }
-  };
-
-  const getUserLocation = async () => {
-    try {
-      setLocationLoading(true);
-      
-      const hasPermission = await requestLocationPermission();
-      if (!hasPermission) return;
-      
-      // Get current location with better accuracy settings
-      const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
-        timeInterval: 10000,
-        distanceInterval: 5,
-      });
-      
-      // Check if location accuracy is reasonable (less than 100 meters)
-      if (location.coords.accuracy && location.coords.accuracy > 100) {
-        Alert.alert(
-          'Low Location Accuracy',
-          'Your location accuracy is low. For better results, try moving to an open area or enabling GPS.',
-          [{ text: 'OK' }]
-        );
-      }
-      
-      setUserLocation(location);
-      setUseLocation(true);
-      logger.log('User location obtained');
-      
-      // Refresh barbers with location-based sorting
-      await fetchBarbers(0);
-      
-      // Show success feedback
-      Alert.alert(
-        'Location Updated',
-        'Your location has been updated. Barbers are now sorted by distance.',
-        [{ text: 'OK' }]
-      );
-      
-    } catch (error) {
-      logger.error('Error getting user location:', error);
-      Alert.alert(
-        'Location Error', 
-        'Failed to get your current location. Please check your GPS settings and try again.',
-        [{ text: 'OK' }]
-      );
-    } finally {
-      setLocationLoading(false);
-    }
-  };
-
-  const toggleLocation = () => {
-    if (useLocation) {
-      // Turn off location
-      setUseLocation(false);
-      setUserLocation(null);
-      // Refresh barbers without location sorting
-      fetchBarbers(0);
-    } else {
-      // Turn on location
-      getUserLocation();
-    }
-  };
-
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-    // Validate coordinates
-    if (!lat1 || !lon1 || !lat2 || !lon2) {
-      return 0;
-    }
-    
-    const R = 6371; // Earth's radius in kilometers
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    const distance = R * c; // Distance in kilometers
-    return distance;
-  };
-
-  const formatDistance = (distance: number): string => {
-    if (distance < 0.1) {
-      return `${Math.round(distance * 1000)}m`;
-    } else if (distance < 1) {
-      return `${Math.round(distance * 100)}m`;
-    } else if (distance < 10) {
-      return `${distance.toFixed(1)}km`;
-    } else {
-      return `${Math.round(distance)}km`;
-    }
-  };
 
   // Simple geocoding function using Nominatim (free)
   const geocodeLocation = async (locationText: string): Promise<{lat: number, lng: number} | null> => {
@@ -714,8 +601,88 @@ export default function BrowsePage() {
   // Check if location is available and working
   const isLocationAvailable = useLocation && userLocation && userLocation.coords;
 
+  // Fetch nearby barbers using the edge function
+  const fetchNearbyBarbers = async (lat: number, lon: number, limit: number = 20) => {
+    try {
+      setBarbersLoading(true);
+      
+      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+      const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl || !supabaseAnonKey) {
+        logger.error('Missing Supabase environment variables');
+        // Fallback to regular fetch (skip nearby fetch to prevent infinite loop)
+        await fetchBarbers(0, false, true);
+        return;
+      }
+
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/get-nearby-barbers?lat=${lat}&lon=${lon}&limit=${limit}`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${supabaseAnonKey}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch nearby barbers: ${response.statusText}`);
+      }
+
+      const { barbers } = await response.json();
+
+      // Transform to match existing Barber type
+      const transformedBarbers: Barber[] = (barbers || []).map((barber: any) => ({
+        id: barber.id,
+        userId: barber.user_id,
+        name: barber.name || 'Unknown',
+        username: barber.username || 'username',
+        businessName: barber.business_name || barber.name,
+        location: barber.location || barber.city || 'Location',
+        specialties: barber.specialties || [],
+        bio: barber.bio,
+        priceRange: barber.price_range,
+        avatarUrl: processAvatarUrl(barber.avatar_url),
+        coverPhotoUrl: barber.coverphoto,
+        isPublic: barber.is_public ?? true,
+        isStripeReady: false, // Would need to check stripe_account_status
+        instagram: barber.instagram,
+        twitter: barber.twitter,
+        tiktok: barber.tiktok,
+        facebook: barber.facebook,
+        latitude: barber.latitude,
+        longitude: barber.longitude,
+        city: barber.city,
+        state: barber.state,
+        distance: barber.distance_m ? barber.distance_m / 1000 : undefined, // Convert meters to km
+      }));
+
+      setBarbers(transformedBarbers);
+      setFilteredBarbers(transformedBarbers);
+      setBarbersPage(0);
+      setHasMoreBarbers(transformedBarbers.length === limit);
+      
+      logger.log(`Loaded ${transformedBarbers.length} nearby barbers`);
+    } catch (error) {
+      logger.error('Error fetching nearby barbers:', error);
+      // Fallback to regular fetch (skip nearby fetch to prevent infinite loop)
+      await fetchBarbers(0, false, true);
+    } finally {
+      setBarbersLoading(false);
+    }
+  };
+
   const loadMoreBarbers = async () => {
     if (!hasMoreBarbers || barbersLoadingMore) return;
+    
+    // If using location, we can't load more from the endpoint easily
+    // For now, just disable load more when location is enabled
+    if (isLocationAvailable) {
+      logger.log('Load more not supported when location sorting is enabled');
+      return;
+    }
     
     const nextPage = barbersPage + 1;
     logger.log(`Loading more barbers (page ${nextPage + 1})`);
@@ -1062,6 +1029,7 @@ export default function BrowsePage() {
           </TouchableOpacity>
           
           <TouchableOpacity
+            testID="filter-button"
             style={[tw`ml-2 p-2 rounded-xl`, { backgroundColor: 'rgba(255,255,255,0.1)' }]}
             onPress={() => setShowFilters(!showFilters)}
           >

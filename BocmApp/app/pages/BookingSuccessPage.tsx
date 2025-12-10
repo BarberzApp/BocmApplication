@@ -62,10 +62,10 @@ export default function BookingSuccessPage() {
 
         <TouchableOpacity
           style={[tw`w-full py-4 rounded-full`, { backgroundColor: 'rgba(255,255,255,0.05)' }]}
-          onPress={() => navigation.navigate('Home')}
+          onPress={() => navigation.navigate('MainTabs', { screen: 'Browse' })}
         >
           <Text style={[tw`text-center font-medium`, { color: theme.colors.foreground }]}>
-            Back to Home
+            Back to Browse
           </Text>
         </TouchableOpacity>
       </View>

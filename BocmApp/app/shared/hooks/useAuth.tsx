@@ -4,6 +4,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { User } from '@supabase/supabase-js';
 import { logger } from '../lib/logger';
+import { withTimeout } from '../lib/errorRecovery';
+import { Alert } from 'react-native';
 
 // Types
 export type UserRole = 'client' | 'barber';
@@ -65,15 +67,57 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
 
   const checkUser = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      logger.log('🔍 Checking user session...');
+      
+      // Add 10-second timeout to session check
+      const sessionPromise = supabase.auth.getSession();
+      
+      const { data: { session } } = await withTimeout(sessionPromise, {
+        timeout: 10000, // 10 seconds
+        timeoutMessage: 'Session check timed out',
+      });
+      
       setUser(session?.user ?? null);
       
       if (session?.user) {
+        logger.log('✅ Session found, fetching profile...');
         await fetchUserProfile(session.user.id);
+      } else {
+        logger.log('❌ No active session found');
       }
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Error checking user session:', error);
+      
+      // Check if it's a timeout error
+      if (error.message?.includes('timed out') || error.message?.includes('timeout')) {
+        logger.warn('⏱️ Session check timed out after 10 seconds');
+        
+        // Clear user state FIRST (so app redirects to login)
+        setUser(null);
+        setUserProfile(null);
+        
+        // Clear stale data from storage
+        AsyncStorage.removeItem('user').catch(e => 
+          logger.error('Failed to clear storage:', e)
+        );
+        
+        // Show toast notification AFTER clearing state
+        // This prevents any retry attempts
+        setTimeout(() => {
+          Alert.alert(
+            'Session Not Found',
+            'Unable to verify your session. Please log in again.',
+            [{ text: 'OK' }]
+          );
+        }, 100); // Small delay to ensure state is cleared first
+      } else {
+        // For other errors, just clear the state
+        setUser(null);
+        setUserProfile(null);
+      }
     } finally {
+      // ALWAYS set loading to false, even on timeout
+      // This allows the app to show login screen immediately
       setLoading(false);
     }
   };

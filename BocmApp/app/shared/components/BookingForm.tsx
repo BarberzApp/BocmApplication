@@ -490,9 +490,9 @@ export default function BookingForm({
     >
       <SafeAreaView style={[tw`flex-1`, { backgroundColor: theme.colors.background }]}>
         {/* Header */}
-        <View style={tw`px-5 pt-4 pb-6 border-b border-white/10`}>
+          <View style={tw`px-5 pt-4 pb-6 border-b border-white/10`}>
           <View style={tw`flex-row items-center justify-between mb-4`}>
-            <TouchableOpacity onPress={onClose}>
+            <TouchableOpacity testID="close-button" onPress={onClose}>
               <Icon name="x" size={24} color={theme.colors.secondary} />
             </TouchableOpacity>
             <Text style={[tw`text-lg font-semibold`, { color: theme.colors.foreground }]}>

@@ -95,6 +95,7 @@ export default function CalendarPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [timeSlots, setTimeSlots] = useState<Array<{time: string, available: boolean}>>([]);
   const [loadingTimeSlots, setLoadingTimeSlots] = useState(false);
+  const manualFormScrollRef = useRef<ScrollView>(null);
   
   // Review form state
   const [showReviewForm, setShowReviewForm] = useState(false);
@@ -174,6 +175,16 @@ export default function CalendarPage() {
       fetchTimeSlots();
     }
   }, [showManualAppointmentForm, manualFormData.date, manualFormData.serviceId, barberId]);
+
+  // Auto-scroll to time section when time slots are loaded
+  useEffect(() => {
+    if (!loadingTimeSlots && timeSlots.length > 0 && manualFormScrollRef.current) {
+      // Small delay to ensure layout is complete, then scroll to end to show time slots
+      setTimeout(() => {
+        manualFormScrollRef.current?.scrollToEnd({ animated: true });
+      }, 300);
+    }
+  }, [loadingTimeSlots, timeSlots.length]);
 
 
 
@@ -1038,6 +1049,7 @@ export default function CalendarPage() {
               elevation: 8
             }]}>
             <TouchableOpacity
+                testID="prev-month-button"
                 onPress={prevMonth}
                 style={[tw`p-3 rounded-2xl items-center justify-center`, {
                   backgroundColor: `${theme.colors.secondary}15`,
@@ -1058,6 +1070,7 @@ export default function CalendarPage() {
                 {`${months[currentDate.getMonth()]} ${currentDate.getFullYear()}`}
             </Text>
               <TouchableOpacity 
+                testID="next-month-button"
                 onPress={nextMonth}
                 style={[tw`p-3 rounded-2xl items-center justify-center`, {
                   backgroundColor: `${theme.colors.secondary}15`,
@@ -1592,12 +1605,14 @@ export default function CalendarPage() {
         onRequestClose={() => setShowManualAppointmentForm(false)}
       >
         <View style={tw`flex-1 bg-black/50 justify-end`}>
-          <View style={[tw`rounded-t-3xl p-6`, { 
+          <View style={[tw`rounded-t-3xl`, { 
             backgroundColor: theme.colors.background,
             borderTopWidth: 1,
-            borderColor: 'rgba(255,255,255,0.1)'
+            borderColor: 'rgba(255,255,255,0.1)',
+            maxHeight: screenHeight * 0.9, // Limit modal height to 90% of screen
           }]}>
-            <View style={tw`flex-row items-center justify-between mb-6`}>
+            {/* Fixed Header */}
+            <View style={tw`flex-row items-center justify-between p-6 pb-4 border-b border-white/10`}>
               <Text style={[tw`text-xl font-bold`, { color: theme.colors.foreground }]}>
                 Add Manual Appointment
               </Text>
@@ -1606,7 +1621,15 @@ export default function CalendarPage() {
               </TouchableOpacity>
             </View>
 
-            <View style={tw`space-y-4`}>
+            {/* Scrollable Content */}
+            <ScrollView 
+              ref={manualFormScrollRef}
+              style={tw`flex-1`}
+              contentContainerStyle={tw`p-6 pt-4 pb-8`}
+              showsVerticalScrollIndicator={true}
+              keyboardShouldPersistTaps="handled"
+            >
+              <View style={tw`space-y-4`}>
               <View>
                 <Text style={[tw`text-sm font-medium mb-2`, { color: theme.colors.foreground }]}>
                   Client Name *
@@ -1757,6 +1780,15 @@ export default function CalendarPage() {
                         <ActivityIndicator size="small" color={theme.colors.secondary} />
                         <Text style={[tw`mt-2`, { color: theme.colors.mutedForeground }]}>Loading times...</Text>
                       </View>
+                    ) : timeSlots.filter(slot => slot.available).length === 0 ? (
+                      <View style={[tw`p-4 rounded-xl border items-center`, {
+                        backgroundColor: 'rgba(255,255,255,0.05)',
+                        borderColor: 'rgba(255,255,255,0.1)',
+                      }]}>
+                        <Text style={[tw`text-center`, { color: 'rgba(255,255,255,0.6)' }]}>
+                          No available time slots for this date
+                        </Text>
+                      </View>
                     ) : (
                       <View style={tw`flex-row flex-wrap -mx-1`}>
                         {timeSlots
@@ -1790,9 +1822,13 @@ export default function CalendarPage() {
                   </View>
                 )}
               </View>
-            </View>
+              </View>
+            </ScrollView>
 
-            <View style={tw`flex-row gap-3 mt-6`}>
+            {/* Fixed Footer with Buttons */}
+            <View style={[tw`flex-row gap-3 p-6 pt-4 border-t border-white/10`, {
+              backgroundColor: theme.colors.background,
+            }]}>
             <TouchableOpacity
               onPress={() => setShowManualAppointmentForm(false)}
                 style={[tw`flex-1 py-3 rounded-xl items-center`, {

@@ -144,37 +144,43 @@ class BookingService {
 
   // Create a booking after payment
   async createBooking(bookingData: CreateBookingData): Promise<Booking> {
-    // Get service duration to calculate end_time
-    const { data: service } = await supabase
-      .from('services')
-      .select('duration')
-      .eq('id', bookingData.service_id)
-      .single()
+    try {
+      // Use advisory lock to prevent race conditions (additional protection)
+      const { data: lockAcquired, error: lockError } = await supabase
+        .rpc('acquire_booking_slot_lock', {
+          p_barber_id: bookingData.barber_id,
+          p_date: bookingData.date
+        });
 
-    const endTime = service 
-      ? new Date(new Date(bookingData.date).getTime() + service.duration * 60000).toISOString()
-      : null
-
-    const { data, error } = await supabase
-      .from('bookings')
-      .insert({
-        ...bookingData,
-        end_time: endTime,
-        status: 'confirmed',
-        payment_status: 'paid'
-      })
-      .select()
-      .single();
-
-    if (error) {
-      // Check if error is due to conflict (database trigger)
-      if (error.message?.includes('conflicts') || error.message?.includes('overlaps')) {
-        throw new Error('This time slot is no longer available. Please select another time.')
+      if (lockError) {
+        logger.warn('Advisory lock error (non-fatal):', lockError);
+        // Continue anyway - the database trigger will still prevent conflicts
       }
-      throw error;
-    }
 
-    return data;
+      // Insert booking (end_time will be calculated by database trigger)
+      const { data, error } = await supabase
+        .from('bookings')
+        .insert({
+          ...bookingData,
+          status: 'confirmed',
+          payment_status: 'paid'
+        })
+        .select()
+        .single();
+
+      if (error) {
+        // Check if error is due to conflict (database trigger)
+        if (error.message?.includes('conflicts') || error.message?.includes('slot')) {
+          throw new Error('This time slot is no longer available. Please select another time.')
+        }
+        throw error;
+      }
+
+      return data;
+    } catch (err) {
+      logger.error('Error creating booking:', err);
+      throw err;
+    }
   }
 
   // Get user's bookings
