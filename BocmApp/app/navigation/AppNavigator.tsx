@@ -23,7 +23,7 @@ import ProfilePreview from '../pages/ProfilePreview';
 import tw from 'twrnc';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import CalendarPage from '../pages/CalendarPage';
-// import CutsPage from '../pages/CutsPage'; // TikTok-style feed commented out
+import CutsPage from '../pages/CutsPage';
 import { linking } from '../shared/config/deepLinking';
 import { AuthGuard, BarberGuard } from '../shared/components/auth/AuthGuard';
 import { ROUTE_MAPPING, isRouteProtected, getRouteRole } from '../shared/config/routeMapping';
@@ -359,6 +359,7 @@ export const AppNavigator = () => {
         <Stack.Screen name="MainTabs" component={MainTabs} />
         <Stack.Screen name="ProfilePortfolio" component={ProfilePortfolio} />
         <Stack.Screen name="ProfilePreview" component={ProfilePreview} />
+        <Stack.Screen name="Cuts" component={CutsPage} />
         <Stack.Screen name="Settings" component={SettingsPage} />
         <Stack.Screen name="BookingCalendar" component={BookingCalendarPage} />
         <Stack.Screen name="BookingSuccess" component={BookingSuccessPage} />

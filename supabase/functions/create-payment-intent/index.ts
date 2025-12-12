@@ -129,6 +129,13 @@ serve(async (req: Request) => {
 
     const servicePrice = Math.round(Number(service.price) * 100) // Convert to cents
     
+    console.log('💰 Service details (for reference only - NOT included in payment):', {
+      serviceName: service.name,
+      servicePriceCents: servicePrice,
+      servicePriceDollars: (servicePrice / 100).toFixed(2),
+      warning: 'Service price is NOT added to payment amount'
+    })
+    
     // Get add-ons if any are selected
     let addonTotal = 0
     if (addonIds && addonIds.length > 0) {
@@ -149,19 +156,113 @@ serve(async (req: Request) => {
       }
 
       addonTotal = addons.reduce((total: number, addon: any) => total + addon.price, 0)
+      console.log('📦 Addons (for reference only - NOT included in payment):', {
+        addonCount: addons.length,
+        addonTotalDollars: addonTotal.toFixed(2),
+        addonTotalCents: Math.round(addonTotal * 100),
+        addonDetails: addons.map(a => ({ name: a.name, price: a.price })),
+        warning: 'Addons are NOT added to payment amount'
+      })
     }
     
-    // Calculate platform fee
+    // CRITICAL: Calculate platform fee
+    // IMPORTANT: Customers ONLY pay the platform fee ($3.38)
+    // Service and addons are paid directly to barber at appointment
     const platformFee = 338 // $3.38 in cents
-    const totalAmount = servicePrice + Math.round(addonTotal * 100) + platformFee
+    
+    // ALWAYS charge only the platform fee - DO NOT add servicePrice or addonTotal
+    const totalAmount = platformFee // Always $3.38 (platform fee only)
+    
+    // CRITICAL SAFEGUARD: Verify totalAmount does NOT include service or addons
+    console.log('💳 Payment amount verification:', {
+      servicePriceCents: servicePrice,
+      servicePriceDollars: (servicePrice / 100).toFixed(2),
+      addonTotalCents: Math.round(addonTotal * 100),
+      addonTotalDollars: addonTotal.toFixed(2),
+      platformFeeCents: platformFee,
+      platformFeeDollars: (platformFee / 100).toFixed(2),
+      totalAmountCents: totalAmount,
+      totalAmountDollars: (totalAmount / 100).toFixed(2),
+      verification: totalAmount === platformFee ? '✅ CORRECT' : '❌ ERROR',
+      note: 'totalAmount MUST equal platformFee (338) - service and addons NOT included'
+    })
+    
+    // CRITICAL ERROR CHECK: If totalAmount includes service or addons, return error
+    if (totalAmount !== platformFee) {
+      const extraAmount = totalAmount - platformFee
+      console.error('❌ CRITICAL ERROR: totalAmount includes service or addons!', {
+        totalAmount,
+        platformFee,
+        extraAmount,
+        extraAmountDollars: (extraAmount / 100).toFixed(2),
+        servicePrice,
+        addonTotal,
+        possibleCause: extraAmount === servicePrice ? 'Service price was incorrectly added' : 
+                      extraAmount === Math.round(addonTotal * 100) ? 'Addon total was incorrectly added' :
+                      'Unknown amount was added'
+      })
+      return new Response(
+        JSON.stringify({ 
+          error: `Payment calculation error: Expected $3.38 but calculated $${(totalAmount / 100).toFixed(2)}. Service price should not be included.` 
+        }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+    
+    // Additional safeguard: Check if service price equals the extra amount
+    if (servicePrice === 100 && totalAmount === 438) {
+      console.error('❌ ERROR DETECTED: Service price ($1.00) appears to be included in totalAmount!', {
+        totalAmount,
+        platformFee,
+        servicePrice,
+        expected: 'totalAmount should be 338 (platformFee only)',
+        actual: 'totalAmount is 438 (platformFee + servicePrice)'
+      })
+      return new Response(
+        JSON.stringify({ 
+          error: 'Payment calculation error: Service price should not be included in payment amount' 
+        }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+    
+    // Stripe fee calculation: Stripe takes ~$0.38 (2.9% + $0.30)
+    // After Stripe fee: $3.38 - $0.38 = $3.00
+    // Split the $3.00: 60% to BOCM, 40% to barber
+    const stripeFee = 38 // $0.38 in cents (approximate Stripe fee)
+    const netAfterStripe = platformFee - stripeFee // $3.00 = 300 cents
+    const bocmShare = Math.round(netAfterStripe * 0.60) // 60% = $1.80 = 180 cents
+    const barberShare = Math.round(netAfterStripe * 0.40) // 40% = $1.20 = 120 cents
+    
+    console.log('Payment: customer only pays platform fee', { 
+      totalCharged: platformFee,
+      stripeFee,
+      netAfterStripe,
+      bocmShare,
+      barberShare,
+      note: 'Service and addons paid directly to barber at appointment'
+    })
 
     // Create Payment Intent
+    // Fee breakdown:
+    // - Total charged to customer: $3.38
+    // - Stripe fee: ~$0.38
+    // - Net after Stripe: $3.00
+    // - BOCM receives: $1.80 (60% of net)
+    // - Barber receives: $1.20 (40% of net)
+    // Note: Service price and addons are paid directly to barber at appointment
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: totalAmount,
+      amount: totalAmount, // Always $3.38 (platform fee only)
       currency: 'usd',
-      application_fee_amount: Math.round(platformFee * 0.60), // 60% to BOCM
+      application_fee_amount: bocmShare, // 60% of net after Stripe = $1.80
       transfer_data: {
-        destination: barber.stripe_account_id,
+        destination: barber.stripe_account_id, // Barber gets 40% of net = $1.20
       },
       metadata: {
         barberId,
@@ -181,8 +282,30 @@ serve(async (req: Request) => {
     console.log('Payment Intent created successfully:', {
       paymentIntentId: paymentIntent.id,
       amount: paymentIntent.amount,
-      clientSecret: paymentIntent.client_secret
+      amountInDollars: (paymentIntent.amount / 100).toFixed(2),
+      expectedAmount: 3.38,
+      application_fee_amount: bocmShare,
+      application_fee_dollars: (bocmShare / 100).toFixed(2),
+      barber_should_receive: (barberShare / 100).toFixed(2),
+      clientSecret: paymentIntent.client_secret,
+      breakdown: {
+        totalCharged: `${(totalAmount / 100).toFixed(2)}`,
+        stripeFee: `${(stripeFee / 100).toFixed(2)}`,
+        netAfterStripe: `${(netAfterStripe / 100).toFixed(2)}`,
+        bocmShare: `${(bocmShare / 100).toFixed(2)}`,
+        barberShare: `${(barberShare / 100).toFixed(2)}`
+      }
     })
+    
+    // Verify the amount is correct
+    if (paymentIntent.amount !== 338) {
+      console.error('❌ ERROR: Payment amount is incorrect!', {
+        expected: 338,
+        actual: paymentIntent.amount,
+        difference: paymentIntent.amount - 338,
+        differenceInDollars: ((paymentIntent.amount - 338) / 100).toFixed(2)
+      })
+    }
 
     return new Response(
       JSON.stringify({ 

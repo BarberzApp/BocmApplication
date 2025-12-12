@@ -18,7 +18,7 @@ export interface SortableItem {
  * @param lon1 Longitude of first point
  * @param lat2 Latitude of second point
  * @param lon2 Longitude of second point
- * @returns Distance in kilometers
+ * @returns Distance in miles
  */
 export function calculateDistance(
   lat1: number,
@@ -50,26 +50,36 @@ export function calculateDistance(
     return Infinity;
   }
 
-  const R = 6371; // Earth's radius in kilometers
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  // Haversine formula - optimized and validated
+  const R = 3959; // Earth's radius in miles
+  const lat1Rad = (lat1 * Math.PI) / 180;
+  const lat2Rad = (lat2 * Math.PI) / 180;
+  const dLat = lat2Rad - lat1Rad;
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
   
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
+    Math.cos(lat1Rad) *
+      Math.cos(lat2Rad) *
       Math.sin(dLon / 2) *
       Math.sin(dLon / 2);
   
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
+  const distance = R * c;
+  
+  // Validate result
+  if (isNaN(distance) || !isFinite(distance) || distance < 0) {
+    return Infinity;
+  }
+  
+  return distance;
 }
 
 /**
  * Calculate distance from user location to an item with coordinates
  * @param userLocation User's current location
  * @param itemLocation Item's location (can be undefined)
- * @returns Distance in kilometers, or undefined if item has no coordinates
+ * @returns Distance in miles, or undefined if item has no coordinates
  */
 export function getDistanceToItem(
   userLocation: Location,
@@ -108,18 +118,23 @@ export function sortByDistance<T extends SortableItem>(items: T[]): T[] {
 
 /**
  * Format distance for display
- * @param distance Distance in kilometers
- * @returns Formatted string (e.g., "50m", "1.2km", "10km")
+ * @param distance Distance in miles
+ * @returns Formatted string (e.g., "0.5 mi", "1.2 mi", "10 mi")
  */
 export function formatDistance(distance: number): string {
   if (distance < 0.1) {
-    return `${Math.round(distance * 1000)}m`;
+    // For very short distances, show in feet
+    const feet = Math.round(distance * 5280);
+    return `${feet} ft`;
   } else if (distance < 1) {
-    return `${Math.round(distance * 1000)}m`; // Convert to meters for < 1km
+    // For distances less than 1 mile, show with 1 decimal place
+    return `${distance.toFixed(1)} mi`;
   } else if (distance < 10) {
-    return `${distance.toFixed(1)}km`;
+    // For distances 1-10 miles, show with 1 decimal place
+    return `${distance.toFixed(1)} mi`;
   } else {
-    return `${Math.round(distance)}km`;
+    // For longer distances, round to nearest mile
+    return `${Math.round(distance)} mi`;
   }
 }
 

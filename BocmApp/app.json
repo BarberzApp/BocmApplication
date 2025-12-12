@@ -48,6 +48,14 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Allow BOCM to use your location to find nearby barbers and services."
         }
+      ],
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "project": "react-native",
+          "organization": "bocm"
+        }
       ]
     ],
     "experiments": {

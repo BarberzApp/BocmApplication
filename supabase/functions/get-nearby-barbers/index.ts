@@ -59,57 +59,10 @@ serve(async (req) => {
       )
     }
 
-    // Haversine formula SQL query
-    // Distance in meters: 6371000 * acos(...)
-    const query = `
-      SELECT
-        b.id,
-        b.user_id,
-        b.bio,
-        b.specialties,
-        b.price_range,
-        b.business_name,
-        b.instagram,
-        b.twitter,
-        b.tiktok,
-        b.facebook,
-        b.latitude,
-        b.longitude,
-        b.city,
-        b.state,
-        b.created_at,
-        b.updated_at,
-        p.name,
-        p.username,
-        p.location as profile_location,
-        p.bio as profile_bio,
-        p.avatar_url,
-        p.coverphoto,
-        p.is_public,
-        (
-          6371000 * acos(
-            cos(radians($1)) * cos(radians(b.latitude)) *
-            cos(radians(b.longitude) - radians($2)) +
-            sin(radians($1)) * sin(radians(b.latitude))
-          )
-        ) AS distance_m
-      FROM barbers b
-      INNER JOIN profiles p ON b.user_id = p.id
-      WHERE b.latitude IS NOT NULL
-        AND b.longitude IS NOT NULL
-        AND p.is_public = true
-      ORDER BY distance_m
-      LIMIT $3
-    `
-
-    const { data, error } = await supabase.rpc('exec_sql', {
-      query_text: query,
-      params: [lat, lon, limit]
-    })
-
-    // If RPC doesn't work, use direct query with parameterized values
-    if (error || !data) {
-      // Fallback: Use Supabase query builder with raw SQL for distance calculation
+    // Use direct query approach (RPC exec_sql likely doesn't exist)
+    // Calculate distance in application layer for better reliability
+    {
+      // Use Supabase query builder - calculate distance in application layer
       const { data: barbersData, error: barbersError } = await supabase
         .from('barbers')
         .select(`
@@ -154,18 +107,29 @@ serve(async (req) => {
           const profile = barber.profiles
           if (!profile || !profile.is_public) return null
 
-          // Haversine formula
+          // Haversine formula - ensure correct calculation
           const R = 6371000 // Earth's radius in meters
-          const dLat = ((barber.latitude - lat) * Math.PI) / 180
+          const lat1Rad = (lat * Math.PI) / 180
+          const lat2Rad = (barber.latitude * Math.PI) / 180
+          const dLat = lat2Rad - lat1Rad
           const dLon = ((barber.longitude - lon) * Math.PI) / 180
+          
           const a =
             Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos((lat * Math.PI) / 180) *
-              Math.cos((barber.latitude * Math.PI) / 180) *
+            Math.cos(lat1Rad) *
+              Math.cos(lat2Rad) *
               Math.sin(dLon / 2) *
               Math.sin(dLon / 2)
           const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
           const distance_m = R * c
+          
+          // Validate distance is a valid number
+          if (isNaN(distance_m) || !isFinite(distance_m)) {
+            console.warn(`Invalid distance calculated for barber ${barber.id}:`, {
+              lat, lon, barberLat: barber.latitude, barberLon: barber.longitude
+            })
+            return null
+          }
 
           return {
             id: barber.id,
@@ -190,8 +154,13 @@ serve(async (req) => {
             distance_m: Math.round(distance_m), // Round to nearest meter
           }
         })
-        .filter((b: any) => b !== null)
-        .sort((a: any, b: any) => a.distance_m - b.distance_m)
+        .filter((b: any) => b !== null && b.distance_m !== undefined && isFinite(b.distance_m))
+        .sort((a: any, b: any) => {
+          // Ensure proper numeric sorting
+          const distA = Number(a.distance_m) || Infinity
+          const distB = Number(b.distance_m) || Infinity
+          return distA - distB
+        })
         .slice(0, limit)
 
       return new Response(

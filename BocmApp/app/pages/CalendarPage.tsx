@@ -38,6 +38,8 @@ import { theme } from '../shared/lib/theme';
 import { logger } from '../shared/lib/logger';
 import { ReviewForm } from '../shared/components/ReviewForm';
 import { bookingService } from '../shared/lib/bookingService';
+import { formatTimeSlot } from '../shared/lib/calendar/calendarUtils';
+import { getBookingPricingData, getClientBookingDetails, getBarberBookingDetails } from '../shared/lib/bookingDetailsHelper';
 
 interface CalendarEvent {
   id: string;
@@ -56,6 +58,9 @@ interface CalendarEvent {
     price: number;
     basePrice: number;
     addonTotal: number;
+    platformFee: number;
+    barberPayout: number;
+    totalCharged: number;
     addonNames: string[];
     isGuest: boolean;
     guestEmail: string;
@@ -186,15 +191,7 @@ export default function CalendarPage() {
     }
   }, [loadingTimeSlots, timeSlots.length]);
 
-
-
-  const formatTimeSlot = (time: string) => {
-    const [hours, minutes] = time.split(':');
-    const hour = parseInt(hours);
-    const ampm = hour >= 12 ? 'PM' : 'AM';
-    const displayHour = hour % 12 || 12;
-    return `${displayHour}:${minutes} ${ampm}`;
-  };
+  // formatTimeSlot now imported from calendarUtils
 
   const fetchTimeSlots = async () => {
     if (!manualFormData.date || !manualFormData.serviceId || !barberId) {
@@ -480,13 +477,14 @@ export default function CalendarPage() {
           }
         }
 
-        // Compute monetary fields in dollars: use actual service price, not stored booking price
-        // total = base + addon_total + platform_fee
-        const basePrice = (service?.price || 0);
-        const addonTotal = (booking.addon_total || 0);
-        const platformFee = (booking.platform_fee || 0);
-        // Barber net payout: prefer stored barber_payout; fallback to base + addons + 40% of fee
-        const barberPayout = (typeof booking.barber_payout === 'number' ? booking.barber_payout : (basePrice + addonTotal + (platformFee * 0.40)));
+        // Compute monetary fields using helper
+        // Pass booking.price to ensure we use historical pricing, not current service price
+        const pricing = getBookingPricingData({
+          price: booking.price,
+          platform_fee: booking.platform_fee,
+          barber_payout: booking.barber_payout,
+          addon_total: calculatedAddonTotal || booking.addon_total,
+        }, service?.price); // service?.price is only used as fallback if booking data is incomplete
 
         return {
           id: booking.id,
@@ -502,9 +500,12 @@ export default function CalendarPage() {
             clientName: client?.name || booking.guest_name || 'Guest',
             barberName: barber?.name || 'Barber',
             barberId: booking.barber_id, // Add barber_id for review functionality
-            price: barberPayout, // show barber's take-home amount
-            basePrice: basePrice,
-            addonTotal: addonTotal,
+            price: pricing.totalCharged, // Total charged to client (for client view) or barber payout (for barber view - will be overridden)
+            basePrice: pricing.basePrice,
+            addonTotal: pricing.addonTotal,
+            platformFee: pricing.platformFee,
+            barberPayout: pricing.barberPayout,
+            totalCharged: pricing.totalCharged,
             addonNames,
             isGuest: !client,
             guestEmail: booking.guest_email,
@@ -613,13 +614,17 @@ export default function CalendarPage() {
       if (error) throw error;
 
       Vibration.vibrate(100); // Success haptic feedback
-      Alert.alert('Success', 'Appointment marked as missed');
+      const itemType = userRole === 'barber' && barberViewMode === 'appointments' ? 'appointment' : 'booking';
+      const itemTypeCapitalized = userRole === 'barber' && barberViewMode === 'appointments' ? 'Appointment' : 'Booking';
+      Alert.alert('Success', `${itemTypeCapitalized} marked as missed`);
       setShowEventDialog(false);
       fetchBookings(); // Refresh events
     } catch (error) {
       logger.error('Error marking as missed:', error);
       Vibration.vibrate([100, 100]); // Error haptic feedback
-      Alert.alert('Error', 'Failed to mark appointment as missed');
+      const itemType = userRole === 'barber' && barberViewMode === 'appointments' ? 'appointment' : 'booking';
+      const itemTypeCapitalized = userRole === 'barber' && barberViewMode === 'appointments' ? 'Appointment' : 'Booking';
+      Alert.alert('Error', `Failed to mark ${itemType} as missed`);
     } finally {
       setIsMarkingMissed(false);
     }
@@ -638,13 +643,17 @@ export default function CalendarPage() {
       if (error) throw error;
 
       Vibration.vibrate(100); // Success haptic feedback
-      Alert.alert('Success', 'Appointment marked as completed');
+      const itemType = userRole === 'barber' && barberViewMode === 'appointments' ? 'appointment' : 'booking';
+      const itemTypeCapitalized = userRole === 'barber' && barberViewMode === 'appointments' ? 'Appointment' : 'Booking';
+      Alert.alert('Success', `${itemTypeCapitalized} marked as completed`);
       setShowEventDialog(false);
       fetchBookings(); // Refresh events
     } catch (error) {
       logger.error('Error marking as completed:', error);
       Vibration.vibrate([100, 100]); // Error haptic feedback
-      Alert.alert('Error', 'Failed to mark appointment as completed');
+      const itemType = userRole === 'barber' && barberViewMode === 'appointments' ? 'appointment' : 'booking';
+      const itemTypeCapitalized = userRole === 'barber' && barberViewMode === 'appointments' ? 'Appointment' : 'Booking';
+      Alert.alert('Error', `Failed to mark ${itemType} as completed`);
     } finally {
       setIsMarkingCompleted(false);
     }
@@ -656,7 +665,7 @@ export default function CalendarPage() {
     // Barbers can only leave reviews in "My Bookings" tab (when they're the client)
     // They cannot leave reviews in "My Appointments" tab (when they're the service provider)
     if (userRole === 'barber' && barberViewMode === 'appointments') {
-      Alert.alert('Info', 'You can only leave reviews for appointments where you are the client (My Bookings tab)');
+      Alert.alert('Info', 'You can only leave reviews for bookings where you are the client (My Bookings tab)');
       return;
     }
 
@@ -672,29 +681,34 @@ export default function CalendarPage() {
   const handleCancelBooking = async () => {
     if (!selectedEvent) return;
 
+    // Determine if this is an appointment or booking based on view mode
+    const isAppointment = userRole === 'barber' && barberViewMode === 'appointments';
+    const itemType = isAppointment ? 'appointment' : 'booking';
+    const itemTypeCapitalized = isAppointment ? 'Appointment' : 'Booking';
+
     // Show confirmation dialog
     Alert.alert(
-      'Cancel Booking',
-      'Are you sure you want to cancel this booking? This action cannot be undone.',
+      `Cancel ${itemTypeCapitalized}`,
+      `Are you sure you want to cancel this ${itemType}? This action cannot be undone.`,
       [
         {
-          text: 'Keep Booking',
+          text: `Keep ${itemTypeCapitalized}`,
           style: 'cancel'
         },
         {
-          text: 'Cancel Booking',
+          text: `Cancel ${itemTypeCapitalized}`,
           style: 'destructive',
           onPress: async () => {
             try {
               await bookingService.cancelBooking(selectedEvent.id);
               Vibration.vibrate(100); // Success haptic feedback
-              Alert.alert('Success', 'Booking cancelled successfully');
+              Alert.alert('Success', `${itemTypeCapitalized} cancelled successfully`);
               setShowEventDialog(false);
               fetchBookings(); // Refresh events
             } catch (error) {
-              logger.error('Error cancelling booking:', error);
+              logger.error(`Error cancelling ${itemType}:`, error);
               Vibration.vibrate([100, 100]); // Error haptic feedback
-              Alert.alert('Error', 'Failed to cancel booking. Please try again.');
+              Alert.alert('Error', `Failed to cancel ${itemType}. Please try again.`);
             }
           }
         }
@@ -1202,7 +1216,8 @@ export default function CalendarPage() {
             </Animated.View>
 
             {/* Manual Appointment Button - Only for Barbers in Appointments Mode */}
-            {userRole === 'barber' && barberViewMode === 'appointments' && (
+            {/* TODO: Re-enable manual appointment feature later */}
+            {/* {userRole === 'barber' && barberViewMode === 'appointments' && (
               <View style={[tw`mt-4 p-4 rounded-2xl`, {
                 backgroundColor: `${theme.colors.secondary}10`,
                 borderWidth: 1,
@@ -1233,7 +1248,7 @@ export default function CalendarPage() {
                   </Text>
                 </TouchableOpacity>
               </View>
-            )}
+            )} */}
 
             {/* Events Panel - Enhanced */}
         {selectedDate && (
@@ -1322,7 +1337,10 @@ export default function CalendarPage() {
                               <Text style={[tw`text-xs font-semibold`, { 
                                 color: isMissed ? '#ef4444' : isPast ? '#22c55e' : theme.colors.secondary 
                               }]}>
-                                ${event.extendedProps.price}
+                                ${userRole === 'client' 
+                                  ? event.extendedProps.totalCharged.toFixed(2)
+                                  : event.extendedProps.barberPayout.toFixed(2)
+                                }
                       </Text>
                             </View>
                     </View>
@@ -1353,7 +1371,10 @@ export default function CalendarPage() {
           }]}>
             <View style={tw`flex-row items-center justify-between mb-6`}>
               <Text style={[tw`text-xl font-bold`, { color: theme.colors.foreground }]}>
-                Booking Details
+                {userRole === 'barber' && barberViewMode === 'appointments' 
+                  ? 'Appointment Details' 
+                  : 'Booking Details'
+                }
               </Text>
               <TouchableOpacity onPress={() => setShowEventDialog(false)}>
                 <X size={24} color={theme.colors.mutedForeground} />
@@ -1365,16 +1386,24 @@ export default function CalendarPage() {
                 {/* Header Section */}
                 <View style={tw`items-center mb-4`}>
                   <Text style={[tw`text-xl font-bold mb-1`, { color: theme.colors.foreground }]}>
-                    Booking Details
+                    {userRole === 'barber' && barberViewMode === 'appointments' 
+                      ? 'Appointment Details' 
+                      : 'Booking Details'
+                    }
                   </Text>
                   <Text style={[tw`text-lg font-semibold mb-1`, { color: theme.colors.foreground }]}>
                     {userRole === 'client' 
                       ? selectedEvent.extendedProps.barberName 
-                      : selectedEvent.extendedProps.clientName
+                      : userRole === 'barber' && barberViewMode === 'appointments'
+                      ? selectedEvent.extendedProps.clientName
+                      : selectedEvent.extendedProps.barberName
                     }
                   </Text>
                   <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>
-                    Booking #{selectedEvent.id.slice(0, 8).toUpperCase()}
+                    {userRole === 'barber' && barberViewMode === 'appointments' 
+                      ? `Appointment #${selectedEvent.id.slice(0, 8).toUpperCase()}`
+                      : `Booking #${selectedEvent.id.slice(0, 8).toUpperCase()}`
+                    }
                   </Text>
                 </View>
 
@@ -1433,64 +1462,96 @@ export default function CalendarPage() {
                 </View>
 
                 {/* Pricing Section */}
-                <View style={tw`mb-4`}>
-                  <Text style={[tw`text-sm font-semibold mb-3`, { color: theme.colors.foreground }]}>
-                    Pricing Breakdown
-                  </Text>
-                  
-                  <View style={tw`space-y-2`}>
-                    <View style={tw`flex-row items-center justify-between`}>
-                      <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>Service Price</Text>
-                      <Text style={[tw`font-semibold`, { color: theme.colors.foreground }]}>
-                        ${selectedEvent.extendedProps.basePrice.toFixed(2)}
-                      </Text>
-                    </View>
+                {(() => {
+                  // Get pricing breakdown based on user role
+                  const breakdown = userRole === 'client' 
+                    ? {
+                        servicePrice: selectedEvent.extendedProps.basePrice,
+                        addons: selectedEvent.extendedProps.addonTotal,
+                        platformFee: selectedEvent.extendedProps.platformFee,
+                        total: selectedEvent.extendedProps.totalCharged,
+                      }
+                    : {
+                        servicePrice: selectedEvent.extendedProps.basePrice,
+                        addons: selectedEvent.extendedProps.addonTotal,
+                        platformFee: selectedEvent.extendedProps.platformFee,
+                        total: selectedEvent.extendedProps.totalCharged,
+                        barberPayout: selectedEvent.extendedProps.barberPayout,
+                      };
 
-                    {selectedEvent.extendedProps.addonNames.length > 0 && (
-                      <View style={tw`flex-row items-center justify-between`}>
-                        <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>Add-ons</Text>
-                        <Text style={[tw`font-semibold`, { color: theme.colors.foreground }]}>
-                          +${selectedEvent.extendedProps.addonTotal.toFixed(2)}
+                  return (
+                    <>
+                      <View style={tw`mb-4`}>
+                        <Text style={[tw`text-sm font-semibold mb-3`, { color: theme.colors.foreground }]}>
+                          Pricing Breakdown
                         </Text>
-                      </View>
-                    )}
+                        
+                        <View style={tw`space-y-2`}>
+                          <View style={tw`flex-row items-center justify-between`}>
+                            <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>Service Price</Text>
+                            <Text style={[tw`font-semibold`, { color: theme.colors.foreground }]}>
+                              ${breakdown.servicePrice.toFixed(2)}
+                            </Text>
+                          </View>
 
-                    {/* Calculate platform fee from the booking data */}
-                    {(() => {
-                      const totalCharged = selectedEvent.extendedProps.basePrice + selectedEvent.extendedProps.addonTotal;
-                      const platformFee = selectedEvent.extendedProps.price - totalCharged;
-                      return platformFee > 0 ? (
-                        <View style={tw`flex-row items-center justify-between`}>
-                          <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>Platform Fee</Text>
-                          <Text style={[tw`font-semibold`, { color: theme.colors.foreground }]}>
-                            +${platformFee.toFixed(2)}
-                          </Text>
+                          {selectedEvent.extendedProps.addonNames.length > 0 && (
+                            <View style={tw`flex-row items-center justify-between`}>
+                              <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>Add-ons</Text>
+                              <Text style={[tw`font-semibold`, { color: theme.colors.foreground }]}>
+                                +${breakdown.addons.toFixed(2)}
+                              </Text>
+                            </View>
+                          )}
+
+                          {/* Show platform fee */}
+                          {breakdown.platformFee > 0 && (
+                            <View style={tw`flex-row items-center justify-between`}>
+                              <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>Platform Fee</Text>
+                              <Text style={[tw`font-semibold`, { color: theme.colors.foreground }]}>
+                                +${breakdown.platformFee.toFixed(2)}
+                              </Text>
+                            </View>
+                          )}
                         </View>
-                      ) : null;
-                    })()}
-                  </View>
-                </View>
+                      </View>
 
-                {/* Total Section */}
-                <View style={tw`mb-4`}>
-                  <View style={tw`flex-row items-center justify-between`}>
-                    <Text style={[tw`font-bold text-lg`, { color: theme.colors.foreground }]}>
-                      {userRole === 'barber' ? 'Your Payout' : 'Total Charged'}
-                    </Text>
-                    <Text style={[tw`font-bold text-lg`, { color: theme.colors.secondary }]}>
-                      ${selectedEvent.extendedProps.price.toFixed(2)}
-                    </Text>
-                  </View>
-                  {userRole === 'barber' ? (
-                    <Text style={[tw`text-xs mt-1`, { color: theme.colors.mutedForeground }]}>
-                      Amount you'll receive for this booking
-                    </Text>
-                  ) : (
-                    <Text style={[tw`text-xs mt-1`, { color: theme.colors.mutedForeground }]}>
-                      Total amount charged to customer
-                    </Text>
-                  )}
-                </View>
+                      {/* Total Section */}
+                      <View style={tw`mb-4`}>
+                        {/* Show "Total Charged" for clients OR barbers viewing "My Bookings" (when they're the client) */}
+                        {userRole === 'client' || (userRole === 'barber' && barberViewMode === 'bookings') ? (
+                          <>
+                            <View style={tw`flex-row items-center justify-between`}>
+                              <Text style={[tw`font-bold text-lg`, { color: theme.colors.foreground }]}>
+                                Total Charged
+                              </Text>
+                              <Text style={[tw`font-bold text-lg`, { color: theme.colors.secondary }]}>
+                                ${breakdown.total.toFixed(2)}
+                              </Text>
+                            </View>
+                            <Text style={[tw`text-xs mt-1`, { color: theme.colors.mutedForeground }]}>
+                              Total amount charged to you
+                            </Text>
+                          </>
+                        ) : (
+                          /* Show "Your Payout" only for barbers viewing "My Appointments" (when they're providing service) */
+                          <>
+                            <View style={tw`flex-row items-center justify-between`}>
+                              <Text style={[tw`font-bold text-lg`, { color: theme.colors.foreground }]}>
+                                Your Payout
+                              </Text>
+                              <Text style={[tw`font-bold text-lg`, { color: theme.colors.secondary }]}>
+                                ${breakdown.barberPayout?.toFixed(2) || '0.00'}
+                              </Text>
+                            </View>
+                            <Text style={[tw`text-xs mt-1`, { color: theme.colors.mutedForeground }]}>
+                              Amount you'll receive for this appointment
+                            </Text>
+                          </>
+                        )}
+                      </View>
+                    </>
+                  );
+                })()}
 
                 {/* Guest Information (if applicable) */}
                 {selectedEvent.extendedProps.isGuest && (
@@ -1551,7 +1612,7 @@ export default function CalendarPage() {
                   </View>
                 )}
 
-                {/* Cancel Booking Button - for future bookings that aren't cancelled */}
+                {/* Cancel Button - for future appointments/bookings that aren't cancelled */}
                 {selectedEvent.extendedProps.status !== 'cancelled' && 
                  selectedEvent.extendedProps.status !== 'completed' && 
                  selectedEvent.extendedProps.status !== 'missed' && 
@@ -1568,12 +1629,17 @@ export default function CalendarPage() {
                         elevation: 4
                       }]}
                     >
-                      <Text style={tw`font-semibold text-white`}>Cancel Booking</Text>
+                      <Text style={tw`font-semibold text-white`}>
+                        {userRole === 'barber' && barberViewMode === 'appointments'
+                          ? 'Cancel Appointment'
+                          : 'Cancel Booking'
+                        }
+                      </Text>
                     </TouchableOpacity>
                   </View>
                 )}
 
-                {/* Leave Review Button for Completed Appointments */}
+                {/* Leave Review Button for Completed Bookings/Appointments */}
                 {selectedEvent.extendedProps.status === 'completed' && userRole === 'client' && (
                   <View style={tw`mt-6`}>
                     <TouchableOpacity
@@ -1598,6 +1664,8 @@ export default function CalendarPage() {
       </Modal>
 
       {/* Manual Appointment Form Modal */}
+      {/* TODO: Re-enable manual appointment feature later */}
+      {false && (
       <Modal
         visible={showManualAppointmentForm}
         animationType="slide"
@@ -1868,6 +1936,7 @@ export default function CalendarPage() {
           </View>
         </View>
       </Modal>
+      )}
 
 
 

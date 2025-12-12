@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState, memo, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableWithoutFeedback, Dimensions, Animated, TouchableOpacity, Alert, Linking } from 'react-native';
 import { Video, ResizeMode, AVPlaybackStatusSuccess } from 'expo-av';
-import { Heart, MessageCircle, Share2, User, Play, Pause, Calendar } from 'lucide-react-native';
+import { User, Calendar } from 'lucide-react-native';
 import type { FeedItem, VideoState } from '../types/feed.types';
 import { useNavigation } from '@react-navigation/native';
 import { logger } from '../shared/lib/logger';
@@ -25,7 +25,6 @@ function OptimizedVideoCardImpl({ item, isActive, navBottomInset, onVideoStateCh
   const [isBuffering, setIsBuffering] = useState(true);
   const [videoState, setVideoState] = useState<VideoState>('loading');
   const [isHolding, setIsHolding] = useState(false);
-  const [isLiked, setIsLiked] = useState(false);
   const [showProfileInfo, setShowProfileInfo] = useState(false);
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -91,30 +90,6 @@ function OptimizedVideoCardImpl({ item, isActive, navBottomInset, onVideoStateCh
     }
   }, [isHolding, onHoldToPause]);
 
-  // Interactive functions
-  const handleLike = useCallback(() => {
-    setIsLiked(!isLiked);
-    // TODO: Implement like functionality with backend
-  }, [isLiked]);
-
-  const handleComment = useCallback(() => {
-    Alert.alert('Comments', 'Comment functionality coming soon!');
-    // TODO: Implement comment functionality
-  }, []);
-
-  const handleShare = useCallback(() => {
-    Alert.alert(
-      'Share',
-      'Share this video?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Share', onPress: () => {
-          // TODO: Implement share functionality
-          logger.log('Sharing video:', item.id);
-        }}
-      ]
-    );
-  }, [item.id]);
 
   const handleProfilePress = useCallback(() => {
     setShowProfileInfo(!showProfileInfo);
@@ -267,25 +242,6 @@ function OptimizedVideoCardImpl({ item, isActive, navBottomInset, onVideoStateCh
         
         {/* Right side - Action buttons */}
         <View style={styles.actions}>
-          <TouchableOpacity onPress={handleLike} style={styles.actionButton}>
-            <Heart 
-              size={28} 
-              color={isLiked ? '#ff4757' : 'white'} 
-              fill={isLiked ? '#ff4757' : 'none'}
-            />
-            <Text style={styles.actionText}>{(item.likes ?? 0) + (isLiked ? 1 : 0)}</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity onPress={handleComment} style={styles.actionButton}>
-            <MessageCircle size={28} color="white" />
-            <Text style={styles.actionText}>{item.comments ?? 0}</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity onPress={handleShare} style={styles.actionButton}>
-            <Share2 size={28} color="white" />
-            <Text style={styles.actionText}>{item.shares ?? 0}</Text>
-          </TouchableOpacity>
-          
           <TouchableOpacity onPress={handleBookAppointment} style={styles.bookActionButton}>
             <Calendar size={28} color="white" />
             <Text style={styles.bookActionText}>Book Now</Text>

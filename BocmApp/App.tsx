@@ -6,11 +6,36 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as Font from 'expo-font';
 import * as Linking from 'expo-linking';
 import { notificationService } from './app/shared/lib/notifications';
+import { initSentry } from './app/shared/lib/sentry';
+import { logger } from './app/shared/lib/logger';
 import tw from 'twrnc';
 import { theme } from './app/shared/lib/theme';
 import { AppNavigator } from './app/navigation/AppNavigator';
 import { AuthProvider } from './app/shared/hooks/useAuth';
 import { StripeProvider } from '@stripe/stripe-react-native';
+import * as Sentry from '@sentry/react-native';
+
+Sentry.init({
+  dsn: 'https://a0acbe33ae2db6424431f49587a00eef@o4510517801517056.ingest.us.sentry.io/4510517839069185',
+
+  // Adds more context data to events (IP address, cookies, user, etc.)
+  // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
+  sendDefaultPii: true,
+
+  // Enable Logs
+  enableLogs: true,
+
+  // Configure Session Replay
+  replaysSessionSampleRate: 0.1,
+  replaysOnErrorSampleRate: 1,
+  integrations: [Sentry.mobileReplayIntegration(), Sentry.feedbackIntegration()],
+
+  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
+  // spotlight: __DEV__,
+});
+
+// Initialize Sentry as early as possible
+initSentry();
 
 const App = () => {
   const [fontsLoaded, setFontsLoaded] = useState(false);
@@ -19,7 +44,7 @@ const App = () => {
   // Function to create booking from Stripe session
   const createBookingFromSession = async (sessionId: string) => {
     try {
-      console.log('Creating booking from session:', sessionId);
+      logger.log('Creating booking from session:', sessionId);
       
       const response = await fetch(`${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/create-booking-after-checkout`, {
         method: 'POST',
@@ -37,7 +62,7 @@ const App = () => {
         throw new Error(data.error || 'Failed to create booking');
       }
 
-      console.log('Booking created successfully:', data);
+      logger.log('Booking created successfully:', data);
       
       Alert.alert(
         'Booking Confirmed!',
@@ -45,7 +70,15 @@ const App = () => {
         [{ text: 'OK' }]
       );
     } catch (error) {
-      console.error('Error creating booking from session:', error);
+      logger.error('Error creating booking from session:', error);
+      
+      // Capture error in Sentry
+      const { captureException } = require('./app/shared/lib/sentry');
+      captureException(error as Error, {
+        context: 'createBookingFromSession',
+        sessionId,
+      });
+      
       Alert.alert(
         'Error',
         'Failed to create booking. Please contact support.',
@@ -62,7 +95,7 @@ const App = () => {
         });
         setFontsLoaded(true);
       } catch (error) {
-        console.error('Error loading fonts:', error);
+        logger.error('Error loading fonts:', error);
         setFontsLoaded(true); // Continue without custom fonts
       }
     }
@@ -79,32 +112,32 @@ const App = () => {
   // Handle deep links
   useEffect(() => {
     const handleDeepLink = (event: { url: string }) => {
-      console.log('Deep link received:', event.url);
+      logger.log('Deep link received:', event.url);
       
       // Handle Stripe connect redirects
       if (event.url.includes('bocm://stripe-connect/')) {
         if (event.url.includes('/return')) {
           // User completed Stripe onboarding
-          console.log('Stripe onboarding completed via deep link');
+          logger.log('Stripe onboarding completed via deep link');
           
           // Extract account_id if present
           const urlParams = new URL(event.url);
           const accountId = urlParams.searchParams.get('account_id');
-          console.log('Account ID from deep link:', accountId);
+          logger.log('Account ID from deep link:', accountId);
           
           // Show a success message immediately
-          console.log('Stripe onboarding completed successfully - account ID:', accountId);
+          logger.log('Stripe onboarding completed successfully - account ID:', accountId);
           
           // You could add a global state or navigation here to show success
           // For now, we'll rely on the focus effect in the onboarding page
         } else if (event.url.includes('/refresh')) {
           // User needs to refresh/retry Stripe onboarding
-          console.log('Stripe onboarding refresh via deep link');
+          logger.log('Stripe onboarding refresh via deep link');
           
           // Extract account_id if present
           const urlParams = new URL(event.url);
           const accountId = urlParams.searchParams.get('account_id');
-          console.log('Account ID from refresh deep link:', accountId);
+          logger.log('Account ID from refresh deep link:', accountId);
         }
       }
       
@@ -112,12 +145,12 @@ const App = () => {
       if (event.url.includes('bocm://booking/')) {
         if (event.url.includes('/success')) {
           // User completed payment successfully
-          console.log('Booking payment completed via deep link');
+          logger.log('Booking payment completed via deep link');
           
           // Extract session_id if present
           const urlParams = new URL(event.url);
           const sessionId = urlParams.searchParams.get('session_id');
-          console.log('Session ID from deep link:', sessionId);
+          logger.log('Session ID from deep link:', sessionId);
           
           if (sessionId) {
             // Create booking using the session ID
@@ -125,7 +158,7 @@ const App = () => {
           }
         } else if (event.url.includes('/cancel')) {
           // User cancelled payment
-          console.log('Booking payment cancelled via deep link');
+          logger.log('Booking payment cancelled via deep link');
           Alert.alert(
             'Payment Cancelled',
             'Your payment was not completed. Please try again.',
@@ -141,7 +174,7 @@ const App = () => {
     // Handle links that opened the app
     Linking.getInitialURL().then((url) => {
       if (url) {
-        console.log('App opened with URL:', url);
+        logger.log('App opened with URL:', url);
         handleDeepLink({ url });
       }
     });
@@ -169,4 +202,4 @@ const App = () => {
     );
 };
 
-export default App;
+export default Sentry.wrap(App);

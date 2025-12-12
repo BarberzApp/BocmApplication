@@ -194,6 +194,7 @@ export default function BookingForm({
 
   const fetchBarberStatus = async () => {
     try {
+      logger.log('🔍 Checking if barber is developer account:', barberId);
       const { data, error } = await supabase
         .from('barbers')
         .select('is_developer')
@@ -201,14 +202,16 @@ export default function BookingForm({
         .single();
 
       if (error) {
-        logger.error('Error fetching barber status:', error);
+        logger.error('❌ Error fetching barber status:', error);
         setIsDeveloperAccount(false);
         return;
       }
 
-      setIsDeveloperAccount(data?.is_developer || false);
+      const isDev = data?.is_developer || false;
+      logger.log(`✅ Barber developer status: ${isDev ? 'DEVELOPER' : 'REGULAR'}`);
+      setIsDeveloperAccount(isDev);
     } catch (error) {
-      logger.error('Error fetching barber status:', error);
+      logger.error('❌ Error fetching barber status:', error);
       setIsDeveloperAccount(false);
     }
   };
@@ -313,6 +316,14 @@ export default function BookingForm({
       bookingDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
       if (isDeveloperAccount) {
+        logger.log('🔧 Developer account detected - using create-developer-booking endpoint');
+        logger.log('📦 Request data:', {
+          barberId,
+          serviceId: selectedService.id,
+          date: bookingDate.toISOString(),
+          clientId: user?.id,
+          guestName: user ? undefined : guestInfo.name,
+        });
         
         // Use the developer booking Edge Function (same as rest of app)
         const response = await fetch(`${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/create-developer-booking`, {
@@ -335,12 +346,21 @@ export default function BookingForm({
           })
         });
 
+        logger.log('📡 Response status:', response.status, response.statusText);
+        
         const data = await response.json();
+        logger.log('📥 Response data:', data);
+        
         if (!response.ok) {
+          logger.error('❌ Developer booking failed:', {
+            status: response.status,
+            error: data.error,
+            details: data
+          });
           throw new Error(data.error || 'Failed to create developer booking');
         }
 
-        logger.log('Developer booking created successfully');
+        logger.log('✅ Developer booking created successfully');
         Alert.alert(
           'Success!',
           'Your booking has been created successfully (developer mode - no payment required).',
@@ -358,6 +378,16 @@ export default function BookingForm({
         });
 
         // Create payment intent using Edge Function
+        logger.log('📞 Calling create-payment-intent endpoint...');
+        logger.log('📦 Request data:', {
+          barberId,
+          serviceId: selectedService.id,
+          date: bookingDate.toISOString(),
+          clientId: user.id,
+          paymentType: 'fee',
+          addonIds: selectedAddonIds
+        });
+        
         const response = await fetch(`${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/create-payment-intent`, {
           method: 'POST',
           headers: { 
@@ -375,8 +405,17 @@ export default function BookingForm({
           })
         });
 
+        logger.log('📡 Response status:', response.status, response.statusText);
+        
         const data = await response.json();
+        logger.log('📥 Response data:', data);
+        
         if (!response.ok) {
+          logger.error('❌ Payment intent failed:', {
+            status: response.status,
+            error: data.error,
+            details: data
+          });
           throw new Error(data.error || 'Failed to create payment intent');
         }
 
@@ -412,8 +451,33 @@ export default function BookingForm({
 
       onClose();
     } catch (error) {
-      logger.error('Error creating booking:', error);
-      Alert.alert('Error', 'Failed to create booking. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('❌ Error creating booking:', {
+        error: errorMessage,
+        stack: error instanceof Error ? error.stack : undefined,
+        barberId,
+        serviceId: selectedService?.id,
+        selectedDate,
+        selectedTime,
+      });
+      
+      // Capture error in Sentry
+      const { captureException } = require('../../shared/lib/sentry');
+      captureException(error as Error, {
+        context: 'BookingForm.handleBooking',
+        selectedService: selectedService?.name,
+        selectedBarber: barberId,
+        selectedDate: selectedDate?.toISOString(),
+        selectedTime,
+        errorMessage,
+      });
+      
+      // Show user-friendly error with more detail
+      Alert.alert(
+        'Booking Failed', 
+        errorMessage || 'Failed to create booking. Please try again or contact support.',
+        [{ text: 'OK' }]
+      );
     } finally {
       setBookingLoading(false);
     }
@@ -490,7 +554,7 @@ export default function BookingForm({
     >
       <SafeAreaView style={[tw`flex-1`, { backgroundColor: theme.colors.background }]}>
         {/* Header */}
-          <View style={tw`px-5 pt-4 pb-6 border-b border-white/10`}>
+        <View style={tw`px-5 pt-4 pb-6 border-b border-white/10`}>
           <View style={tw`flex-row items-center justify-between mb-4`}>
             <TouchableOpacity testID="close-button" onPress={onClose}>
               <Icon name="x" size={24} color={theme.colors.secondary} />

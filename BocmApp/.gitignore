@@ -143,3 +143,4 @@ app-example
 !*.yaml
 !*.config.js
 !*.config.ts
+.env.local

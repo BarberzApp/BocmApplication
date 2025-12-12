@@ -27,7 +27,7 @@ RETURNS TRIGGER AS $$
 DECLARE
     service_duration INTEGER;
     booking_end_time TIMESTAMP WITH TIME ZONE;
-    conflicting_count INTEGER;
+    conflicting_booking_id UUID;
 BEGIN
     -- Get service duration
     SELECT duration INTO service_duration
@@ -46,7 +46,9 @@ BEGIN
     
     -- Use SELECT FOR UPDATE to lock conflicting rows and prevent race condition
     -- This is the PostgreSQL standard way to prevent concurrent booking conflicts
-    SELECT COUNT(*) INTO conflicting_count
+    -- We lock the first conflicting row (if any) and then check if it exists
+    -- This avoids the "FOR UPDATE with aggregate functions" error
+    SELECT b.id INTO conflicting_booking_id
     FROM bookings b
     WHERE b.barber_id = NEW.barber_id
       AND b.id != COALESCE(NEW.id, '00000000-0000-0000-0000-000000000000'::UUID)
@@ -56,9 +58,11 @@ BEGIN
           -- Check if new booking overlaps with existing booking
           (NEW.date < b.end_time AND booking_end_time > b.date)
       )
-    FOR UPDATE; -- This locks the rows and prevents concurrent modifications
+    FOR UPDATE -- This locks the rows and prevents concurrent modifications
+    LIMIT 1; -- Only need to lock one row to detect conflict
     
-    IF conflicting_count > 0 THEN
+    -- If a row was found, we have a conflict
+    IF FOUND THEN
         RAISE EXCEPTION 'This time slot conflicts with an existing booking. Please choose another time.';
     END IF;
     

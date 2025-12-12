@@ -13,12 +13,17 @@ serve(async (req) => {
   }
 
   try {
+    console.log('create-developer-booking function called')
+    
     // Create Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     // Parse request body
+    const requestBody = await req.json()
+    console.log('Request body received:', requestBody)
+    
     const { 
       barberId, 
       serviceId, 
@@ -30,7 +35,16 @@ serve(async (req) => {
       clientId, 
       paymentType,
       addonIds = []
-    } = await req.json()
+    } = requestBody
+    
+    console.log('Parsed request data:', {
+      barberId,
+      serviceId,
+      date,
+      clientId,
+      hasGuestInfo: !!(guestName || guestEmail || guestPhone),
+      addonIds,
+    })
 
     // Validate required fields
     if (!barberId || !serviceId || !date) {
@@ -125,6 +139,13 @@ serve(async (req) => {
       payment_intent_id: `dev_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     }
 
+    console.log('Attempting to create booking with data:', {
+      barber_id: bookingData.barber_id,
+      service_id: bookingData.service_id,
+      date: bookingData.date,
+      end_time: bookingData.end_time,
+    })
+
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
       .insert(bookingData)
@@ -132,15 +153,29 @@ serve(async (req) => {
       .single()
 
     if (bookingError) {
+      console.error('Booking insertion error:', {
+        message: bookingError.message,
+        details: bookingError.details,
+        hint: bookingError.hint,
+        code: bookingError.code,
+      })
+      
       // Database trigger prevents conflicts - handle gracefully
       const isConflict = bookingError.message?.includes('conflicts') || 
-                        bookingError.message?.includes('overlaps')
+                        bookingError.message?.includes('overlaps') ||
+                        bookingError.message?.includes('overlap') ||
+                        bookingError.code === '23505' // Unique violation
+      
+      const errorMessage = isConflict 
+        ? 'This time slot is no longer available. Please select another time.'
+        : bookingError.message || 'Failed to create booking'
       
       return new Response(
         JSON.stringify({ 
-          error: isConflict 
-            ? 'This time slot is no longer available. Please select another time.'
-            : 'Failed to create booking'
+          error: errorMessage,
+          details: bookingError.details,
+          hint: bookingError.hint,
+          code: bookingError.code,
         }),
         { 
           status: isConflict ? 409 : 500,
@@ -195,8 +230,15 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in create-developer-booking function:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error'
+    const errorStack = error instanceof Error ? error.stack : undefined
+    
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({ 
+        error: errorMessage,
+        details: errorStack,
+        type: error instanceof Error ? error.constructor.name : typeof error,
+      }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 

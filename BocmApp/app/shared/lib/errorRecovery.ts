@@ -186,7 +186,16 @@ export class CircuitBreaker {
 /**
  * Check if error is a network error (retryable)
  */
-export function isNetworkError(error: Error): boolean {
+export function isNetworkError(error: any): boolean {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  // Check if error has a message property
+  if (!error.message || typeof error.message !== 'string') {
+    return false;
+  }
+
   const networkErrorMessages = [
     'network request failed',
     'network error',

@@ -158,27 +158,38 @@ class BookingService {
       }
 
       // Insert booking (end_time will be calculated by database trigger)
-      const { data, error } = await supabase
-        .from('bookings')
-        .insert({
-          ...bookingData,
-          status: 'confirmed',
-          payment_status: 'paid'
-        })
-        .select()
-        .single();
+    const { data, error } = await supabase
+      .from('bookings')
+      .insert({
+        ...bookingData,
+        status: 'confirmed',
+        payment_status: 'paid'
+      })
+      .select()
+      .single();
 
-      if (error) {
-        // Check if error is due to conflict (database trigger)
+    if (error) {
+      // Check if error is due to conflict (database trigger)
         if (error.message?.includes('conflicts') || error.message?.includes('slot')) {
-          throw new Error('This time slot is no longer available. Please select another time.')
-        }
-        throw error;
+        throw new Error('This time slot is no longer available. Please select another time.')
       }
+      throw error;
+    }
 
-      return data;
+    return data;
     } catch (err) {
       logger.error('Error creating booking:', err);
+      
+      // Capture error in Sentry
+      const { captureException } = require('./sentry');
+      captureException(err as Error, {
+        context: 'bookingService.createBooking',
+        barberId: bookingData.barber_id,
+        serviceId: bookingData.service_id,
+        clientId: bookingData.client_id,
+        date: bookingData.date,
+      });
+      
       throw err;
     }
   }

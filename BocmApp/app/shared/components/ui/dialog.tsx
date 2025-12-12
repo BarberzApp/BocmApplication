@@ -40,8 +40,15 @@ const Dialog: React.FC<DialogProps> = ({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
-        <View style={styles.dialog}>
+      <TouchableOpacity 
+        style={styles.overlay}
+        activeOpacity={1}
+        onPress={onClose}
+      >
+        <View 
+          style={styles.dialog}
+          onStartShouldSetResponder={() => true}
+        >
           {title && (
             <View style={styles.header}>
               <Text style={styles.title}>{title}</Text>
@@ -54,7 +61,7 @@ const Dialog: React.FC<DialogProps> = ({
           )}
           {children}
         </View>
-      </View>
+      </TouchableOpacity>
     </Modal>
   );
 };

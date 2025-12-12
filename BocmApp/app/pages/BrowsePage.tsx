@@ -198,7 +198,13 @@ function BarberRating({ barberId }: { barberId: string }) {
 }
 
 // ReviewsList Component
-function ReviewsList({ barberId }: { barberId: string }) {
+function ReviewsList({ 
+  barberId, 
+  onAddReview 
+}: { 
+  barberId: string;
+  onAddReview: () => void;
+}) {
   const [reviews, setReviews] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
@@ -280,22 +286,45 @@ function ReviewsList({ barberId }: { barberId: string }) {
         <Text style={[tw`text-lg font-bold text-center mb-2`, { color: theme.colors.foreground }]}>
           No reviews yet
         </Text>
-        <Text style={[tw`text-sm text-center`, { color: theme.colors.mutedForeground }]}>
+        <Text style={[tw`text-sm text-center mb-4`, { color: theme.colors.mutedForeground }]}>
           Be the first to review this stylist!
         </Text>
+        <TouchableOpacity
+          style={[tw`px-6 py-3 rounded-xl`, { backgroundColor: theme.colors.secondary }]}
+          onPress={onAddReview}
+        >
+          <Text style={[tw`font-semibold`, { color: theme.colors.primaryForeground }]}>
+            Add Review
+          </Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
   return (
     <View style={tw`flex-1`}>
-      {reviews.map((review) => (
-        <ReviewCard
-          key={review.id}
-          review={review}
-          showActions={false}
-        />
-      ))}
+      {/* Add Review Button */}
+      <View style={tw`px-4 py-3 border-b border-white/10`}>
+        <TouchableOpacity
+          style={[tw`py-3 rounded-xl items-center`, { backgroundColor: theme.colors.secondary }]}
+          onPress={onAddReview}
+        >
+          <Text style={[tw`font-semibold`, { color: theme.colors.primaryForeground }]}>
+            Add Review
+          </Text>
+        </TouchableOpacity>
+      </View>
+      
+      {/* Reviews List */}
+      <ScrollView style={tw`flex-1`}>
+        {reviews.map((review) => (
+          <ReviewCard
+            key={review.id}
+            review={review}
+            showActions={false}
+          />
+        ))}
+      </ScrollView>
     </View>
   );
 }
@@ -349,6 +378,9 @@ export default function BrowsePage() {
     initialRating?: number;
     initialComment?: string;
   } | null>(null);
+  
+  // Location accuracy state
+  const [locationAccuracy, setLocationAccuracy] = useState<'high' | 'medium' | 'low' | 'error' | null>(null);
 
   useEffect(() => {
     fetchPosts();
@@ -365,15 +397,79 @@ export default function BrowsePage() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+  // Check location accuracy when userLocation changes
+  useEffect(() => {
+    const checkLocationAccuracy = async () => {
+      if (!useLocation || !userLocation?.coords) {
+        setLocationAccuracy(null);
+        return;
+      }
+
+      try {
+        // Use the accuracy from the current userLocation if available
+        // Otherwise, get a fresh location check
+        const accuracy = userLocation.coords.accuracy;
+        
+        if (accuracy !== undefined && accuracy !== null) {
+          // Categorize accuracy: high (< 10m), medium (10-50m), low (> 50m)
+          if (accuracy < 10) {
+            setLocationAccuracy('high');
+          } else if (accuracy <= 50) {
+            setLocationAccuracy('medium');
+          } else {
+            setLocationAccuracy('low');
+          }
+        } else {
+          // If accuracy not available, try to get fresh location
+          try {
+            const position = await Location.getCurrentPositionAsync({
+              accuracy: Location.Accuracy.High,
+            });
+            const freshAccuracy = position.coords.accuracy || 0;
+            
+            if (freshAccuracy < 10) {
+              setLocationAccuracy('high');
+            } else if (freshAccuracy <= 50) {
+              setLocationAccuracy('medium');
+            } else {
+              setLocationAccuracy('low');
+            }
+          } catch (err) {
+            logger.error('Error getting fresh location for accuracy:', err);
+            setLocationAccuracy('error');
+          }
+        }
+      } catch (error) {
+        logger.error('Error checking location accuracy:', error);
+        setLocationAccuracy('error');
+      }
+    };
+
+    // Debounce accuracy check to avoid too frequent updates
+    const timer = setTimeout(() => {
+      checkLocationAccuracy();
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [useLocation, userLocation?.coords?.accuracy]);
+
   // Wrapper for toggleLocation that refreshes barbers
   const toggleLocation = async () => {
     const wasUsingLocation = useLocation;
     await toggleLocationHook();
     
     // Refresh barbers after toggling
-    // If turning OFF location, skip nearby fetch
+    // If turning OFF location, refresh entire page (barbers and posts)
     if (wasUsingLocation) {
-      fetchBarbers(0, false, true); // Skip nearby fetch when turning off
+      // Reset pagination state
+      setBarbersPage(0);
+      setHasMoreBarbers(true);
+      
+      // Refresh everything when turning location off
+      await Promise.all([
+        fetchBarbers(0, false, true), // Skip nearby fetch when turning off
+        fetchPosts() // Refresh posts as well
+      ]);
     } else {
       fetchBarbers(0, false, false); // Use nearby fetch when turning on
     }
@@ -498,12 +594,29 @@ export default function BrowsePage() {
 
       // Sort by distance if location is enabled, and filter out barbers without coordinates
       if (useLocation && userLocation && userLocation.coords) {
-        // Filter out barbers without coordinates
-        const barbersWithLocation = transformedBarbers.filter(barber => barber.distance !== undefined);
-        // Sort by distance (closest first)
-        const sorted = sortByDistance(barbersWithLocation);
+        // Filter out barbers without valid distances
+        const barbersWithLocation = transformedBarbers.filter(barber => 
+          barber.distance !== undefined && 
+          isFinite(barber.distance) && 
+          barber.distance >= 0
+        );
+        
+        // Sort by distance (closest first) - ensure numeric comparison
+        const sorted = barbersWithLocation.sort((a, b) => {
+          const distA = a.distance ?? Infinity;
+          const distB = b.distance ?? Infinity;
+          return distA - distB;
+        });
+        
         transformedBarbers.length = 0;
         transformedBarbers.push(...sorted);
+        
+        logger.log(`Sorted ${sorted.length} barbers by distance`, {
+          firstFew: sorted.slice(0, 3).map(b => ({
+            name: b.name,
+            distance: b.distance?.toFixed(2) + ' mi'
+          }))
+        });
       }
       
       // Check if we have more barbers to load
@@ -634,37 +747,72 @@ export default function BrowsePage() {
       const { barbers } = await response.json();
 
       // Transform to match existing Barber type
-      const transformedBarbers: Barber[] = (barbers || []).map((barber: any) => ({
-        id: barber.id,
-        userId: barber.user_id,
-        name: barber.name || 'Unknown',
-        username: barber.username || 'username',
-        businessName: barber.business_name || barber.name,
-        location: barber.location || barber.city || 'Location',
-        specialties: barber.specialties || [],
-        bio: barber.bio,
-        priceRange: barber.price_range,
-        avatarUrl: processAvatarUrl(barber.avatar_url),
-        coverPhotoUrl: barber.coverphoto,
-        isPublic: barber.is_public ?? true,
-        isStripeReady: false, // Would need to check stripe_account_status
-        instagram: barber.instagram,
-        twitter: barber.twitter,
-        tiktok: barber.tiktok,
-        facebook: barber.facebook,
-        latitude: barber.latitude,
-        longitude: barber.longitude,
-        city: barber.city,
-        state: barber.state,
-        distance: barber.distance_m ? barber.distance_m / 1000 : undefined, // Convert meters to km
-      }));
+      const transformedBarbers: Barber[] = (barbers || [])
+        .map((barber: any) => {
+          // Calculate distance if not provided by edge function (fallback)
+          // Convert meters to miles: 1 meter = 0.000621371 miles
+          let distance: number | undefined = barber.distance_m 
+            ? barber.distance_m * 0.000621371 // Convert meters to miles
+            : undefined;
+          
+          // If distance not provided but we have coordinates, calculate it
+          if (!distance && userLocation?.coords && barber.latitude && barber.longitude) {
+            distance = getDistanceToItem(
+              { latitude: userLocation.coords.latitude, longitude: userLocation.coords.longitude },
+              { latitude: barber.latitude, longitude: barber.longitude }
+            );
+          }
+          
+          return {
+            id: barber.id,
+            userId: barber.user_id,
+            name: barber.name || 'Unknown',
+            username: barber.username || 'username',
+            businessName: barber.business_name || barber.name,
+            location: barber.location || barber.city || 'Location',
+            specialties: barber.specialties || [],
+            bio: barber.bio,
+            priceRange: barber.price_range,
+            avatarUrl: processAvatarUrl(barber.avatar_url),
+            coverPhotoUrl: barber.coverphoto,
+            isPublic: barber.is_public ?? true,
+            isStripeReady: false, // Would need to check stripe_account_status
+            instagram: barber.instagram,
+            twitter: barber.twitter,
+            tiktok: barber.tiktok,
+            facebook: barber.facebook,
+            latitude: barber.latitude,
+            longitude: barber.longitude,
+            city: barber.city,
+            state: barber.state,
+            distance,
+          };
+        })
+        .filter((barber: Barber) => barber.distance !== undefined && isFinite(barber.distance ?? Infinity)) // Only include barbers with valid distances
+        .sort((a: Barber, b: Barber) => {
+          // Sort by distance (closest first)
+          const distA = a.distance ?? Infinity;
+          const distB = b.distance ?? Infinity;
+          return distA - distB;
+        });
 
       setBarbers(transformedBarbers);
       setFilteredBarbers(transformedBarbers);
       setBarbersPage(0);
       setHasMoreBarbers(transformedBarbers.length === limit);
       
-      logger.log(`Loaded ${transformedBarbers.length} nearby barbers`);
+      logger.log(`Loaded ${transformedBarbers.length} nearby barbers`, {
+        distances: transformedBarbers.slice(0, 5).map(b => ({ 
+          name: b.name, 
+          distance: b.distance?.toFixed(2) + ' mi',
+          lat: b.latitude,
+          lon: b.longitude
+        })),
+        userLocation: userLocation?.coords ? {
+          lat: userLocation.coords.latitude,
+          lon: userLocation.coords.longitude
+        } : null
+      });
     } catch (error) {
       logger.error('Error fetching nearby barbers:', error);
       // Fallback to regular fetch (skip nearby fetch to prevent infinite loop)
@@ -1044,9 +1192,32 @@ export default function BrowsePage() {
             { backgroundColor: 'rgba(59,130,246,0.1)', borderWidth: 1, borderColor: 'rgba(59,130,246,0.3)' }
           ]}>
             <MapPin size={16} color={theme.colors.secondary} />
-            <Text style={[tw`ml-2 text-sm font-medium`, { color: theme.colors.secondary }]}>
-              Showing barbers sorted by distance from your location
-            </Text>
+            <View style={tw`flex-1 ml-2`}>
+              <Text style={[tw`text-sm font-medium text-center`, { color: theme.colors.secondary }]}>
+                Showing barbers sorted by distance from your location
+              </Text>
+              <Text style={[tw`text-xs text-center mt-1`, { color: 'rgba(255,255,255,0.6)' }]}>
+                Location accuracy: {locationAccuracy ? (
+                  <Text style={[
+                    tw`font-semibold`,
+                    locationAccuracy === 'high' ? { color: '#22c55e' } :
+                    locationAccuracy === 'medium' ? { color: '#f59e0b' } :
+                    locationAccuracy === 'low' ? { color: '#ef4444' } :
+                    { color: '#ef4444' }
+                  ]}>
+                    {locationAccuracy}
+                  </Text>
+                ) : (
+                  <Text style={[tw`font-semibold`, { color: 'rgba(255,255,255,0.5)' }]}>
+                    checking...
+                  </Text>
+                )}
+                {' • '}
+                <Text style={[tw`italic`, { color: 'rgba(255,255,255,0.5)' }]}>
+                  Location optimization is currently being tested
+                </Text>
+              </Text>
+            </View>
           </View>
         )}
 
@@ -1256,6 +1427,11 @@ export default function BrowsePage() {
                             <MapPin size={16} color={theme.colors.secondary} />
                             <Text style={[tw`text-sm ml-2`, { color: 'rgba(255,255,255,0.7)' }]}>
                               {barber.location}
+                              {useLocation && barber.distance !== undefined && (
+                                <Text style={[tw`ml-2 font-semibold`, { color: theme.colors.secondary }]}>
+                                  • {formatDistance(barber.distance)}
+                                </Text>
+                              )}
                             </Text>
                           </View>
                         )}
@@ -1450,7 +1626,21 @@ export default function BrowsePage() {
             </View>
             
             <ScrollView style={tw`flex-1 px-4`}>
-              <ReviewsList barberId={selectedBarberForReviews} />
+              <ReviewsList 
+                barberId={selectedBarberForReviews} 
+                onAddReview={() => {
+                  // For reviews from browse page, we'll use a placeholder booking ID
+                  // In a real scenario, users should only review after a booking
+                  // For now, we'll allow reviews but mark them as unverified
+                  setReviewFormData({
+                    barberId: selectedBarberForReviews,
+                    bookingId: 'browse-review', // Placeholder - indicates review from browse page
+                    isEditing: false,
+                  });
+                  setShowReviews(false);
+                  setShowReviewForm(true);
+                }}
+              />
             </ScrollView>
           </View>
         </View>

@@ -45,6 +45,10 @@ export type RootStackParamList = {
   ProfilePreview: {
     barberId: string;
   };
+  Cuts: {
+    cutId?: string;
+    barberId?: string;
+  };
 }
 
 // User Types

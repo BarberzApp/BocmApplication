@@ -9,11 +9,11 @@ import {
 describe('locationUtils', () => {
   describe('calculateDistance', () => {
     it('should calculate distance correctly for long and short distances', () => {
-      // Long distance: NY to LA (~3936 km)
-      expect(calculateDistance(40.7128, -74.006, 34.0522, -118.2437)).toBeCloseTo(3936, 0);
+      // Long distance: NY to LA (~2445 miles)
+      expect(calculateDistance(40.7128, -74.006, 34.0522, -118.2437)).toBeCloseTo(2445, 0);
       
-      // Short distance: ~1.1 km
-      expect(calculateDistance(40.7128, -74.006, 40.7228, -74.006)).toBeCloseTo(1.1, 0.1);
+      // Short distance: ~0.68 miles
+      expect(calculateDistance(40.7128, -74.006, 40.7228, -74.006)).toBeCloseTo(0.68, 0.1);
       
       // Identical coordinates
       expect(calculateDistance(40.7128, -74.006, 40.7128, -74.006)).toBe(0);
@@ -33,7 +33,7 @@ describe('locationUtils', () => {
 
     it('should calculate distance for valid coordinates and return undefined for invalid/missing', () => {
       const validLocation: Location = { latitude: 40.7228, longitude: -74.006 };
-      expect(getDistanceToItem(userLocation, validLocation)).toBeCloseTo(1.1, 0.1);
+      expect(getDistanceToItem(userLocation, validLocation)).toBeCloseTo(0.68, 0.1);
       
       expect(getDistanceToItem(userLocation, undefined)).toBeUndefined();
       expect(getDistanceToItem(userLocation, { latitude: NaN, longitude: -74.006 })).toBeUndefined();
@@ -70,21 +70,25 @@ describe('locationUtils', () => {
 
   describe('formatDistance', () => {
     it('should format all distance ranges correctly', () => {
-      // Small distances (meters)
-      expect(formatDistance(0.001)).toBe('1m');
-      expect(formatDistance(0.05)).toBe('50m');
-      expect(formatDistance(0.1)).toBe('100m');
-      expect(formatDistance(0.9)).toBe('900m');
+      // Very small distances (feet)
+      expect(formatDistance(0.001)).toBe('5 ft');
+      expect(formatDistance(0.01)).toBe('53 ft');
+      expect(formatDistance(0.05)).toBe('264 ft');
       
-      // Medium distances (km with decimal)
-      expect(formatDistance(1.2)).toBe('1.2km');
-      expect(formatDistance(5.7)).toBe('5.7km');
-      expect(formatDistance(9.9)).toBe('9.9km');
+      // Small distances (miles with decimal)
+      expect(formatDistance(0.1)).toBe('0.1 mi');
+      expect(formatDistance(0.5)).toBe('0.5 mi');
+      expect(formatDistance(0.9)).toBe('0.9 mi');
       
-      // Large distances (km rounded)
-      expect(formatDistance(10)).toBe('10km');
-      expect(formatDistance(25.7)).toBe('26km');
-      expect(formatDistance(100.3)).toBe('100km');
+      // Medium distances (miles with decimal)
+      expect(formatDistance(1.2)).toBe('1.2 mi');
+      expect(formatDistance(5.7)).toBe('5.7 mi');
+      expect(formatDistance(9.9)).toBe('9.9 mi');
+      
+      // Large distances (miles rounded)
+      expect(formatDistance(10)).toBe('10 mi');
+      expect(formatDistance(25.7)).toBe('26 mi');
+      expect(formatDistance(100.3)).toBe('100 mi');
     });
   });
 });

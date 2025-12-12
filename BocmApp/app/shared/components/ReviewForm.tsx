@@ -12,6 +12,7 @@ import { Star, Send, X } from 'lucide-react-native';
 import tw from 'twrnc';
 import { useReviews } from '../hooks/useReviews';
 import { logger } from '../lib/logger';
+import { validateReviewContent, sanitizeText } from '../lib/contentModeration';
 
 interface ReviewFormProps {
   barberId: string;
@@ -44,22 +45,58 @@ export function ReviewForm({
       return;
     }
 
-    try {
-      if (isEditing && reviewId) {
-        await updateReview(reviewId, { rating, comment });
-      } else {
-        await submitReview({
-          barberId,
-          bookingId,
-          rating,
-          comment: comment.trim() || undefined,
-        });
+    // Validate and sanitize comment content
+    const trimmedComment = comment.trim();
+    if (trimmedComment) {
+      const validation = validateReviewContent(trimmedComment);
+      if (!validation.isValid) {
+        Alert.alert(
+          'Content Not Allowed',
+          validation.reason || 'Your review contains inappropriate content. Please revise your review.',
+          [{ text: 'OK' }]
+        );
+        return;
       }
       
-      onSuccess?.();
-      onClose();
-    } catch (error) {
-      logger.error('Error submitting review:', error);
+      // Sanitize the comment
+      const sanitizedComment = sanitizeText(trimmedComment);
+      
+      try {
+        if (isEditing && reviewId) {
+          await updateReview(reviewId, { rating, comment: sanitizedComment });
+        } else {
+          await submitReview({
+            barberId,
+            bookingId,
+            rating,
+            comment: sanitizedComment || undefined,
+          });
+        }
+        
+        onSuccess?.();
+        onClose();
+      } catch (error) {
+        logger.error('Error submitting review:', error);
+      }
+    } else {
+      // No comment, just submit rating
+      try {
+        if (isEditing && reviewId) {
+          await updateReview(reviewId, { rating, comment: '' });
+        } else {
+          await submitReview({
+            barberId,
+            bookingId,
+            rating,
+            comment: undefined,
+          });
+        }
+        
+        onSuccess?.();
+        onClose();
+      } catch (error) {
+        logger.error('Error submitting review:', error);
+      }
     }
   };
 

@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { User } from '@supabase/supabase-js';
 import { logger } from '../lib/logger';
 import { withTimeout } from '../lib/errorRecovery';
+import { setUserContext } from '../lib/sentry';
 import { Alert } from 'react-native';
 
 // Types
@@ -56,9 +57,18 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
       if (session?.user) {
         await fetchUserProfile(session.user.id);
         await AsyncStorage.setItem('user', JSON.stringify(session.user));
+        
+        // Set Sentry user context
+        setUserContext({
+          id: session.user.id,
+          email: session.user.email,
+        });
       } else {
         setUserProfile(null);
         await AsyncStorage.removeItem('user');
+        
+        // Clear Sentry user context
+        setUserContext(null);
       }
     });
 
@@ -82,8 +92,17 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
       if (session?.user) {
         logger.log('✅ Session found, fetching profile...');
         await fetchUserProfile(session.user.id);
+        
+        // Set Sentry user context
+        setUserContext({
+          id: session.user.id,
+          email: session.user.email,
+        });
       } else {
         logger.log('❌ No active session found');
+        
+        // Clear Sentry user context
+        setUserContext(null);
       }
     } catch (error: any) {
       logger.error('Error checking user session:', error);
@@ -96,20 +115,17 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
         setUser(null);
         setUserProfile(null);
         
+        // Clear Sentry user context
+        setUserContext(null);
+        
         // Clear stale data from storage
         AsyncStorage.removeItem('user').catch(e => 
           logger.error('Failed to clear storage:', e)
         );
         
-        // Show toast notification AFTER clearing state
-        // This prevents any retry attempts
-        setTimeout(() => {
-          Alert.alert(
-            'Session Not Found',
-            'Unable to verify your session. Please log in again.',
-            [{ text: 'OK' }]
-          );
-        }, 100); // Small delay to ensure state is cleared first
+        // Don't show alert - just clear state and let user login
+        // The AuthGuard will handle redirecting to login screen
+        logger.log('✅ State cleared, redirecting to login...');
       } else {
         // For other errors, just clear the state
         setUser(null);

@@ -120,6 +120,7 @@ export default function ProfilePreview() {
   const { barberId } = route.params;
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [barberProfile, setBarberProfile] = useState<BarberProfile | null>(null);
+  const [allCuts, setAllCuts] = useState<Cut[]>([]);
   const [cuts, setCuts] = useState<Cut[]>([]);
   const [services, setServices] = useState<any[]>([]);
   const [posts, setPosts] = useState<any[]>([]);
@@ -128,6 +129,9 @@ export default function ProfilePreview() {
   const [openDialog, setOpenDialog] = useState<null | 'video'>(null);
   const [activeTab, setActiveTab] = useState('cuts');
   const [selectedVideo, setSelectedVideo] = useState<Cut | null>(null);
+  const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
+  const [cutsPage, setCutsPage] = useState(0);
+  const CUTS_PER_PAGE = 12;
 
   useEffect(() => {
     fetchProfileData();
@@ -256,7 +260,10 @@ export default function ProfilePreview() {
               image: cut.barbers?.profiles?.avatar_url
             }
           }));
-          setCuts(formattedCuts);
+          setAllCuts(formattedCuts);
+          // Load first page
+          setCutsPage(0);
+          setCuts(formattedCuts.slice(0, CUTS_PER_PAGE));
         }
 
         // Fetch services
@@ -273,11 +280,21 @@ export default function ProfilePreview() {
         }
       }
 
-      // For now, posts will be empty (could be portfolio images in the future)
-      setPosts([]);
+      // Convert portfolio array to posts format for display
+      if (barberData?.portfolio && Array.isArray(barberData.portfolio) && barberData.portfolio.length > 0) {
+        const portfolioPosts = barberData.portfolio.map((url: string, index: number) => ({
+          id: `portfolio-${index}`,
+          url: url,
+          title: `Portfolio Image ${index + 1}`,
+        }));
+        setPosts(portfolioPosts);
+      } else {
+        setPosts([]);
+      }
 
       // If no barber data, set empty arrays for barber-specific content
       if (!barberData) {
+        setAllCuts([]);
         setCuts([]);
         setServices([]);
         setPosts([]);
@@ -297,8 +314,22 @@ export default function ProfilePreview() {
 
   const onRefresh = async () => {
     setRefreshing(true);
+    setCutsPage(0);
     await fetchProfileData();
     setRefreshing(false);
+  };
+
+  // Load more cuts when scrolling
+  const loadMoreCuts = () => {
+    const nextPage = cutsPage + 1;
+    const startIndex = nextPage * CUTS_PER_PAGE;
+    const endIndex = startIndex + CUTS_PER_PAGE;
+    
+    if (startIndex < allCuts.length) {
+      const newCuts = allCuts.slice(startIndex, endIndex);
+      setCuts(prev => [...prev, ...newCuts]);
+      setCutsPage(nextPage);
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -333,7 +364,17 @@ export default function ProfilePreview() {
                 </Text>
               </View>
             ) : (
-              <View style={tw`py-4`}>
+              <ScrollView
+                style={tw`py-4`}
+                onScroll={(event) => {
+                  const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+                  const paddingToBottom = 20;
+                  if (layoutMeasurement.height + contentOffset.y >= contentSize.height - paddingToBottom) {
+                    loadMoreCuts();
+                  }
+                }}
+                scrollEventThrottle={400}
+              >
                 {/* Grid Layout for Cuts */}
                 <View style={tw`flex-row flex-wrap justify-between`}>
                   {cuts.map((cut) => (
@@ -341,19 +382,25 @@ export default function ProfilePreview() {
                       key={cut.id}
                       videoUrl={cut.url}
                       title={cut.title}
-                      barberName={cut.barber.name}
-                      barberAvatar={cut.barber.image}
+                      barberName={cut.barber?.name || 'Unknown'}
+                      barberAvatar={cut.barber?.image || undefined}
                       views={cut.views}
                       likes={cut.likes}
                       onPress={() => {
-                        // Navigate to cuts page for this specific video
-                        (global as any).selectedCutId = cut.id;
-                        navigation.navigate('Cuts' as never);
+                        // Navigate to cuts page for this specific video from this barber
+                        if (barberProfile?.id) {
+                          navigation.navigate('Cuts', { cutId: cut.id, barberId: barberProfile.id });
+                        }
                       }}
                     />
                   ))}
                 </View>
-              </View>
+                {cuts.length < allCuts.length && (
+                  <View style={tw`py-4 items-center`}>
+                    <ActivityIndicator size="small" color={theme.colors.secondary} />
+                  </View>
+                )}
+              </ScrollView>
             )}
           </View>
         );
@@ -375,23 +422,78 @@ export default function ProfilePreview() {
               <View style={tw`py-4`}>
                 {/* Grid Layout for Portfolio Pictures */}
                 <View style={tw`flex-row flex-wrap justify-between`}>
-                  {posts.map((post) => (
-                    <TouchableOpacity
-                      key={post.id}
-                      style={tw`w-[${(width - 48) / 3}px] h-[${(width - 48) / 3}px] mb-2`}
-                      onPress={() => {
-                        // Handle portfolio picture press
-                        setSelectedVideo(post);
-                        setOpenDialog('video');
-                      }}
-                    >
-                      <Image
-                        source={{ uri: post.url }}
-                        style={tw`w-full h-full rounded-lg`}
-                        resizeMode="cover"
-                      />
-                    </TouchableOpacity>
-                  ))}
+                  {posts.map((post) => {
+                    const itemWidth = (width - 48) / 3;
+                    const hasFailed = failedImages.has(post.id);
+                    return (
+                      <TouchableOpacity
+                        key={post.id}
+                        style={[
+                          tw`mb-2 rounded-lg overflow-hidden`,
+                          { width: itemWidth, height: itemWidth }
+                        ]}
+                        onPress={() => {
+                          // Handle portfolio picture press
+                          setSelectedVideo(post);
+                          setOpenDialog('video');
+                        }}
+                      >
+                        {hasFailed ? (
+                          <View
+                            style={[
+                              tw`w-full h-full items-center justify-center`,
+                              {
+                                backgroundColor: 'rgba(255,255,255,0.1)',
+                                borderWidth: 1,
+                                borderColor: 'rgba(255,255,255,0.2)',
+                              }
+                            ]}
+                          >
+                            <Heart size={24} color={theme.colors.mutedForeground} />
+                            <Text style={[tw`text-xs mt-1`, { color: theme.colors.mutedForeground }]}>
+                              Failed to load
+                            </Text>
+                          </View>
+                        ) : (
+                          <Image
+                            source={{ 
+                              uri: post.url,
+                              cache: 'force-cache',
+                            }}
+                            style={tw`w-full h-full`}
+                            resizeMode="cover"
+                            onError={(error) => {
+                              const nativeEvent = error?.nativeEvent as any;
+                              const nativeError = nativeEvent?.error || 'Unknown error';
+                              const responseCode = nativeEvent?.responseCode;
+                              const httpHeaders = nativeEvent?.httpResponseHeaders;
+                              logger.error('Portfolio image load error:', { 
+                                url: post.url, 
+                                postId: post.id, 
+                                nativeError,
+                                responseCode,
+                                httpHeaders,
+                                fullError: nativeEvent 
+                              });
+                              setFailedImages(prev => new Set(prev).add(post.id));
+                            }}
+                            onLoad={() => {
+                              logger.log('Portfolio image loaded successfully:', { url: post.url, postId: post.id });
+                              // Remove from failed set if it loads successfully
+                              setFailedImages(prev => {
+                                const newSet = new Set(prev);
+                                newSet.delete(post.id);
+                                return newSet;
+                              });
+                            }}
+                            onLoadStart={() => {
+                              logger.log('Portfolio image load started:', { url: post.url, postId: post.id });
+                            }}
+                          />
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
               </View>
             )}
@@ -683,54 +785,20 @@ export default function ProfilePreview() {
         {renderTabContent()}
       </ScrollView>
 
-      {/* Video Dialog */}
+      {/* Portfolio Image Dialog */}
       <Dialog visible={openDialog === 'video'} onClose={() => setOpenDialog(null)}>
-        <DialogContent>
-          {selectedVideo && (
-            <>
-              <View style={tw`aspect-video`}>
-                <Image
-                  source={{ uri: selectedVideo.url }}
-                  style={tw`w-full h-full`}
-                  resizeMode="cover"
-                />
-              </View>
-              <View style={tw`p-4`}>
-                <View style={tw`flex-row items-center gap-3 mb-3`}>
-                  <Avatar size="md" src={selectedVideo.barber.image} fallback={getInitials(selectedVideo.barber.name || '')} />
-                  <View style={tw`flex-1`}>
-                    <Text style={[tw`font-bold text-lg`, { color: theme.colors.foreground }]}>
-                      {selectedVideo.title}
-                    </Text>
-                    <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>
-                      {selectedVideo.barber.name}
-                    </Text>
-                  </View>
-                </View>
-                <View style={tw`flex-row items-center justify-around`}>
-                  <View style={tw`flex-row items-center gap-1`}>
-                    <Eye size={16} color={theme.colors.mutedForeground} />
-                    <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>
-                      {selectedVideo.views} views
-                    </Text>
-                  </View>
-                  <View style={tw`flex-row items-center gap-1`}>
-                    <Heart size={16} color={theme.colors.mutedForeground} />
-                    <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>
-                      {selectedVideo.likes} likes
-                    </Text>
-                  </View>
-                  <View style={tw`flex-row items-center gap-1`}>
-                    <Share2 size={16} color={theme.colors.mutedForeground} />
-                    <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>
-                      {selectedVideo.shares} shares
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            </>
-          )}
-        </DialogContent>
+        {selectedVideo && (
+          <View style={tw`items-center justify-center`}>
+            <Image
+              source={{ uri: selectedVideo.url }}
+              style={[tw`rounded-xl`, { 
+                width: Math.min(width - 80, 400),
+                height: Math.min(width - 80, 400),
+              }]}
+              resizeMode="contain"
+            />
+          </View>
+        )}
       </Dialog>
     </SafeAreaView>
   );

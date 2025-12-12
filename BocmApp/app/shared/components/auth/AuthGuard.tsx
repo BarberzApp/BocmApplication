@@ -20,15 +20,16 @@ export function AuthGuard({
   showLoading = true 
 }: AuthGuardProps) {
   const { user, userProfile, loading } = useAuth();
-  const { push } = useSafeNavigation();
+  const { push, reset } = useSafeNavigation();
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
     if (!loading) {
       // Check if user is authenticated
       if (!user) {
-        logger.log('🔒 AuthGuard: User not authenticated, redirecting to login');
-        push(fallbackRoute);
+        logger.log('🔒 AuthGuard: User not authenticated, resetting to login');
+        // Use reset instead of push to ensure clean navigation state
+        reset([{ name: fallbackRoute }]);
         return;
       }
 

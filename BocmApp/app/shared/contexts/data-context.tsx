@@ -226,7 +226,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setBookings(prev => [...prev, data])
       return data.id
     } catch (err) {
-        logger.error('Error creating booking:', err)
+      logger.error('Error creating booking:', err)
+      
+      // Capture error in Sentry
+      const { captureException } = require('../lib/sentry');
+      captureException(err as Error, {
+        context: 'data-context.createBooking',
+      });
+      
       throw err
     }
   }

@@ -50,6 +50,28 @@ const DAYS_OF_WEEK = [
   'Sunday'
 ];
 
+// Map day names to JavaScript day numbers (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
+const DAY_TO_NUMBER: Record<string, number> = {
+  'Sunday': 0,
+  'Monday': 1,
+  'Tuesday': 2,
+  'Wednesday': 3,
+  'Thursday': 4,
+  'Friday': 5,
+  'Saturday': 6
+};
+
+// Map JavaScript day numbers to day names
+const NUMBER_TO_DAY: Record<number, string> = {
+  0: 'Sunday',
+  1: 'Monday',
+  2: 'Tuesday',
+  3: 'Wednesday',
+  4: 'Thursday',
+  5: 'Friday',
+  6: 'Saturday'
+};
+
 const generateTimeOptions = () => {
   const options = [];
   for (let hour = 0; hour < 24; hour++) {
@@ -97,7 +119,8 @@ export function AvailabilityManager({ barberId, onUpdate }: AvailabilityManagerP
 
       if (data && data.length > 0) {
         const loadedSchedule = DAYS_OF_WEEK.map(day => {
-          const dayData = data.find(d => d.day_of_week === day.toLowerCase());
+          const dayNumber = DAY_TO_NUMBER[day];
+          const dayData = data.find(d => d.day_of_week === dayNumber);
           if (dayData) {
             return {
               day,
@@ -141,10 +164,9 @@ export function AvailabilityManager({ barberId, onUpdate }: AvailabilityManagerP
         .filter(day => day.enabled)
         .map(day => ({
           barber_id: barberId,
-          day_of_week: day.day.toLowerCase(),
+          day_of_week: DAY_TO_NUMBER[day.day],
           start_time: day.slots[0].start + ':00',
-          end_time: day.slots[0].end + ':00',
-          is_available: true
+          end_time: day.slots[0].end + ':00'
         }));
 
       if (availabilityData.length > 0) {

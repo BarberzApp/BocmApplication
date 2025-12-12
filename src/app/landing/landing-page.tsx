@@ -42,7 +42,7 @@ export default function LandingPage() {
   const [averageMonthlyAmount, setAverageMonthlyAmount] = useState("5000");
   const [cutCost, setCutCost] = useState("50");
   const [numberOfCuts, setNumberOfCuts] = useState(100);
-  const [platformFeeBonus, setPlatformFeeBonus] = useState(135);
+  const [platformFeeBonus, setPlatformFeeBonus] = useState(120); // $1.20 per cut (40% of $3.00 after Stripe fee)
   const [extraAnnual, setExtraAnnual] = useState(1620);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [headerState, setHeaderState] = useState<'default' | 'scrolled' | 'hidden'>('default');
@@ -51,7 +51,8 @@ export default function LandingPage() {
     const monthlyAmount = parseFloat(averageMonthlyAmount) || 5000;
     const servicePrice = parseFloat(cutCost) || 50;
     const cuts = Math.round(monthlyAmount / servicePrice);
-    const bonus = cuts * 1.35;
+    // Barber gets $1.20 per booking (40% of $3.00 after Stripe fee)
+    const bonus = cuts * 1.20;
     const annual = bonus * 12;
     setNumberOfCuts(cuts);
     setPlatformFeeBonus(bonus);
@@ -528,7 +529,7 @@ export default function LandingPage() {
                   <div className="text-base sm:text-lg text-white/80 mb-4">That's <span className="font-bold text-secondary">${extraAnnual.toLocaleString(undefined, {maximumFractionDigits: 0})}</span> per year in extra income!</div>
                   <div className="bg-secondary/20 rounded-2xl p-4 sm:p-6 border border-secondary/30 inline-block mt-4">
                     <div className="text-white/80 text-xs sm:text-sm mb-1">Breakdown:</div>
-                    <div className="text-white text-sm sm:text-base font-semibold">{numberOfCuts} cuts × $1.35 = <span className="text-secondary">${platformFeeBonus.toLocaleString(undefined, {maximumFractionDigits: 0})}</span> per month</div>
+                    <div className="text-white text-sm sm:text-base font-semibold">{numberOfCuts} cuts × $1.20 = <span className="text-secondary">${platformFeeBonus.toLocaleString(undefined, {maximumFractionDigits: 0})}</span> per month</div>
                   </div>
                 </div>
               </div>
