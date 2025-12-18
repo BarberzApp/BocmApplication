@@ -21,7 +21,7 @@ export async function POST(request: Request) {
       .single()
 
     if (error) {
-      console.error('Error fetching barber:', error)
+      logger.error('Error fetching barber', error)
       return NextResponse.json(
         { error: 'Failed to fetch barber status' },
         { status: 500 }
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
       barber: barber 
     })
   } catch (error) {
-    console.error('Error checking barber status:', error)
+    logger.error('Error checking barber status', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to check barber status' },
       { status: 500 }

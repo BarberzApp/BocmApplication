@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { errorReporter } from '@/shared/utils/error-reporter'
+import { logger } from '@/shared/lib/logger'
 
 interface ErrorReportingProviderProps {
   children: React.ReactNode
@@ -13,7 +14,7 @@ export function ErrorReportingProvider({ children }: ErrorReportingProviderProps
     errorReporter
 
     // Add any additional initialization here if needed
-    console.log('🛡️ Error reporting system initialized')
+    logger.debug('Error reporting system initialized')
 
     return () => {
       // Cleanup if needed

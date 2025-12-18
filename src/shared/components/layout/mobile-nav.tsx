@@ -6,6 +6,7 @@ import Link from "next/link"
 import { Home, Search, Settings as SettingsIcon, Calendar, User, Video, DollarSign, Users, LogOut } from "lucide-react"
 import { useAuth } from "@/shared/hooks/use-auth-zustand"
 import { cn } from "@/shared/lib/utils"
+import { logger } from "@/shared/lib/logger"
 
 export function MobileNav() {
   const [pathname, setPathname] = useState<string>('')
@@ -58,12 +59,10 @@ export function MobileNav() {
       case "client":
         return [
           { name: "Bookings", href: "/calendar", icon: Calendar },
-          { name: "Cuts", href: "/cuts", icon: Video },
         ]
       case "barber":
         return [
           { name: "Calendar", href: "/calendar", icon: Calendar },
-          { name: "Cuts", href: "/cuts", icon: Video },
         ]
       default:
         return []
@@ -78,29 +77,22 @@ export function MobileNav() {
       await logout()
       window.location.href = "/"
     } catch (error) {
-      console.error("Logout failed:", error)
+      logger.error("Logout failed", error)
     }
   }
 
-  // Custom nav order: Browse | Calendar | [center: Cuts] | Profile | Settings
+  // Custom nav order: Browse | Calendar | Profile | Settings
   function getOrderedNavItems() {
     const browse = allNavItems.find(item => item.href === '/browse');
     const calendar = allNavItems.find(item => item.href === '/calendar');
-    const cuts = allNavItems.find(item => item.href === '/cuts');
     const profile = allNavItems.find(item => item.href === '/settings/barber-profile');
     const settings = allNavItems.find(item => item.href === '/settings');
     
-    // For both clients and barbers, center Cuts if available
-    if (cuts) {
-      return [browse, calendar, cuts, profile, settings].filter(Boolean);
-    } else {
-      // Fallback if Cuts is not available
-      return [browse, calendar, profile, settings].filter(Boolean);
-    }
+    return [browse, calendar, profile, settings].filter(Boolean);
   }
   
   const orderedNavItems = getOrderedNavItems();
-  const centerIndex = orderedNavItems.findIndex(item => item?.href === '/cuts') !== -1 ? 2 : 1;
+  const centerIndex = 1; // Center the calendar item
   const leftItems = orderedNavItems.slice(0, centerIndex);
   const centerItem = orderedNavItems[centerIndex];
   const rightItems = orderedNavItems.slice(centerIndex + 1, centerIndex + 3);
@@ -122,7 +114,6 @@ export function MobileNav() {
             (item.href === "/settings/barber-profile" && pathname.startsWith("/settings")) ||
             (item.href === "/settings" && pathname.startsWith("/settings")) ||
             (item.href === "/calendar" && pathname.startsWith("/calendar")) ||
-            (item.href === "/cuts" && pathname.startsWith("/cuts")) ||
             (item.href === "/browse" && pathname.startsWith("/browse"))
           
           return (
@@ -177,11 +168,6 @@ export function MobileNav() {
             <centerItem.icon className="h-6 w-6 mb-1 text-primary drop-shadow-lg relative z-10 group-hover:scale-110 transition-transform duration-300" />
             <span className="text-xs font-bold text-primary drop-shadow flex items-center relative z-10 tracking-wide">
               {centerItem.name}
-              {centerItem.name === 'Cuts' && (
-                <span className="ml-1 bg-purple-600 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full align-middle shadow-sm">
-                  Beta
-                </span>
-              )}
             </span>
           </Link>
         )}
@@ -193,7 +179,6 @@ export function MobileNav() {
             (item.href === "/settings/barber-profile" && pathname.startsWith("/settings")) ||
             (item.href === "/settings" && pathname.startsWith("/settings")) ||
             (item.href === "/calendar" && pathname.startsWith("/calendar")) ||
-            (item.href === "/cuts" && pathname.startsWith("/cuts")) ||
             (item.href === "/browse" && pathname.startsWith("/browse"))
           
           return (

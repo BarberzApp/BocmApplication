@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { ServiceAddon, BookingAddon, CreateServiceAddonInput, UpdateServiceAddonInput } from '@/shared/types/addon'
+import { logger } from './logger'
 
 export class AddonService {
   // Get all add-ons for a barber
@@ -15,7 +16,7 @@ export class AddonService {
       if (error) throw error
       return data || []
     } catch (error) {
-      console.error('Error fetching barber add-ons:', error)
+      logger.error('Error fetching barber add-ons', error)
       throw error
     }
   }
@@ -32,7 +33,7 @@ export class AddonService {
       if (error) throw error
       return data
     } catch (error) {
-      console.error('Error creating add-on:', error)
+      logger.error('Error creating add-on', error)
       throw error
     }
   }
@@ -50,7 +51,7 @@ export class AddonService {
       if (error) throw error
       return data
     } catch (error) {
-      console.error('Error updating add-on:', error)
+      logger.error('Error updating add-on', error)
       throw error
     }
   }
@@ -65,7 +66,7 @@ export class AddonService {
 
       if (error) throw error
     } catch (error) {
-      console.error('Error deleting add-on:', error)
+      logger.error('Error deleting add-on', error)
       throw error
     }
   }
@@ -84,7 +85,7 @@ export class AddonService {
       if (error) throw error
       return data || []
     } catch (error) {
-      console.error('Error fetching booking add-ons:', error)
+      logger.error('Error fetching booking add-ons', error)
       throw error
     }
   }
@@ -113,7 +114,7 @@ export class AddonService {
 
       if (insertError) throw insertError
     } catch (error) {
-      console.error('Error adding add-ons to booking:', error)
+      logger.error('Error adding add-ons to booking', error)
       throw error
     }
   }
@@ -129,7 +130,7 @@ export class AddonService {
 
       if (error) throw error
     } catch (error) {
-      console.error('Error removing add-ons from booking:', error)
+      logger.error('Error removing add-ons from booking', error)
       throw error
     }
   }
@@ -146,7 +147,7 @@ export class AddonService {
       
       return data?.reduce((total, addon) => total + addon.price, 0) || 0
     } catch (error) {
-      console.error('Error calculating add-on total:', error)
+      logger.error('Error calculating add-on total', error)
       throw error
     }
   }

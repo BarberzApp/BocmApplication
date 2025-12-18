@@ -1,4 +1,5 @@
 import { sendSMS } from '@/shared/utils/sendSMS';
+const { logger } = require('@/shared/lib/logger');
 
 export async function POST(req) {
   try {
@@ -21,7 +22,7 @@ export async function POST(req) {
     await sendSMS({ phoneNumber, carrier, message });
     return new Response(JSON.stringify({ success: true }), { status: 200 });
   } catch (e) {
-    console.error('SMS sending error:', e);
+    logger.error('SMS sending error', e);
     return new Response(JSON.stringify({ 
       error: e.message,
       details: process.env.NODE_ENV === 'development' ? e.stack : undefined

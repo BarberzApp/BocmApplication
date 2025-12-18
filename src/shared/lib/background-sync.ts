@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { GoogleCalendarAPI, CalendarSyncService } from './google-calendar-api';
+import { logger } from './logger';
 
 interface SyncJob {
   id: string;
@@ -31,11 +32,11 @@ export class BackgroundSyncService {
   // Start background sync service
   async start(intervalMinutes: number = 15) {
     if (this.isRunning) {
-      console.log('Background sync service is already running');
+      logger.debug('Background sync service is already running');
       return;
     }
 
-    console.log(`Starting background sync service with ${intervalMinutes} minute interval`);
+    logger.debug(`Starting background sync service with ${intervalMinutes} minute interval`);
     this.isRunning = true;
 
     // Run initial sync
@@ -54,13 +55,13 @@ export class BackgroundSyncService {
       this.syncInterval = null;
     }
     this.isRunning = false;
-    console.log('Background sync service stopped');
+    logger.debug('Background sync service stopped');
   }
 
   // Run sync for all active connections
   private async runSync() {
     try {
-      console.log('Running background sync...');
+      logger.debug('Running background sync...');
 
       // Get all active calendar connections
       const { data: connections, error } = await supabase
@@ -69,23 +70,23 @@ export class BackgroundSyncService {
         .eq('sync_enabled', true);
 
       if (error) {
-        console.error('Error fetching calendar connections:', error);
+        logger.error('Error fetching calendar connections', error);
         return;
       }
 
       if (!connections || connections.length === 0) {
-        console.log('No active calendar connections found');
+        logger.debug('No active calendar connections found');
         return;
       }
 
-      console.log(`Found ${connections.length} active calendar connections`);
+      logger.debug(`Found ${connections.length} active calendar connections`);
 
       // Process each connection
       for (const connection of connections) {
         try {
           await this.syncConnection(connection);
         } catch (error) {
-          console.error(`Error syncing connection ${connection.id}:`, error);
+          logger.error(`Error syncing connection ${connection.id}`, error);
           
           // Log sync error
           await CalendarSyncService.logSyncOperation(
@@ -99,22 +100,22 @@ export class BackgroundSyncService {
         }
       }
 
-      console.log('Background sync completed');
+      logger.debug('Background sync completed');
     } catch (error) {
-      console.error('Error in background sync:', error);
+      logger.error('Error in background sync', error);
     }
   }
 
   // Sync a single connection
   private async syncConnection(connection: any) {
-    console.log(`Syncing connection ${connection.id} for user ${connection.user_id}`);
+    logger.debug(`Syncing connection ${connection.id} for user ${connection.user_id}`);
 
     // Check if token is expired
     const api = new GoogleCalendarAPI(connection.access_token, connection.refresh_token);
     
     if (api.isTokenExpired(connection.expires_at)) {
       if (!connection.refresh_token) {
-        console.error(`Connection ${connection.id} has expired token and no refresh token`);
+        logger.error(`Connection ${connection.id} has expired token and no refresh token`);
         return;
       }
 
@@ -135,7 +136,7 @@ export class BackgroundSyncService {
         connection.access_token = newTokens.access_token;
         connection.expires_at = newTokens.expires_at;
       } catch (refreshError) {
-        console.error(`Error refreshing token for connection ${connection.id}:`, refreshError);
+        logger.error(`Error refreshing token for connection ${connection.id}`, refreshError);
         return;
       }
     }
@@ -173,7 +174,7 @@ export class BackgroundSyncService {
       syncResults
     );
 
-    console.log(`Sync completed for connection ${connection.id}:`, syncResults);
+    logger.debug(`Sync completed for connection ${connection.id}`, { syncResults });
   }
 
   // Sync bookings to Google Calendar
@@ -234,12 +235,12 @@ export class BackgroundSyncService {
             results.syncedToGoogle++;
           }
         } catch (bookingError) {
-          console.error(`Error syncing booking ${booking.id}:`, bookingError);
+          logger.error(`Error syncing booking ${booking.id}`, bookingError);
           results.errors.push(`Failed to sync booking ${booking.id}`);
         }
       }
     } catch (error) {
-      console.error('Error syncing bookings to Google:', error);
+      logger.error('Error syncing bookings to Google', error);
       results.errors.push('Failed to sync bookings to Google Calendar');
     }
   }
@@ -284,12 +285,12 @@ export class BackgroundSyncService {
             results.syncedFromGoogle++;
           }
         } catch (eventError) {
-          console.error(`Error syncing event ${event.id}:`, eventError);
+          logger.error(`Error syncing event ${event.id}`, eventError);
           results.errors.push(`Failed to sync event ${event.id}`);
         }
       }
     } catch (error) {
-      console.error('Error syncing events from Google:', error);
+      logger.error('Error syncing events from Google', error);
       results.errors.push('Failed to sync events from Google Calendar');
     }
   }
@@ -310,7 +311,7 @@ export class BackgroundSyncService {
       await this.syncConnection(connection);
       return true;
     } catch (error) {
-      console.error('Error in manual sync:', error);
+      logger.error('Error in manual sync', error);
       throw error;
     }
   }

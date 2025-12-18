@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Button } from '@/shared/components/ui/button'
+import { logger } from '@/shared/lib/logger'
 import { Card, CardContent } from '@/shared/components/ui/card'
 import { Badge } from '@/shared/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog'
@@ -175,22 +176,22 @@ export default function CutsPage() {
 const playVideo = useCallback((index: number) => {
   const video = videoRefs.current[index]
   if (!video) {
-    console.warn(`⚠️ Video element not found for index ${index}`)
+    logger.warn(`Video element not found for index ${index}`)
     return
   }
   
-  console.log(`▶️ Attempting to play video ${index}`)
+  logger.debug(`Attempting to play video ${index}`)
   
   // Ensure video is ready
   if (video.readyState >= 2) { // HAVE_CURRENT_DATA
     video.play().catch((error) => {
-      console.warn(`⚠️ Failed to play video ${index}:`, error)
+      logger.warn(`Failed to play video ${index}`, error)
     })
   } else {
-    console.log(`⏳ Video ${index} not ready yet, waiting...`)
+    logger.debug(`Video ${index} not ready yet, waiting...`)
     video.addEventListener('canplay', () => {
       video.play().catch((error) => {
-        console.warn(`⚠️ Failed to play video ${index} after ready:`, error)
+        logger.warn(`Failed to play video ${index} after ready`, error)
       })
     }, { once: true })
   }
@@ -199,16 +200,16 @@ const playVideo = useCallback((index: number) => {
 const pauseVideo = useCallback((index: number) => {
   const video = videoRefs.current[index]
   if (!video) {
-    console.warn(`⚠️ Video element not found for index ${index}`)
+    logger.warn(`Video element not found for index ${index}`)
     return
   }
   
-  console.log(`⏸️ Pausing video ${index}`)
+  logger.debug(`Pausing video ${index}`)
   video.pause()
 }, [])
 
 const pauseAllVideosExcept = useCallback((exceptIndex: number) => {
-  console.log(`🛑 Pausing all videos except ${exceptIndex}`)
+  logger.debug(`Pausing all videos except ${exceptIndex}`)
   videoRefs.current.forEach((video, index) => {
     if (video && index !== exceptIndex) {
       pauseVideo(index)
@@ -296,7 +297,7 @@ useEffect(() => {
       const cut = cuts[idx]
       if (cut && !mutedStates[cut.id]) {
         video.currentTime = 0
-        video.play().catch(console.error)
+        video.play().catch((error) => logger.error('Error playing video', error))
       }
     } else {
       video.pause()
@@ -314,7 +315,7 @@ const handleVideoTouchStart = useCallback((index: number) => {
     // If video is playing, pause it
     if (!video.paused) {
       pauseVideo(index)
-      console.log(`⏸️ Video ${index} paused due to long press`)
+      logger.debug(`Video ${index} paused due to long press`)
       
       // Show pause indicator after video is paused
       setHoldingForPause(prev => ({ ...prev, [index]: true }))
@@ -353,7 +354,7 @@ const handleVideoClick = useCallback((index: number) => {
   // Only play if video is paused
   if (video.paused) {
     playVideo(index)
-    console.log(`▶️ Video ${index} played due to click`)
+    logger.debug(`Video ${index} played due to click`)
     
     // Haptic feedback
     if (typeof window !== 'undefined' && 'navigator' in window && 'vibrate' in navigator) {
@@ -406,14 +407,14 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
 
   // Handle category selection with auto-scroll
   const handleCategorySelect = useCallback((categoryId: string) => {
-    console.log('🎯 Category selected:', categoryId, 'Current category:', currentCategory);
+    logger.debug('Category selected', { categoryId, currentCategory });
     
     if (categoryId === currentCategory) {
-      console.log('🔄 Same category selected, no update needed');
+      logger.debug('Same category selected, no update needed');
       return // Prevent unnecessary updates
     }
     
-    console.log('✅ Updating category from', currentCategory, 'to', categoryId);
+    logger.debug('Updating category', { from: currentCategory, to: categoryId });
     setIsFilterAnimating(true)
     setCurrentCategory(categoryId)
     scrollToSelectedFilter(categoryId)
@@ -431,7 +432,7 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
 
   // Handle clear filters - forces refresh even if already on 'all'
   const handleClearFilters = useCallback(() => {
-    console.log('�� Clearing filters - forcing refresh to "For You"');
+    logger.debug('Clearing filters - forcing refresh to "For You"');
     setIsFilterAnimating(true)
     setCurrentCategory('all')
     scrollToSelectedFilter('all')
@@ -468,7 +469,7 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
           })
         },
         (error) => {
-          console.error('Error getting location:', error)
+          logger.error('Error getting location', error)
           toast({
             title: 'Location Error',
             description: 'Could not get your current location.',
@@ -495,7 +496,7 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
   const fetchCuts = useCallback(async () => {
     try {
       setLoading(true)
-      console.log('🔄 Fetching cuts data...')
+      logger.debug('Fetching cuts data...')
       
       let query = supabase
         .from('cuts')
@@ -526,16 +527,16 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
       const { data, error } = await query
       
       if (error) {
-        console.error('❌ Database error:', error)
+        logger.error('Database error', error)
         throw new Error(`Database error: ${error.message}`)
       }
 
       if (!data) {
-        console.error('❌ No data returned from database')
+        logger.error('No data returned from database')
         throw new Error('No data returned from database')
       }
 
-      console.log(`✅ Fetched ${data.length} cuts from database`)
+      logger.debug(`Fetched ${data.length} cuts from database`)
 
       let filteredCuts = data?.map((cut: any) => ({
         ...cut,
@@ -549,8 +550,7 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
       // Robust client-side specialty filter (now checks barber's specialties)
       if (currentCategory !== 'all') {
         const specialtyFilter = currentCategory.replace(/-/g, ' ').toLowerCase().trim();
-        console.log('🔍 Filtering by specialty:', specialtyFilter);
-        console.log('📊 Total cuts before filtering:', filteredCuts.length);
+        logger.debug('Filtering by specialty', { specialtyFilter, beforeCount: filteredCuts.length });
         
         filteredCuts = filteredCuts.filter(cut => {
           const specialties = Array.isArray(cut.barbers?.specialties)
@@ -559,11 +559,8 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
               ? [cut.barbers.specialties]
               : [];
           
-          console.log(`🎬 Cut "${cut.title}" - Barber specialties:`, specialties);
-          
           // For specific specialty filters, only show cuts from barbers with that specialty
           if (!specialties.length) {
-            console.log(`❌ Cut "${cut.title} - No specialties found, excluding`);
             return false;
           }
           
@@ -573,16 +570,14 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
               s.toLowerCase().replace(/-/g, ' ').trim() === specialtyFilter
           );
           
-          console.log(`✅ Cut "${cut.title}" - Has matching specialty:`, hasMatchingSpecialty);
           return hasMatchingSpecialty;
         });
         
-        console.log('📊 Total cuts after filtering:', filteredCuts.length);
+        logger.debug('Total cuts after filtering', { afterCount: filteredCuts.length });
       } else {
         // For "For You (all), show cuts from barbers with any specialties
         // This ensures "For You" encompasses all specialties
-        console.log('🌟 Showing "For You" - all cuts from barbers with any specialties');
-        console.log('📊 Total cuts in "For You":', filteredCuts.length);
+        logger.debug('Showing "For You" - all cuts from barbers with any specialties', { count: filteredCuts.length });
       }
 
       // Apply distance filter if using current location
@@ -625,7 +620,7 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
         }).length
       })
     } catch (error) {
-      console.error('Error fetching cuts:', error)
+      logger.error('Error fetching cuts', error)
       toast({
         title: 'Error',
         description: 'Failed to load cuts.',
@@ -692,10 +687,10 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
               
               // Play the video
               video.play().catch((error) => {
-                console.warn(`⚠️ Failed to autoplay video ${index}:`, error)
+                logger.warn(`Failed to autoplay video ${index}`, error)
               })
               
-              console.log(`▶️ Playing video ${index} (muted: true)`)
+              logger.debug(`Playing video ${index} (muted: true)`)
             }
             
             // Track view
@@ -943,7 +938,7 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
         window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, '_blank')
       }
     } catch (error) {
-      console.error('Error sharing:', error)
+      logger.error('Error sharing', error)
       toast({
         title: 'Error',
         description: 'Failed to share video.',
@@ -980,10 +975,10 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
         })
       
       if (error) {
-        console.error('Error tracking view:', error)
+        logger.error('Error tracking view', error)
       }
     } catch (error) {
-      console.error('Error tracking view:', error)
+      logger.error('Error tracking view', error)
     }
   }
 
@@ -1002,7 +997,7 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
           .eq('action_type', 'like')
         
         if (deleteError) {
-          console.error('Error removing like:', deleteError)
+          logger.error('Error removing like', deleteError)
           throw deleteError
         }
       } else {
@@ -1016,7 +1011,7 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
           .single()
 
         if (checkError && checkError.code !== 'PGRST116') {
-          console.error('Error checking existing like:', checkError)
+          logger.error('Error checking existing like', checkError)
           throw checkError
         }
 
@@ -1033,7 +1028,7 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
             })
           
           if (insertError) {
-            console.error('Error adding like:', insertError)
+            logger.error('Error adding like', insertError)
             throw insertError
           }
         }
@@ -1048,7 +1043,7 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
       
       // Removed toast for like/unlike
     } catch (error) {
-      console.error('Error handling like:', error)
+      logger.error('Error handling like', error)
       toast({
         title: 'Error',
         description: 'Failed to update like. Please try again.',
@@ -1082,7 +1077,7 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
       
       setComments(formattedComments)
     } catch (error) {
-      console.error('Error fetching comments:', error)
+      logger.error('Error fetching comments', error)
       toast({
         title: 'Error',
         description: 'Failed to load comments.',
@@ -1121,7 +1116,7 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
         description: 'Comment added successfully!',
       })
     } catch (error) {
-      console.error('Error adding comment:', error)
+      logger.error('Error adding comment', error)
       toast({
         title: 'Error',
         description: 'Failed to add comment. Please try again.',
@@ -1150,7 +1145,7 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
         is_liked: likedCutIds.has(cut.id)
       })))
     } catch (error) {
-      console.error('Error checking user likes:', error)
+      logger.error('Error checking user likes', error)
     }
   }
 
@@ -1322,7 +1317,7 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
                   onMouseUp={() => handleVideoTouchEnd(index)}
                   onMouseLeave={() => handleVideoTouchEnd(index)}
                   onLoadStart={() => {
-                    console.log(`📥 Video ${index} started loading:`, cut.title)
+                    logger.debug(`Video ${index} started loading`, { title: cut.title })
                     // Pause all other videos when this one starts
                     if (index === currentCutIndex) {
                       videoRefs.current.forEach((video, i) => {
@@ -1333,7 +1328,7 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
                     }
                   }}
                   onError={(e) => {
-                    console.error(`❌ Video ${index} failed to load:`, cut.title, e)
+                    logger.error(`Video ${index} failed to load`, { title: cut.title, error: e })
                     setBuffering((prev) => {
                       const next = [...prev];
                       next[index] = false;
@@ -1341,7 +1336,7 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
                     });
                   }}
                   onWaiting={() => {
-                    console.log(`⏳ Video ${index} is buffering:`, cut.title)
+                    logger.debug(`Video ${index} is buffering`, { title: cut.title })
                     setBuffering((prev) => {
                       const next = [...prev];
                       next[index] = true;
@@ -1349,7 +1344,7 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
                     });
                   }}
                   onPlaying={() => {
-                    console.log(`▶️ Video ${index} started playing:`, cut.title)
+                    logger.debug(`Video ${index} started playing`, { title: cut.title })
                     setBuffering((prev) => {
                       const next = [...prev];
                       next[index] = false;
@@ -1357,7 +1352,7 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
                     });
                   }}
                   onCanPlay={() => {
-                    console.log(`✅ Video ${index} can play:`, cut.title)
+                    logger.debug(`Video ${index} can play`, { title: cut.title })
                     setBuffering((prev) => {
                       const next = [...prev];
                       next[index] = false;

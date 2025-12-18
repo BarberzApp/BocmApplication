@@ -1,4 +1,5 @@
 import { useRouter } from 'next/navigation';
+import { logger } from './logger';
 
 // Enhanced navigation with fallback
 export const useEnhancedRouter = () => {
@@ -6,13 +7,13 @@ export const useEnhancedRouter = () => {
 
   const safePush = (url: string, fallback?: () => void) => {
     try {
-      console.log('🔄 Navigating to:', url);
+      logger.debug('Navigating to', { url });
       router.push(url);
       
       // Fallback if navigation doesn't work after 2 seconds
       setTimeout(() => {
         if (window.location.pathname !== url) {
-          console.warn('⚠️ Router.push failed, using fallback');
+          logger.warn('Router.push failed, using fallback', { url });
           if (fallback) {
             fallback();
           } else {
@@ -21,7 +22,7 @@ export const useEnhancedRouter = () => {
         }
       }, 2000);
     } catch (error) {
-      console.error('❌ Navigation error:', error);
+      logger.error('Navigation error', error);
       if (fallback) {
         fallback();
       } else {
@@ -32,13 +33,13 @@ export const useEnhancedRouter = () => {
 
   const safeReplace = (url: string, fallback?: () => void) => {
     try {
-      console.log('🔄 Replacing with:', url);
+      logger.debug('Replacing with', { url });
       router.replace(url);
       
       // Fallback if navigation doesn't work after 2 seconds
       setTimeout(() => {
         if (window.location.pathname !== url) {
-          console.warn('⚠️ Router.replace failed, using fallback');
+          logger.warn('Router.replace failed, using fallback', { url });
           if (fallback) {
             fallback();
           } else {
@@ -47,7 +48,7 @@ export const useEnhancedRouter = () => {
         }
       }, 2000);
     } catch (error) {
-      console.error('❌ Navigation error:', error);
+      logger.error('Navigation error', error);
       if (fallback) {
         fallback();
       } else {
@@ -78,12 +79,12 @@ export class NavigationState {
 
   startNavigation() {
     this.isNavigating = true;
-    console.log('🚀 Navigation started');
+    logger.debug('Navigation started');
   }
 
   endNavigation() {
     this.isNavigating = false;
-    console.log('✅ Navigation ended');
+    logger.debug('Navigation ended');
     
     // Process queued navigations
     while (this.navigationQueue.length > 0) {
@@ -97,7 +98,7 @@ export class NavigationState {
   queueNavigation(navigation: () => void) {
     if (this.isNavigating) {
       this.navigationQueue.push(navigation);
-      console.log('⏳ Navigation queued');
+      logger.debug('Navigation queued');
     } else {
       navigation();
     }

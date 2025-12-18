@@ -42,7 +42,7 @@ export function SearchSuggestions({ onSuggestionClick, searchQuery, className = 
       try {
         setRecentSearches(JSON.parse(saved))
       } catch (error) {
-        console.error('Error parsing recent searches:', error)
+        logger.error('Error parsing recent searches', error)
       }
     }
   }, [])

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '@/shared/lib/supabase'
 import { useAuth } from '@/shared/hooks/use-auth-zustand'
 import { useCustomToast } from '@/shared/hooks/use-custom-toast'
+import { logger } from '@/shared/lib/logger'
 
 export interface VideoCut {
   id: string
@@ -108,7 +109,7 @@ export function useCuts() {
 
     try {
       setLoading(true)
-      console.log('Fetching cuts for user:', user.id)
+      logger.debug('Fetching cuts for user', { userId: user.id })
       
       // Get barber ID
       const { data: barberData, error: barberError } = await supabase
@@ -118,11 +119,11 @@ export function useCuts() {
         .single()
 
       if (barberError) {
-        console.error('Error fetching barber data:', barberError)
+        logger.error('Error fetching barber data', barberError)
         throw barberError
       }
 
-      console.log('Found barber data:', barberData)
+      logger.debug('Found barber data', { barberData })
 
       // Fetch cuts
       const { data: cutsData, error: cutsError } = await supabase
@@ -132,11 +133,11 @@ export function useCuts() {
         .order('created_at', { ascending: false })
 
       if (cutsError) {
-        console.error('Error fetching cuts data:', cutsError)
+        logger.error('Error fetching cuts data', cutsError)
         throw cutsError
       }
 
-      console.log('Found cuts data:', cutsData)
+      logger.debug('Found cuts data', { count: cutsData?.length })
 
       setCuts(cutsData || [])
       
@@ -146,7 +147,7 @@ export function useCuts() {
       }
 
     } catch (error) {
-      console.error('Error fetching cuts:', error)
+      logger.error('Error fetching cuts', error)
       toast.error('Error', 'Failed to load your cuts.')
     } finally {
       setLoading(false)
@@ -193,7 +194,7 @@ export function useCuts() {
       return newCut
 
     } catch (error) {
-      console.error('Error creating cut:', error)
+      logger.error('Error creating cut', error)
       toast.error('Error', 'Failed to create cut. Please try again.')
       return null
     } finally {
@@ -225,7 +226,7 @@ export function useCuts() {
       return updatedCut
 
     } catch (error) {
-      console.error('Error updating cut:', error)
+      logger.error('Error updating cut', error)
       toast.error('Error', 'Failed to update cut. Please try again.')
       return null
     }
@@ -246,7 +247,7 @@ export function useCuts() {
       toast.success('Success', 'Cut deleted successfully!')
 
     } catch (error) {
-      console.error('Error deleting cut:', error)
+      logger.error('Error deleting cut', error)
       toast.error('Error', 'Failed to delete cut. Please try again.')
     }
   }, [toast])
@@ -283,7 +284,7 @@ export function useCuts() {
         ))
       }
     } catch (error) {
-      console.error('Error tracking view:', error)
+      logger.error('Error tracking view', error)
     }
   }, [user])
 
@@ -330,7 +331,7 @@ export function useCuts() {
         ))
       }
     } catch (error) {
-      console.error('Error tracking like:', error)
+      logger.error('Error tracking like', error)
     }
   }, [user])
 
@@ -353,7 +354,7 @@ export function useCuts() {
           : cut
       ))
     } catch (error) {
-      console.error('Error tracking share:', error)
+      logger.error('Error tracking share', error)
     }
   }, [user])
 
@@ -429,7 +430,7 @@ export function useCuts() {
       }
 
     } catch (error) {
-      console.error('Error refreshing cuts:', error)
+      logger.error('Error refreshing cuts', error)
       toast.error('Error', 'Failed to refresh cuts.')
     } finally {
       setLoading(false)

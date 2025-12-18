@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from '@/shared/lib/supabase'
 import { sendBookingConfirmationSMS } from "@/shared/utils/sendSMS"
+import { logger } from '@/shared/lib/logger'
 
 export async function POST(request: Request) {
   try {
-    console.log('Creating developer booking (bypassing Stripe)...')
+    logger.debug('Creating developer booking (bypassing Stripe)...')
     const body = await request.json()
-    console.log('Request body:', body)
+    logger.debug('Request body', { body })
     
     const { 
       barberId, 
@@ -111,7 +112,7 @@ export async function POST(request: Request) {
       payment_intent_id: `dev_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Generate a unique ID
     }
 
-    console.log('Attempting to insert booking with data:', bookingData)
+    logger.debug('Attempting to insert booking with data', { bookingData })
 
     const { data: booking, error: bookingError } = await supabaseAdmin
       .from('bookings')
@@ -120,8 +121,8 @@ export async function POST(request: Request) {
       .single()
 
     if (bookingError) {
-      console.error('Error creating booking:', bookingError)
-      console.error('Error details:', {
+      logger.error('Error creating booking', bookingError)
+      logger.error('Error details', {
         message: bookingError.message,
         details: bookingError.details,
         hint: bookingError.hint,
@@ -154,22 +155,22 @@ export async function POST(request: Request) {
           .insert(bookingAddons)
 
         if (addonError) {
-          console.error('Error adding add-ons to booking:', addonError)
+          logger.error('Error adding add-ons to booking', addonError)
         }
       }
     }
 
     // Send SMS notifications to both barber and client
     try {
-      console.log('Sending SMS notifications for developer booking:', booking.id)
+      logger.debug('Sending SMS notifications for developer booking', { bookingId: booking.id })
       const smsResults = await sendBookingConfirmationSMS(booking)
-      console.log('SMS notification results:', smsResults)
+      logger.debug('SMS notification results', { smsResults })
     } catch (smsError) {
-      console.error('Failed to send SMS notifications:', smsError)
+      logger.error('Failed to send SMS notifications', smsError)
       // Don't fail the booking creation if SMS fails
     }
 
-    console.log('Developer booking created successfully:', {
+    logger.debug('Developer booking created successfully', {
       bookingId: booking.id,
       barberId: booking.barber_id,
       serviceId: booking.service_id,
@@ -194,7 +195,7 @@ export async function POST(request: Request) {
     })
 
   } catch (error) {
-    console.error("Error creating developer booking:", error)
+    logger.error("Error creating developer booking", error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to create developer booking" },
       { status: 500 }

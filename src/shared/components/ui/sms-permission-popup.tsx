@@ -10,6 +10,7 @@ import { Input } from '@/shared/components/ui/input'
 import { Bell, X, MessageSquare, Shield, CheckCircle, Phone } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
 import { useAuth } from '@/shared/hooks/use-auth-zustand'
+import { logger } from '@/shared/lib/logger'
 
 interface SMSPermissionPopupProps {
   isOpen: boolean
@@ -26,7 +27,7 @@ export function SMSPermissionPopup({ isOpen, onClose, onEnableSMS }: SMSPermissi
   const [step, setStep] = useState<'info' | 'details'>('info')
 
   // Debug popup render
-  console.log('🎯 SMS Popup Render:', { isOpen, step })
+  logger.debug('SMS Popup Render', { isOpen, step })
 
   // Auto-fill phone and carrier when popup opens
   useEffect(() => {
@@ -74,7 +75,7 @@ export function SMSPermissionPopup({ isOpen, onClose, onEnableSMS }: SMSPermissi
       
       onClose()
     } catch (error) {
-      console.error('Error enabling SMS:', error)
+      logger.error('Error enabling SMS', error)
     } finally {
       setIsLoading(false)
     }
@@ -308,7 +309,7 @@ export function useSMSPermissionPopup() {
     const shouldShow = !smsEnabled || !phone || !carrier
 
     // Debug logging
-    console.log('🔍 SMS Popup Debug:', {
+    logger.debug('SMS Popup Debug', {
       isDismissed,
       isSMSEnabled,
       hasPhoneNumber,
@@ -323,10 +324,10 @@ export function useSMSPermissionPopup() {
     })
 
     if (!isDismissed && shouldShow) {
-      console.log('✅ Showing SMS popup (missing one or more required fields)')
+      logger.debug('Showing SMS popup (missing one or more required fields)')
       setShouldShowPopup(true)
     } else {
-      console.log('❌ Not showing SMS popup (all required fields present or dismissed)')
+      logger.debug('Not showing SMS popup (all required fields present or dismissed)')
     }
   }, [])
 
@@ -335,7 +336,7 @@ export function useSMSPermissionPopup() {
       localStorage.setItem('sms-notifications-enabled', 'true')
       return Promise.resolve()
     } catch (error) {
-      console.error('Error enabling SMS:', error)
+      logger.error('Error enabling SMS', error)
       return Promise.reject(error)
     }
   }

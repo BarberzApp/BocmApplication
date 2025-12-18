@@ -41,6 +41,7 @@ import { BARBER_SPECIALTIES } from '@/shared/constants/specialties'
 import { SpecialtyAutocomplete } from '@/shared/components/ui/specialty-autocomplete'
 import { geocodeAddress, getAddressSuggestionsNominatim } from '@/shared/lib/geocode'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
+import { logger } from '@/shared/lib/logger'
 
 const barberProfileSchema = z.object({
   // Basic Info
@@ -168,7 +169,7 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
       const suggestions = await getAddressSuggestionsNominatim(query);
       setLocationSuggestions(suggestions);
     } catch (error) {
-      console.error('Error fetching suggestions:', error);
+      logger.error('Error fetching suggestions', error)
       setLocationSuggestions([]);
     } finally {
       setSuggestionsLoading(false);
@@ -251,7 +252,7 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
 
     try {
       setLoading(true)
-      console.log('Loading barber profile for user:', user.id)
+      logger.debug('Loading barber profile for user', { userId: user.id })
 
       // Fetch profile data
       const { data: profile, error: profileError } = await supabase
@@ -261,11 +262,11 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
         .single()
 
       if (profileError) {
-        console.error('Profile fetch error:', profileError)
+        logger.error('Profile fetch error', profileError)
         throw profileError
       }
 
-      console.log('Profile data loaded:', profile)
+      logger.debug('Profile data loaded', { userId: profile?.id })
 
       // Fetch barber data
       const { data: barber, error: barberError } = await supabase
@@ -275,11 +276,11 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
         .single()
 
       if (barberError) {
-        console.error('Barber fetch error:', barberError)
+        logger.error('Barber fetch error', barberError)
         throw barberError
       }
 
-      console.log('Barber data loaded:', barber)
+      logger.debug('Barber data loaded', { barberId: barber?.id })
 
       // Update form with fetched data
       const formData = {
@@ -300,12 +301,12 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
         sms_notifications: profile.sms_notifications ?? false,
       }
 
-      console.log('Setting form data:', formData)
+      logger.debug('Setting form data', { hasData: !!formData.name })
       form.reset(formData)
       setLocationInput(profile.location || '');
 
     } catch (error) {
-      console.error('Error loading barber profile:', error)
+      logger.error('Error loading barber profile', error)
       toast({
         title: 'Error',
         description: 'Failed to load profile data. Please refresh the page.',
@@ -426,7 +427,7 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
       if (onSave) onSave();
 
     } catch (error) {
-      console.error('Error updating profile:', error)
+      logger.error('Error updating profile', error)
       toast({
         title: 'Error',
         description: 'Failed to update profile',

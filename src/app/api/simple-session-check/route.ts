@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { logger } from '@/shared/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('Simple session check called');
+    logger.debug('Simple session check called');
     
     // Just check what cookies are available without making auth calls
     const cookieStore = await cookies();
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Simple session check error:', error);
+    logger.error('Simple session check error', error);
     return NextResponse.json(
       { error: 'Session check failed', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

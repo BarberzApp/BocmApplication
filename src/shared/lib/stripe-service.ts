@@ -1,5 +1,6 @@
 import { loadStripe } from "@stripe/stripe-js"
 import type { Stripe as StripeType } from "@stripe/stripe-js"
+import { logger } from './logger'
 
 // Types
 export type PaymentMethod = {
@@ -77,12 +78,12 @@ export const getStripe = () => {
 // Customer management
 export const createCustomer = async (email: string, name: string): Promise<string> => {
   // In a real app, this would be a server-side API call to Stripe
-  console.log(`Creating Stripe customer for ${name} (${email})`)
+  logger.debug(`Creating Stripe customer for ${name}`, { email })
   return `cus_${Math.random().toString(36).substring(2, 15)}`
 }
 
 export const updateCustomer = async (customerId: string, data: { name?: string; email?: string }) => {
-  console.log(`Updating Stripe customer ${customerId}`, data)
+  logger.debug(`Updating Stripe customer ${customerId}`, { data })
   return true
 }
 

@@ -131,7 +131,7 @@ export default function BarberOnboardingPage() {
       if (!user) return;
       
       try {
-        console.log('Fetching profile data for user:', user.id);
+        logger.debug('Fetching profile data for user', { userId: user.id });
         
         // Fetch barber profile data
         const { data: barberData, error: barberError } = await supabase
@@ -140,11 +140,11 @@ export default function BarberOnboardingPage() {
           .eq('user_id', user.id)
           .single()
 
-        console.log('Barber data fetched:', barberData, 'Error:', barberError);
-        console.log('Profile data from join:', barberData?.profiles);
+        logger.debug('Barber data fetched', { hasData: !!barberData, error: barberError });
+        logger.debug('Profile data from join', { hasProfile: !!barberData?.profiles });
 
         if (barberData) {
-          console.log('Setting barber data in form');
+          logger.debug('Setting barber data in form');
           setFormData(prev => ({
             ...prev,
             businessName: barberData.business_name || '',
@@ -164,7 +164,7 @@ export default function BarberOnboardingPage() {
         
         // Fallback: if profile data not available through join, fetch separately
         if (!profile) {
-          console.log('Profile data not available through join, fetching separately');
+          logger.debug('Profile data not available through join, fetching separately');
           const { data: profileData, error: profileError } = await supabase
             .from('profiles')
             .select('phone, location')
@@ -172,7 +172,7 @@ export default function BarberOnboardingPage() {
             .single();
           
           if (profileError && profileError.code !== 'PGRST116') {
-            console.error('Error fetching profile data:', profileError);
+            logger.error('Error fetching profile data', profileError);
           } else {
             profile = profileData;
           }
@@ -180,14 +180,14 @@ export default function BarberOnboardingPage() {
 
         // Parse location with improved regex patterns
         let address = '', city = '', state = '', zipCode = '';
-        console.log('Available location data:', {
+        logger.debug('Available location data', {
           profileLocation: profile?.location,
           barberCity: barberData?.city,
           barberState: barberData?.state
         });
         
         if (profile?.location) {
-          console.log('Parsing location:', profile.location);
+          logger.debug('Parsing location', { location: profile.location });
           
           // Try different location formats
           const location = profile.location.trim();
@@ -229,7 +229,7 @@ export default function BarberOnboardingPage() {
             }
           }
           
-          console.log('Parsed location:', { address, city, state, zipCode });
+          logger.debug('Parsed location', { address, city, state, zipCode });
         }
 
         // Fetch services for this barber
@@ -241,7 +241,7 @@ export default function BarberOnboardingPage() {
             .eq('barber_id', barberData.id);
 
           if (servicesError) {
-            console.error('Error fetching services:', servicesError);
+            logger.error('Error fetching services', servicesError);
           } else if (Array.isArray(existingServices)) {
             services = existingServices.map(s => ({
               name: s.name || '',
@@ -281,7 +281,7 @@ export default function BarberOnboardingPage() {
           setStripeStatus(null);
         }
       } catch (error) {
-        console.error('Error fetching profile data:', error);
+        logger.error('Error fetching profile data', error);
       }
     };
 
@@ -293,10 +293,10 @@ export default function BarberOnboardingPage() {
   // Check if user is a barber and onboarding is incomplete
   useEffect(() => {
     if (isRouterReady && user) {
-      console.log('Onboarding page: User loaded', { userId: user.id, role: user.role });
+      logger.debug('Onboarding page: User loaded', { userId: user.id, role: user.role });
       
       if (user.role !== 'barber') {
-        console.log('Onboarding page: User is not a barber, redirecting to home');
+        logger.debug('Onboarding page: User is not a barber, redirecting to home');
         safePush('/')
         return;
       }
@@ -304,7 +304,7 @@ export default function BarberOnboardingPage() {
       // Check if onboarding is already complete
       const checkOnboarding = async () => {
         try {
-          console.log('Onboarding page: Checking onboarding status for user:', user.id);
+          logger.debug('Onboarding page: Checking onboarding status for user', { userId: user.id });
           
           const { data: barber, error: barberError } = await supabase
             .from('barbers')
@@ -318,16 +318,16 @@ export default function BarberOnboardingPage() {
             .eq('id', user.id)
             .single();
 
-          console.log('Onboarding page: Barber data:', barber);
-          console.log('Onboarding page: Profile data:', profile);
+          logger.debug('Onboarding page: Barber data', { hasBarber: !!barber });
+          logger.debug('Onboarding page: Profile data', { hasProfile: !!profile });
 
           if (barberError && barberError.code !== 'PGRST116') {
-            console.error('Error fetching barber profile:', barberError);
+            logger.error('Error fetching barber profile', barberError);
             return; // Stay on onboarding
           }
 
           if (profileError && profileError.code !== 'PGRST116') {
-            console.error('Error fetching user profile:', profileError);
+            logger.error('Error fetching user profile', profileError);
             return; // Stay on onboarding
           }
 
@@ -337,7 +337,7 @@ export default function BarberOnboardingPage() {
           // Don't require Stripe to be fully active to show onboarding
           // const hasStripeAccount = barber?.stripe_account_status === 'active' && barber?.stripe_account_ready;
 
-          console.log('Onboarding page: Completion check', { 
+          logger.debug('Onboarding page: Completion check', { 
             hasBusinessInfo, 
             hasContactInfo, 
             businessName: barber?.business_name,
@@ -345,9 +345,7 @@ export default function BarberOnboardingPage() {
             specialties: barber?.specialties,
             specialtiesLength: barber?.specialties?.length,
             phone: profile?.phone,
-            location: profile?.location,
-            barberData: barber,
-            profileData: profile
+            location: profile?.location
           });
 
           // Calculate completion percentage
@@ -371,7 +369,7 @@ export default function BarberOnboardingPage() {
           
           const completionPercentage = (completedFields / totalFields) * 100;
           
-          console.log('Onboarding page: Completion percentage', { 
+          logger.debug('Onboarding page: Completion percentage', { 
             completedFields, 
             totalFields, 
             completionPercentage 
@@ -382,13 +380,13 @@ export default function BarberOnboardingPage() {
           // Only redirect if they have basic business and contact info
           // Stripe setup can be done later
           if (hasBusinessInfo && hasContactInfo) {
-            console.log('Onboarding page: Onboarding complete, but not auto-redirecting');
+            logger.debug('Onboarding page: Onboarding complete, but not auto-redirecting');
             setOnboardingComplete(true);
             // Don't auto-redirect - let user click button instead
           } else {
-            console.log('Onboarding page: Onboarding incomplete, staying on page');
+            logger.debug('Onboarding page: Onboarding incomplete, staying on page');
             setOnboardingComplete(false);
-            console.log('Onboarding page: Missing fields:', {
+            logger.debug('Onboarding page: Missing fields', {
               missingBusinessName: !barber?.business_name,
               missingBio: !barber?.bio,
               missingSpecialties: !barber?.specialties || barber?.specialties?.length === 0,
@@ -397,7 +395,7 @@ export default function BarberOnboardingPage() {
             });
           }
         } catch (error) {
-          console.error('Error checking onboarding status:', error);
+          logger.error('Error checking onboarding status', error);
         }
       };
 
@@ -558,7 +556,7 @@ export default function BarberOnboardingPage() {
 
   const handleSubmit = async () => {
     if (!isRouterReady) {
-      console.log('Router not ready, waiting...');
+      logger.debug('Router not ready, waiting');
       return;
     }
 
@@ -574,14 +572,13 @@ export default function BarberOnboardingPage() {
 
     setLoading(true)
     try {
-      console.log('Starting business profile update...');
-      console.log('Form data:', formData);
+      logger.debug('Starting business profile update', { formData });
 
       // Single upsert operation for barber profile
       if (user?.role === 'barber') {
         const { data: sessionData } = await supabase.auth.getSession();
-        console.log('Current session user id:', sessionData?.session?.user?.id);
-        console.log('user_id to upsert:', user.id);
+        logger.debug('Current session user id', { sessionUserId: sessionData?.session?.user?.id });
+        logger.debug('user_id to upsert', { userId: user.id });
         
         // Check if barber row exists
         const { data: existingBarber, error: checkError } = await supabase
@@ -591,9 +588,9 @@ export default function BarberOnboardingPage() {
           .single();
 
         if (existingBarber) {
-          console.log('Barber row already exists for user_id:', user.id, '- updating.');
+          logger.debug('Barber row already exists for user_id, updating', { userId: user.id });
         } else {
-          console.log('Creating new barber row for user_id:', user.id);
+          logger.debug('Creating new barber row for user_id', { userId: user.id });
         }
 
         const { error: upsertError } = await supabase
@@ -613,7 +610,7 @@ export default function BarberOnboardingPage() {
           }, { onConflict: 'user_id' });
 
         if (upsertError) {
-          console.error('Failed to upsert barber profile during onboarding:', upsertError);
+          logger.error('Failed to upsert barber profile during onboarding', upsertError);
           throw upsertError;
         }
       }
@@ -629,7 +626,7 @@ export default function BarberOnboardingPage() {
         .eq('id', user?.id)
 
       if (profileError) {
-        console.error('Profile update error:', profileError);
+        logger.error('Profile update error', profileError);
         throw profileError;
       }
 
@@ -643,12 +640,12 @@ export default function BarberOnboardingPage() {
           .single();
         
         if (barberIdError || !barberRow) {
-          console.error('Could not fetch barber id for service insert:', barberIdError);
+          logger.error('Could not fetch barber id for service insert', barberIdError);
           throw barberIdError || new Error('No barber row found');
         }
         
         const barberId = barberRow.id;
-        console.log('Adding services:', formData.services);
+        logger.debug('Adding services', { count: formData.services.length });
         
         // Delete all existing services for this barber before inserting new ones
         const { error: deleteError } = await supabase
@@ -657,7 +654,7 @@ export default function BarberOnboardingPage() {
           .eq('barber_id', barberId);
         
         if (deleteError) {
-          console.error('Error deleting existing services:', deleteError);
+          logger.error('Error deleting existing services', deleteError);
           throw deleteError;
         }
         
@@ -674,10 +671,10 @@ export default function BarberOnboardingPage() {
           );
         
         if (servicesError) {
-          console.error('Services creation error:', servicesError);
+          logger.error('Services creation error', servicesError);
           throw servicesError;
         }
-        console.log('Services added successfully');
+        logger.debug('Services added successfully');
       }
 
       toast({
@@ -687,14 +684,14 @@ export default function BarberOnboardingPage() {
 
       // Move to next step or complete
       if (currentStep < steps.length - 1) {
-        console.log(`Moving to step ${currentStep + 1}`);
+        logger.debug(`Moving to step ${currentStep + 1}`);
         setCurrentStep(currentStep + 1)
       } else {
-        console.log('Onboarding completed, redirecting to settings...');
+        logger.debug('Onboarding completed, redirecting to settings');
         safePush('/settings');
       }
     } catch (error) {
-      console.error('Error updating profile:', error)
+      logger.error('Error updating profile', error)
       toast({
         title: 'Error',
         description: 'Failed to update profile. Please try again.',
@@ -795,7 +792,7 @@ export default function BarberOnboardingPage() {
       // Redirect to Stripe
       window.location.href = redirectUrl;
     } catch (error) {
-      console.error('Error connecting Stripe:', error);
+      logger.error('Error connecting Stripe', error);
       toast({
         title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to connect Stripe account. Please try again.',
@@ -816,14 +813,14 @@ export default function BarberOnboardingPage() {
       
       // Move to next step or complete
       if (currentStep < steps.length - 1) {
-        console.log(`Moving to step ${currentStep + 1}`);
+        logger.debug(`Moving to step ${currentStep + 1}`);
         setCurrentStep(currentStep + 1);
       } else {
-        console.log('Onboarding completed, redirecting to settings...');
+        logger.debug('Onboarding completed, redirecting to settings');
         safePush('/settings');
       }
     } catch (error) {
-      console.error('Error skipping step:', error);
+      logger.error('Error skipping step', error);
       toast({
         title: 'Error',
         description: 'Failed to skip step. Please try again.',

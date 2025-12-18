@@ -32,7 +32,7 @@ export function SignupForm() {
         setShowConfirmation(true)
       }
     } catch (error) {
-      console.error('Signup error:', error)
+      logger.error('Signup error', error)
       toast({
         title: "Signup failed",
         description: error instanceof Error ? error.message : "Failed to create account. Please try again.",

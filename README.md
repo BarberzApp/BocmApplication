@@ -65,11 +65,32 @@ src/
    ```
 3. Set up environment variables:
    ```env
+   # Supabase
    NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_key
+   
+   # Stripe
    STRIPE_SECRET_KEY=your_stripe_secret
    STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key
+   
+   # App Configuration
    NEXT_PUBLIC_APP_URL=https://bocmstyle.com
+   
+   # Sentry Error Monitoring (Optional but recommended for production)
+   NEXT_PUBLIC_SENTRY_DSN=your_sentry_dsn
+   SENTRY_DSN=your_sentry_dsn  # Server-side (optional, can use NEXT_PUBLIC_SENTRY_DSN)
+   SENTRY_ORG=your_sentry_org  # For source maps upload
+   SENTRY_PROJECT=your_sentry_project  # For source maps upload
+   SENTRY_AUTH_TOKEN=your_sentry_auth_token  # For source maps upload (optional)
+   
+   # Security
+   WAITLIST_PASSWORD=your_waitlist_password
+   SUPER_ADMIN_PASSWORD=your_super_admin_password
+   SUPER_ADMIN_EMAIL=primbocm@gmail.com
+   
+   # Email/SMS
+   GMAIL_USER=your_gmail_user
+   GMAIL_PASS=your_gmail_app_password
    ```
 4. Run development server:
    ```bash

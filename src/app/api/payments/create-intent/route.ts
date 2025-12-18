@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
+import { logger } from '@/shared/lib/logger'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-06-20' as any,
@@ -97,7 +98,7 @@ export async function POST(request: Request) {
       client_secret: paymentIntent.client_secret,
     })
   } catch (error) {
-    console.error('Error creating payment intent:', error)
+    logger.error('Error creating payment intent', error)
     return NextResponse.json(
       { error: 'Failed to create payment intent' },
       { status: 500 }

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/shared/hooks/use-auth-zustand'
+import { logger } from '@/shared/lib/logger'
 import { useToast } from '@/shared/components/ui/use-toast'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
@@ -146,7 +147,7 @@ export default function SuperAdminPage() {
           checkSystemStatus()
         }
       } catch (error) {
-        console.error('Error checking super admin:', error)
+        logger.error('Error checking super admin', error)
       } finally {
         setIsLoading(false)
       }
@@ -222,7 +223,7 @@ export default function SuperAdminPage() {
         throw new Error(data.error || 'Failed to fetch barbers')
       }
     } catch (error) {
-      console.error('Error fetching barbers:', error)
+      logger.error('Error fetching barbers', error)
       toast({
         title: 'Error',
         description: 'Failed to fetch barbers',
@@ -250,7 +251,7 @@ export default function SuperAdminPage() {
         setStats(data.stats)
       }
     } catch (error) {
-      console.error('Error fetching stats:', error)
+      logger.error('Error fetching stats', error)
     }
   }
 
@@ -302,7 +303,7 @@ export default function SuperAdminPage() {
         throw new Error(data.error || 'Failed to update developer status')
       }
     } catch (error) {
-      console.error('Error updating developer status:', error)
+      logger.error('Error updating developer status', error)
       toast({
         title: 'Error',
         description: 'Failed to update developer status',
@@ -357,7 +358,7 @@ export default function SuperAdminPage() {
         throw new Error(data.error || 'Failed to update account status')
       }
     } catch (error) {
-      console.error('Error updating account status:', error)
+      logger.error('Error updating account status', error)
       toast({
         title: 'Error',
         description: 'Failed to update account status',
@@ -378,7 +379,7 @@ export default function SuperAdminPage() {
       }
 
       const newStatus = !currentStatus
-      console.log(`🔄 Toggling public status for user ${userId}: ${currentStatus} → ${newStatus}`)
+      logger.debug(`Toggling public status for user ${userId}`, { currentStatus, newStatus })
 
       const response = await fetch('/api/super-admin/public-status', {
         method: 'POST',
@@ -408,17 +409,17 @@ export default function SuperAdminPage() {
             : barber
         ))
 
-        console.log(`✅ Successfully updated public status to: ${newStatus}`)
+        logger.debug(`Successfully updated public status to: ${newStatus}`)
         toast({
           title: 'Profile Visibility Updated',
           description: `Profile is now ${newStatus ? 'public' : 'private'}`,
         })
       } else {
-        console.error('❌ API Error:', data.error)
+        logger.error('API Error updating public status', new Error(data.error || 'Failed to update public status'))
         throw new Error(data.error || 'Failed to update public status')
       }
     } catch (error) {
-      console.error('Error updating public status:', error)
+      logger.error('Error updating public status', error)
       toast({
         title: 'Error',
         description: 'Failed to update profile visibility. Please try again.',
@@ -473,7 +474,7 @@ export default function SuperAdminPage() {
         throw new Error(data.error || 'Failed to update role')
       }
     } catch (error) {
-      console.error('Error updating role:', error)
+      logger.error('Error updating role', error)
       toast({
         title: 'Error',
         description: 'Failed to update role',

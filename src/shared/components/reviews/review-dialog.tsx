@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { ReviewForm } from './review-form';
 import { useReviews } from '@/shared/hooks/use-reviews';
 import { useToast } from '@/shared/components/ui/use-toast';
+import { logger } from '@/shared/lib/logger';
 
 interface ReviewDialogProps {
   open: boolean;
@@ -35,7 +36,7 @@ export function ReviewDialog({
       
       onClose();
     } catch (error) {
-      console.error('Error submitting review:', error);
+      logger.error('Error submitting review', error);
     }
   };
 

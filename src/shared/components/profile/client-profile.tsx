@@ -21,6 +21,7 @@ import type { Booking, Barber, Service } from "@/shared/hooks/use-data"
 import { supabase } from "@/shared/lib/supabase"
 import { Textarea } from "@/shared/components/ui/textarea"
 import { Progress } from "@/shared/components/ui/progress"
+import { logger } from "@/shared/lib/logger"
 
 interface ClientProfileProps {
   user: User
@@ -65,7 +66,7 @@ export function ClientProfile({ user }: ClientProfileProps) {
       setAvatarUrl(publicUrl)
       toast({ title: 'Success', description: 'Avatar updated successfully!' })
     } catch (error) {
-      console.error('Error uploading avatar:', error)
+      logger.error('Error uploading avatar', error)
       toast({ title: 'Error', description: 'Failed to upload avatar. Please try again.', variant: 'destructive' })
     } finally {
       setAvatarLoading(false)

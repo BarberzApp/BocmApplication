@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { supabase } from '@/shared/lib/supabase'
+import { logger } from '@/shared/lib/logger'
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing STRIPE_SECRET_KEY')
@@ -22,7 +23,7 @@ export async function POST(request: Request) {
       )
     }
 
-    console.log('Searching for Stripe account with:', { email, userId })
+    logger.debug('Searching for Stripe account', { email, userId })
 
     let searchEmail = email
 
@@ -44,21 +45,21 @@ export async function POST(request: Request) {
       searchEmail = profile.email
     }
 
-    console.log('Searching for accounts with email:', searchEmail)
+    logger.debug('Searching for accounts with email', { email: searchEmail })
 
     // Query Stripe for accounts with this email
     const accounts = await stripe.accounts.list({
       limit: 100, // Get up to 100 accounts
     })
 
-    console.log(`Found ${accounts.data.length} total accounts`)
+    logger.debug(`Found ${accounts.data.length} total accounts`)
 
     // Filter accounts by email
     const matchingAccounts = accounts.data.filter(account => 
       account.email === searchEmail
     )
 
-    console.log(`Found ${matchingAccounts.length} accounts matching email:`, searchEmail)
+    logger.debug(`Found ${matchingAccounts.length} accounts matching email`, { email: searchEmail })
 
     // Get barber data if userId provided
     let barberData = null
@@ -106,7 +107,7 @@ export async function POST(request: Request) {
     })
 
   } catch (error) {
-    console.error('Error searching for Stripe account:', error)
+    logger.error('Error searching for Stripe account', error)
     return NextResponse.json(
       { 
         error: 'Failed to search for Stripe account',

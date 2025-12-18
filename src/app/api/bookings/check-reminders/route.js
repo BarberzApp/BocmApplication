@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { checkReminders } from '@/shared/utils/reminderJob';
+const { logger } = require('@/shared/lib/logger');
 
 export async function POST() {
   try {
-    console.log('Manual reminder check triggered');
+    logger.debug('Manual reminder check triggered');
     await checkReminders();
     
     return NextResponse.json({ 
@@ -11,7 +12,7 @@ export async function POST() {
       message: 'Reminder check completed successfully' 
     });
   } catch (error) {
-    console.error('Error in reminder check:', error);
+    logger.error('Error in reminder check', error);
     return NextResponse.json(
       { error: 'Failed to check reminders' },
       { status: 500 }

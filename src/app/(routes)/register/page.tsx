@@ -17,6 +17,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/
 import { supabase } from '@/shared/lib/supabase'
 import React from "react"
 import { Loader2 } from "lucide-react"
+import { logger } from '@/shared/lib/logger'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -43,7 +44,7 @@ export default function RegisterPage() {
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    console.log('Form submitted')
+    logger.debug('Form submitted')
     e.preventDefault()
     setError(null)
 
@@ -77,9 +78,9 @@ export default function RegisterPage() {
     setLoading(true)
 
     try {
-      console.log('Calling register with:', formData, role)
+      logger.debug('Calling register', { email: formData.email, role })
       const success = await register(formData.name, formData.email, formData.password, role)
-      console.log('Register result:', success)
+      logger.debug('Register result', { success })
       if (success) {
         toast({
           title: "Registration successful",
@@ -114,7 +115,7 @@ export default function RegisterPage() {
       ? 'https://3d6b1eb7b7c8.ngrok-free.app/auth/callback'
       : 'https://www.bocmstyle.com/auth/callback';
     
-    console.log('🔄 Using redirect URL for Google signup:', redirectUrl);
+    logger.debug('Using redirect URL for Google signup', { redirectUrl })
     
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -123,7 +124,7 @@ export default function RegisterPage() {
       }
     })
     if (error) {
-      console.error('Google signup error:', error.message)
+      logger.error('Google signup error', error)
       toast({
         title: 'Error',
         description: 'Could not sign up with Google',

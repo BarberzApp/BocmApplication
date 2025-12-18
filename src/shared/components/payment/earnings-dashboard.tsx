@@ -9,6 +9,7 @@ import { Badge } from "@/shared/components/ui/badge"
 import { LoadingSpinner } from "@/shared/components/ui/loading-spinner"
 import { GlassyCard } from "@/shared/components/ui/glassy-card"
 import { supabase } from "@/shared/lib/supabase"
+import { logger } from "@/shared/lib/logger"
 
 interface MonthlyEarnings {
   current: number
@@ -42,13 +43,13 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
   const [hasStripeAccount, setHasStripeAccount] = useState(false)
 
   useEffect(() => {
-    console.log('EarningsDashboard mounted, barberId:', barberId)
+    logger.debug('EarningsDashboard mounted', { barberId })
     loadEarnings()
     checkStripeAccount()
   }, [barberId])
 
   const checkStripeAccount = async () => {
-    console.log('Checking Stripe account for barber:', barberId)
+    logger.debug('Checking Stripe account for barber', { barberId })
     try {
       // First, try to refresh the account status from Stripe
       const refreshResponse = await fetch('/api/connect/refresh-account-status', {
@@ -61,7 +62,7 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
 
       if (refreshResponse.ok) {
         const refreshData = await refreshResponse.json();
-        console.log('Stripe account refresh result:', refreshData);
+        logger.debug('Stripe account refresh result', { hasAccount: refreshData.success && refreshData.data.hasStripeAccount });
         
         if (refreshData.success && refreshData.data.hasStripeAccount) {
           setHasStripeAccount(true);
@@ -77,22 +78,22 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
         .single()
 
       if (error) {
-        console.error('Error fetching Stripe account:', error)
+        logger.error('Error fetching Stripe account', error)
         throw error
       }
 
-      console.log('Stripe account check result:', {
+      logger.debug('Stripe account check result', {
         hasAccount: !!data?.stripe_account_id,
         accountId: data?.stripe_account_id
       })
       setHasStripeAccount(!!data?.stripe_account_id)
     } catch (error) {
-      console.error('Error checking Stripe account:', error)
+      logger.error('Error checking Stripe account', error)
     }
   }
 
   const loadEarnings = async () => {
-    console.log('Loading earnings for barber:', barberId)
+    logger.debug('Loading earnings for barber', { barberId })
     setIsLoading(true)
     try {
       const response = await fetch(`/api/earnings/monthly?barberId=${barberId}`)
@@ -103,7 +104,7 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
       }
       
       const data = await response.json()
-      console.log('Earnings data loaded:', data)
+      logger.debug('Earnings data loaded', { hasData: !!data })
       
       // Validate the data structure
       if (!data || typeof data.current !== 'number') {
@@ -112,7 +113,7 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
       
       setEarnings(data)
     } catch (error) {
-      console.error("Error loading earnings:", error)
+      logger.error("Error loading earnings", error)
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to load earnings data. Please try again.",
@@ -124,7 +125,7 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
   }
 
   const handleSetupPayments = async () => {
-    console.log('Starting payment setup for barber:', barberId)
+    logger.debug('Starting payment setup for barber', { barberId })
     setIsSettingUp(true)
     try {
       // First, check if there's already a Stripe account and refresh its status
@@ -160,7 +161,7 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
       }
 
       // Get barber's email and name
-      console.log('Fetching barber details...')
+      logger.debug('Fetching barber details')
       const { data: barber, error: barberError } = await supabase
         .from('barbers')
         .select(`
@@ -174,7 +175,7 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
         .single() as { data: BarberProfile | null, error: any }
 
       if (barberError) {
-        console.error('Error fetching barber details:', barberError)
+        logger.error('Error fetching barber details', barberError)
         throw new Error(`Failed to fetch barber details: ${barberError.message}`)
       }
 
@@ -182,13 +183,13 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
         throw new Error('Barber email or name is missing')
       }
 
-      console.log('Barber details fetched:', {
+      logger.debug('Barber details fetched', {
         email: barber.profiles.email,
         name: barber.profiles.name
       })
 
       // Create Stripe Connect account
-      console.log('Creating Stripe Connect account...')
+      logger.debug('Creating Stripe Connect account')
       const response = await fetch('/api/connect/create-account', {
         method: 'POST',
         headers: {
@@ -200,7 +201,7 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
           name: barber.profiles.name,
         }),
       }).catch(error => {
-        console.error('Network error during fetch:', error)
+        logger.error('Network error during fetch', error)
         throw new Error(`Network error: ${error.message}`)
       })
 
@@ -212,12 +213,12 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
       try {
         responseData = await response.json()
       } catch (error) {
-        console.error('Error parsing response:', error)
+        logger.error('Error parsing response', error)
         throw new Error('Invalid response from server')
       }
 
       if (!response.ok) {
-        console.error('Failed to create Stripe account:', responseData)
+        logger.error('Failed to create Stripe account', { error: responseData.error })
         throw new Error(responseData.error || 'Failed to create Stripe account')
       }
 
@@ -226,10 +227,10 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
         throw new Error('No redirect URL received from Stripe')
       }
 
-      console.log('Stripe account created, redirecting to:', redirectUrl)
+      logger.debug('Stripe account created, redirecting', { redirectUrl })
       window.location.href = redirectUrl
     } catch (error) {
-      console.error('Error setting up payments:', error)
+      logger.error('Error setting up payments', error)
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to set up payments. Please try again.",
@@ -241,7 +242,7 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
   }
 
   const handleAccessDashboard = async () => {
-    console.log('Accessing Stripe dashboard for barber:', barberId)
+    logger.debug('Accessing Stripe dashboard for barber', { barberId })
     try {
       const response = await fetch('/api/connect/create-dashboard-link', {
         method: 'POST',
@@ -263,7 +264,7 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
 
       window.location.href = data.url
     } catch (error) {
-      console.error('Error accessing Stripe dashboard:', error)
+      logger.error('Error accessing Stripe dashboard', error)
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to access Stripe dashboard. Please try again.",
@@ -273,7 +274,7 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
   }
 
   if (isLoading) {
-    console.log('Loading state active')
+    logger.debug('Loading state active')
     return (
       <GlassyCard className="bg-white/5 border border-white/10 shadow-xl backdrop-blur-xl rounded-2xl">
         <CardContent className="pt-6 flex justify-center items-center min-h-[300px]">
@@ -283,10 +284,10 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
     )
   }
 
-  console.log('Rendering dashboard with state:', {
+  logger.debug('Rendering dashboard with state', {
     hasStripeAccount,
     isSettingUp,
-    earnings
+    hasEarnings: !!earnings
   })
 
   return (

@@ -6,6 +6,7 @@ import { supabase } from '@/shared/lib/supabase'
 import { useToast } from '@/shared/components/ui/use-toast'
 import { Loader2, CheckCircle, AlertCircle } from 'lucide-react'
 import { useSafeNavigation } from '@/shared/hooks/use-safe-navigation'
+import { logger } from '@/shared/lib/logger'
 
 export default function AuthCallbackPage() {
   const router = useRouter()
@@ -19,7 +20,7 @@ export default function AuthCallbackPage() {
     const handleAuthCallback = async () => {
       try {
         setStatus('verifying')
-        console.log('🔐 Starting Google OAuth callback process...')
+        logger.debug('Starting Google OAuth callback process')
 
         // Step 1: Get session and validate
         const { data: { session }, error: sessionError } = await supabase.auth.getSession()
@@ -28,7 +29,7 @@ export default function AuthCallbackPage() {
         }
 
         const userId = session.user.id
-        console.log('✅ Session validated for user:', userId)
+        logger.debug('Session validated', { userId })
 
         // Step 2: Fetch profile with retry mechanism
         setStatus('completing')
@@ -37,7 +38,7 @@ export default function AuthCallbackPage() {
         let retries = 3
 
         while (retries > 0) {
-          console.log(`📋 Fetching profile - Attempt ${4 - retries}/3...`)
+          logger.debug(`Fetching profile - Attempt ${4 - retries}/3`)
           const { data, error } = await supabase
           .from('profiles')
             .select('role, username, location, email, business_name')
@@ -46,12 +47,12 @@ export default function AuthCallbackPage() {
 
           if (data) {
             profile = data
-            console.log('✅ Profile fetched successfully:', profile)
+            logger.debug('Profile fetched successfully', { userId, role: profile.role })
             break
           }
 
           profileError = error
-          console.log('❌ Profile fetch attempt failed:', profileError)
+          logger.debug('Profile fetch attempt failed', { error: profileError?.message })
           retries--
           if (retries > 0) {
             await new Promise(resolve => setTimeout(resolve, 1000))
@@ -64,14 +65,14 @@ export default function AuthCallbackPage() {
 
         // Step 3: Check if profile needs completion
         if (!profile.role || !profile.username) {
-          console.log('⚠️ Profile incomplete, redirecting to completion page')
+          logger.debug('Profile incomplete, redirecting to completion page')
           safeReplace('/register/complete')
           return
         }
 
         // Step 4: Ensure barber row exists if user is a barber
         if (profile.role === 'barber') {
-          console.log('💈 Checking for barber row...')
+          logger.debug('Checking for barber row')
           const { data: existingBarber, error: barberCheckError } = await supabase
             .from('barbers')
             .select('id')
@@ -79,12 +80,12 @@ export default function AuthCallbackPage() {
             .maybeSingle()
 
           if (barberCheckError) {
-            console.error('❌ Error checking barber row:', barberCheckError)
+            logger.error('Error checking barber row', barberCheckError)
             throw barberCheckError
           }
 
           if (!existingBarber) {
-            console.log('💈 Creating barber row...')
+            logger.debug('Creating barber row')
             const { error: insertError } = await supabase
               .from('barbers')
               .insert({
@@ -96,12 +97,12 @@ export default function AuthCallbackPage() {
               })
 
             if (insertError) {
-              console.error('❌ Failed to create barber row:', insertError)
+              logger.error('Failed to create barber row', insertError)
               throw insertError
             }
-            console.log('✅ Barber row created successfully')
+            logger.debug('Barber row created successfully')
           } else {
-            console.log('✅ Barber row already exists')
+            logger.debug('Barber row already exists')
           }
         }
 
@@ -119,7 +120,7 @@ export default function AuthCallbackPage() {
           redirectPath = '/client/onboarding'
         }
 
-        console.log('🎯 Redirecting to:', redirectPath)
+        logger.debug('Redirecting', { redirectPath })
         
         // Step 6: Show success message and redirect
         toast({
@@ -133,7 +134,7 @@ export default function AuthCallbackPage() {
         }, 1000)
 
       } catch (error) {
-        console.error('❌ Auth callback error:', error)
+        logger.error('Auth callback error', error)
         setStatus('error')
         setError(error instanceof Error ? error.message : 'Unknown error occurred')
         

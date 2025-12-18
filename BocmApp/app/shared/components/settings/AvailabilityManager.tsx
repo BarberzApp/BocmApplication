@@ -323,10 +323,10 @@ export function AvailabilityManager({ barberId, onUpdate }: AvailabilityManagerP
 
       {/* Status Alert */}
       {getAvailableDaysCount() === 0 && (
-        <View style={[tw`mt-6 p-4 rounded-xl flex-row items-start`, { backgroundColor: theme.colors.saffron + '10', borderWidth: 1, borderColor: theme.colors.saffron + '20' }]}>
-          <AlertCircle size={16} color={theme.colors.saffron} style={tw`mr-2 mt-0.5`} />
+        <View style={[tw`mt-6 p-4 rounded-xl flex-row items-start`, { backgroundColor: theme.colors.accent + '10', borderWidth: 1, borderColor: theme.colors.accent + '20' }]}>
+          <AlertCircle size={16} color={theme.colors.accent} style={tw`mr-2 mt-0.5`} />
           <View style={tw`flex-1`}>
-            <Text style={[tw`text-sm`, { color: theme.colors.saffron }]}>
+            <Text style={[tw`text-sm`, { color: theme.colors.accent }]}>
               You haven't set any available days. Clients won't be able to book appointments until you set your schedule.
             </Text>
           </View>

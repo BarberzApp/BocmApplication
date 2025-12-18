@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/shared/lib/supabase';
 import { sendBookingConfirmationSMS } from '@/shared/utils/sendSMS';
+const { logger } = require('@/shared/lib/logger');
 
 export async function POST(req) {
   try {
@@ -12,7 +13,7 @@ export async function POST(req) {
       }, { status: 400 });
     }
 
-    console.log('🧪 Testing SMS for booking:', bookingId);
+    logger.debug('Testing SMS for booking', { bookingId });
 
     // Get the booking with all related data
     const { data: booking, error: bookingError } = await supabaseAdmin
@@ -27,7 +28,7 @@ export async function POST(req) {
       .single();
 
     if (bookingError) {
-      console.error('❌ Error fetching booking:', bookingError);
+      logger.error('Error fetching booking', bookingError);
       return NextResponse.json({ error: 'Failed to fetch booking' }, { status: 500 });
     }
 
@@ -43,7 +44,7 @@ export async function POST(req) {
       .single();
 
     if (profileError) {
-      console.error('❌ Error fetching barber profile:', profileError);
+      logger.error('Error fetching barber profile', profileError);
       return NextResponse.json({ error: 'Failed to fetch barber profile' }, { status: 500 });
     }
 
@@ -55,24 +56,11 @@ export async function POST(req) {
       sms_notifications: barberProfile.sms_notifications
     };
 
-    console.log('📋 Retrieved booking data for SMS test:', {
+    logger.debug('Retrieved booking data for SMS test', {
       bookingId: booking.id,
-      barber: {
-        id: booking.barber?.id,
-        phone: booking.barber?.phone,
-        carrier: booking.barber?.carrier,
-        sms_notifications: booking.barber?.sms_notifications
-      },
-      client: {
-        id: booking.client?.id,
-        phone: booking.client?.phone,
-        carrier: booking.client?.carrier,
-        sms_notifications: booking.client?.sms_notifications
-      },
-      service: {
-        id: booking.service?.id,
-        name: booking.service?.name
-      }
+      hasBarberPhone: !!booking.barber?.phone,
+      hasClientPhone: !!booking.client?.phone,
+      hasService: !!booking.service
     });
 
     // Manually trigger SMS confirmation
@@ -99,7 +87,7 @@ export async function POST(req) {
     });
 
   } catch (error) {
-    console.error('❌ Test booking SMS error:', error);
+    logger.error('Test booking SMS error', error);
     return NextResponse.json({ 
       error: 'Failed to test booking SMS',
       details: error.message 

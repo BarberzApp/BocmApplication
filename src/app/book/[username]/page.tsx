@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/shared/lib/supabase'
+import { logger } from '@/shared/lib/logger'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar'
 import { Button } from '@/shared/components/ui/button'
@@ -129,7 +130,7 @@ class ErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('Error caught by boundary:', error, errorInfo)
+    logger.error('Error caught by boundary', error, { errorInfo })
   }
 
   render() {
@@ -211,7 +212,7 @@ function BookPageContent() {
         })
       }
     } catch (error) {
-      console.error('Error sharing:', error)
+      logger.error('Error sharing', error)
       // Fallback to clipboard copy if native sharing fails
       try {
         await navigator.clipboard.writeText(shareUrl)
@@ -328,7 +329,7 @@ function BookPageContent() {
         .single()
 
       if (profileError && profileError.code !== 'PGRST116') {
-        console.error('Error fetching profile by username:', profileError)
+        logger.error('Error fetching profile by username', profileError)
         // Continue to try other methods
       }
 
@@ -344,7 +345,7 @@ function BookPageContent() {
           .single()
 
         if (barberError) {
-          console.error('Error fetching barber:', barberError)
+          logger.error('Error fetching barber', barberError)
           throw barberError
         }
 
@@ -363,7 +364,7 @@ function BookPageContent() {
           .single()
 
         if (profileError) {
-          console.error('Error fetching profile by ID:', profileError)
+          logger.error('Error fetching profile by ID', profileError)
           throw new Error('Profile not found')
         }
 
@@ -382,7 +383,7 @@ function BookPageContent() {
           .single()
 
         if (barberError) {
-          console.error('Error fetching barber:', barberError)
+          logger.error('Error fetching barber', barberError)
           throw barberError
         }
 
@@ -400,7 +401,7 @@ function BookPageContent() {
         .eq('barber_id', barberData.id)
 
       if (servicesError) {
-        console.error('Error fetching services:', servicesError)
+        logger.error('Error fetching services', servicesError)
       }
 
       // Construct the barber object
@@ -434,7 +435,7 @@ function BookPageContent() {
       await fetchReviews(barberData.id)
 
     } catch (error) {
-      console.error('Error fetching barber details:', error)
+      logger.error('Error fetching barber details', error)
       setError(error instanceof Error ? error.message : 'Failed to load barber details')
     } finally {
       setLoading(false)
@@ -454,13 +455,13 @@ function BookPageContent() {
         .limit(9)
 
       if (error) {
-        console.error('Error fetching featured cuts:', error)
+        logger.error('Error fetching featured cuts', error)
         return
       }
 
       setFeaturedReels(data || [])
     } catch (error) {
-      console.error('Error fetching featured cuts:', error)
+      logger.error('Error fetching featured cuts', error)
     } finally {
       setLoadingReels(false)
     }
@@ -489,7 +490,7 @@ function BookPageContent() {
         .limit(10)
 
       if (error) {
-        console.error('Error fetching reviews:', error)
+        logger.error('Error fetching reviews', error)
         return
       }
 
@@ -507,7 +508,7 @@ function BookPageContent() {
 
       setReviews(transformedReviews)
     } catch (error) {
-      console.error('Error fetching reviews:', error)
+      logger.error('Error fetching reviews', error)
     } finally {
       setLoadingReviews(false)
     }

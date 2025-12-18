@@ -12,6 +12,7 @@ import { supabase } from '@/shared/lib/supabase'
 import { Label } from '@/shared/components/ui/label'
 import QRCode from 'react-qr-code'
 import { Badge } from '@/shared/components/ui/badge'
+import { logger } from '@/shared/lib/logger'
 
 interface ProfileData {
   name?: string
@@ -47,7 +48,7 @@ export function ShareSettings() {
         .single()
 
       if (profileError && profileError.code !== 'PGRST116') {
-        console.error('Error fetching profile:', profileError)
+        logger.error('Error fetching profile', profileError)
       }
 
       // Fetch barber data if user is a barber
@@ -60,7 +61,7 @@ export function ShareSettings() {
           .single()
 
         if (barberError && barberError.code !== 'PGRST116') {
-          console.error('Error fetching barber data:', barberError)
+          logger.error('Error fetching barber data', barberError)
         }
 
         if (barber) {
@@ -71,7 +72,7 @@ export function ShareSettings() {
 
       setProfileData({ ...profile, ...barberData })
     } catch (error) {
-      console.error('Error loading profile data:', error)
+      logger.error('Error loading profile data', error)
     } finally {
       setIsLoading(false)
     }
@@ -350,7 +351,7 @@ export function ShareSettings() {
                       })
                     }
                   } catch (error) {
-                    console.error('Error downloading QR code:', error)
+                    logger.error('Error downloading QR code', error)
                     toast({
                       title: "Download failed",
                       description: "An error occurred while downloading the QR code.",

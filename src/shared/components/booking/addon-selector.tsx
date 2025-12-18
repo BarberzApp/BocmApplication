@@ -5,6 +5,7 @@ import { Badge } from '@/shared/components/ui/badge'
 import { Package, DollarSign, Plus } from 'lucide-react'
 import { ServiceAddon } from '@/shared/types/addon'
 import { AddonService } from '@/shared/lib/addon-service'
+import { logger } from '@/shared/lib/logger'
 
 interface AddonSelectorProps {
   barberId: string
@@ -32,7 +33,7 @@ export function AddonSelector({
       const barberAddons = await AddonService.getBarberAddons(barberId)
       setAddons(barberAddons)
     } catch (error) {
-      console.error('Error loading add-ons:', error)
+      logger.error('Error loading add-ons', error)
     } finally {
       setLoading(false)
     }

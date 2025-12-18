@@ -22,7 +22,7 @@ export async function POST(request: Request) {
       )
     }
 
-    console.log('Refreshing Stripe account status for user:', userId)
+    logger.debug('Refreshing Stripe account status for user', { userId })
 
     // Get the barber record
     const { data: barber, error: barberError } = await supabase
@@ -31,11 +31,11 @@ export async function POST(request: Request) {
       .eq('user_id', userId)
       .single()
 
-    console.log('Barber query result:', { barber, barberError })
+    logger.debug('Barber query result', { barber, barberError })
 
     if (barberError || !barber) {
-      console.log('No barber record found for user ID:', userId)
-      console.log('Barber error:', barberError)
+      logger.debug('No barber record found for user ID', { userId })
+      logger.debug('Barber error', { error: barberError })
       
       // Let's also check if there are any barber records at all
       const { data: allBarbers, error: allBarbersError } = await supabase
@@ -43,8 +43,8 @@ export async function POST(request: Request) {
         .select('id, user_id, stripe_account_id')
         .limit(5)
       
-      console.log('All barbers in database:', allBarbers)
-      console.log('All barbers error:', allBarbersError)
+      logger.debug('All barbers in database', { allBarbers })
+      logger.debug('All barbers error', { error: allBarbersError })
       
       return NextResponse.json(
         { error: 'Barber record not found' },
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
           .eq('id', barber.id)
 
         if (updateError) {
-          console.error('Error updating account status:', updateError)
+          logger.error('Error updating account status', updateError)
         }
       }
 
@@ -102,7 +102,7 @@ export async function POST(request: Request) {
       })
 
     } catch (stripeError) {
-      console.error('Error retrieving Stripe account:', stripeError)
+      logger.error('Error retrieving Stripe account', stripeError)
       return NextResponse.json(
         { error: 'Failed to retrieve Stripe account status' },
         { status: 500 }
@@ -110,7 +110,7 @@ export async function POST(request: Request) {
     }
 
   } catch (error) {
-    console.error('Error refreshing account status:', error)
+    logger.error('Error refreshing account status', error)
     return NextResponse.json(
       { 
         error: 'Failed to refresh account status',

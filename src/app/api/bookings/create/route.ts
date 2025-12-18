@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/shared/lib/supabase"
 import { sendBookingConfirmationSMS } from "@/shared/utils/sendSMS"
+import { logger } from "@/shared/lib/logger"
 
 export async function POST(request: Request) {
   try {
@@ -85,7 +86,7 @@ export async function POST(request: Request) {
       .single()
 
     if (bookingError) {
-      console.error('Error creating booking:', bookingError)
+      logger.error('Error creating booking', bookingError)
       
       // Handle specific constraint violations with 409 status
       if (bookingError.message.includes('Booking time conflicts with existing booking')) {
@@ -174,23 +175,23 @@ export async function POST(request: Request) {
           };
         }
       } catch (error) {
-        console.error('Failed to fetch barber profile for SMS:', error);
+        logger.error('Failed to fetch barber profile for SMS', error);
       }
     }
 
     // Send SMS notifications to both barber and client
     try {
-      console.log('Sending SMS notifications for booking:', booking.id)
+      logger.debug('Sending SMS notifications for booking', { bookingId: booking.id })
       const smsResults = await sendBookingConfirmationSMS(barberWithSmsData)
-      console.log('SMS notification results:', smsResults)
+      logger.debug('SMS notification results', { results: smsResults })
     } catch (smsError) {
-      console.error('Failed to send SMS notifications:', smsError)
+      logger.error('Failed to send SMS notifications', smsError)
       // Don't fail the booking creation if SMS fails
     }
 
     return NextResponse.json({ booking })
   } catch (error) {
-    console.error('Error in booking creation API:', error)
+    logger.error('Error in booking creation API', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

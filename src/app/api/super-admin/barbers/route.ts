@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/shared/lib/supabase'
+import { logger } from '@/shared/lib/logger'
 
 export async function GET(request: Request) {
   try {
@@ -46,7 +47,7 @@ export async function GET(request: Request) {
       .order('created_at', { ascending: false })
 
     if (error) {
-      console.error('Error fetching barbers:', error)
+      logger.error('Error fetching barbers', error)
       return NextResponse.json(
         { error: 'Failed to fetch barbers' },
         { status: 500 }
@@ -58,7 +59,7 @@ export async function GET(request: Request) {
       barbers: barbers || []
     })
   } catch (error) {
-    console.error('Super admin barbers error:', error)
+    logger.error('Super admin barbers error', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

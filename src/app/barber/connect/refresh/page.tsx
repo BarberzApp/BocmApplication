@@ -17,13 +17,13 @@ export default function StripeConnectRefresh() {
         const error = urlParams.get('error');
         
         if (error) {
-          console.error('Stripe connect error:', error);
+          logger.error('Stripe connect error', { error });
           setStatus('error');
           return;
         }
 
         if (accountId) {
-          console.log('Stripe connect refresh, account_id:', accountId);
+          logger.debug('Stripe connect refresh', { accountId });
           setStatus('retry');
           
           // Find the barber with this Stripe account ID and update their status
@@ -34,7 +34,7 @@ export default function StripeConnectRefresh() {
               .eq('stripe_account_id', accountId);
 
             if (findError) {
-              console.error('Error finding barber:', findError);
+              logger.error('Error finding barber', findError);
             } else if (barbers && barbers.length > 0) {
               // Update the barber's status
               const { error: updateError } = await supabase
@@ -47,9 +47,9 @@ export default function StripeConnectRefresh() {
                 .eq('stripe_account_id', accountId);
 
               if (updateError) {
-                console.error('Error updating barber status:', updateError);
+                logger.error('Error updating barber status', updateError);
               } else {
-                console.log('Successfully updated barber status for account:', accountId);
+                logger.debug('Successfully updated barber status for account', { accountId });
               }
             } else {
               // If no barber found with this account ID, try to find by pending status
@@ -73,14 +73,14 @@ export default function StripeConnectRefresh() {
                   .eq('id', pendingBarbers[0].id);
 
                 if (updateError) {
-                  console.error('Error updating pending barber:', updateError);
+                  logger.error('Error updating pending barber', updateError);
                 } else {
-                  console.log('Successfully updated pending barber with account ID:', accountId);
+                  logger.debug('Successfully updated pending barber with account ID', { accountId });
                 }
               }
             }
           } catch (dbError) {
-            console.error('Database update error:', dbError);
+            logger.error('Database update error', dbError);
           }
           
           // Try to open the mobile app with deep link
@@ -97,7 +97,7 @@ export default function StripeConnectRefresh() {
           setStatus('error');
         }
       } catch (error) {
-        console.error('Error handling Stripe refresh:', error);
+        logger.error('Error handling Stripe refresh', error);
         setStatus('error');
       }
     };

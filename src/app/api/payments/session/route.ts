@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
+import { logger } from '@/shared/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,9 +36,9 @@ export async function GET(request: Request) {
       )
     }
 
-    console.log('Retrieving Stripe session:', sessionId)
+    logger.debug('Retrieving Stripe session', { sessionId })
     const session = await stripe.checkout.sessions.retrieve(sessionId)
-    console.log('Retrieved session data:', {
+    logger.debug('Retrieved session data', {
       id: session.id,
       payment_status: session.payment_status,
       metadata: session.metadata,
@@ -64,7 +65,7 @@ export async function GET(request: Request) {
     const missingMetadata = requiredMetadata.filter(field => !session.metadata?.[field])
     
     if (missingMetadata.length > 0) {
-      console.error('Missing required metadata:', missingMetadata)
+      logger.error('Missing required metadata', undefined, { missingMetadata })
       return NextResponse.json(
         { error: `Missing required booking data: ${missingMetadata.join(', ')}` },
         { status: 400 }
@@ -75,7 +76,7 @@ export async function GET(request: Request) {
     // For full payments, basePrice should be present
     const paymentType = session.metadata?.paymentType
     if (paymentType !== 'fee' && !session.metadata?.basePrice) {
-      console.error('Missing basePrice for non-fee payment')
+      logger.error('Missing basePrice for non-fee payment')
       return NextResponse.json(
         { error: 'Missing required booking data: basePrice' },
         { status: 400 }
@@ -88,7 +89,7 @@ export async function GET(request: Request) {
       const missingGuestFields = guestFields.filter(field => !session.metadata?.[field])
       
       if (missingGuestFields.length > 0) {
-        console.error('Missing guest information:', missingGuestFields)
+        logger.error('Missing guest information', undefined, { missingGuestFields })
         return NextResponse.json(
           { error: `Missing guest information: ${missingGuestFields.join(', ')}` },
           { status: 400 }
@@ -98,7 +99,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(session)
   } catch (error) {
-    console.error('Error retrieving session:', error)
+    logger.error('Error retrieving session', error)
     const errorMessage = error instanceof Error ? error.message : 'Failed to retrieve session'
     return NextResponse.json(
       { error: errorMessage },

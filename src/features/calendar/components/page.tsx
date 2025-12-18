@@ -13,6 +13,7 @@ import { Badge } from "@/shared/components/ui/badge"
 import { Calendar, Clock, User, MapPin, DollarSign, Loader2, ExternalLink, Download, Plus } from "lucide-react"
 import dynamic from 'next/dynamic'
 import { ManualAppointmentForm } from '@/shared/components/calendar/manual-appointment-form'
+import { logger } from '@/shared/lib/logger'
 
 const CalendarComponent = dynamic(
   () => import("@/shared/components/ui/calendar").then((mod) => mod.Calendar),
@@ -113,22 +114,21 @@ export default function CalendarPage() {
           return
         }
 
-        console.log('👤 Current user:', user)
-        console.log('🎭 User role:', user?.role)
+        logger.debug('Current user', { userId: user.id, role: user?.role })
         
         if (user.role === 'client') {
-          console.log('✅ User is client, fetching client bookings')
+          logger.debug('User is client, fetching client bookings')
           // For clients: fetch their bookings
           await fetchClientBookings()
         } else if (user.role === 'barber') {
-          console.log('✅ User is barber, fetching barber data')
+          logger.debug('User is barber, fetching barber data')
           // For barbers: fetch all barbers (for admin purposes) and their own bookings
           await fetchBarberData()
         } else {
-          console.log('❓ Unknown user role:', user?.role)
+          logger.debug('Unknown user role', { role: user?.role })
         }
       } catch (error) {
-        console.error('Error fetching data:', error)
+        logger.error('Error fetching data', error)
         setError('Failed to load data. Please try again.')
       } finally {
         setLoading(false)
@@ -140,8 +140,7 @@ export default function CalendarPage() {
 
   const fetchClientBookings = async () => {
     try {
-      console.log('🔍 Fetching client bookings for user ID:', user?.id)
-      console.log('🔍 User role:', user?.role)
+      logger.debug('Fetching client bookings', { userId: user?.id, role: user?.role })
       
       // Fetch client's bookings
       const { data: bookingsData, error: bookingsError } = await supabase
@@ -163,35 +162,34 @@ export default function CalendarPage() {
         .eq('client_id', user?.id)
         .order('date', { ascending: true })
 
-      console.log('📊 Raw bookings data:', bookingsData)
-      console.log('❌ Bookings error:', bookingsError)
+      logger.debug('Raw bookings data', { count: bookingsData?.length, hasError: !!bookingsError })
 
       if (bookingsError) {
-        console.error('Error fetching bookings:', bookingsError)
+        logger.error('Error fetching bookings', bookingsError)
         throw bookingsError
       }
 
       if (!bookingsData || bookingsData.length === 0) {
-        console.log('⚠️ No bookings found for client ID:', user?.id)
+        logger.debug('No bookings found for client', { userId: user?.id })
         setBookings([])
         return
       }
 
-      console.log('✅ Found', bookingsData.length, 'bookings')
+      logger.debug('Found bookings', { count: bookingsData.length })
       
       // Debug: Check if user ID matches any client_id in the database
-      console.log('🔍 Checking if user ID matches any bookings...')
+      logger.debug('Checking if user ID matches any bookings')
       const { data: allBookingsDebug, error: debugError } = await supabase
         .from('bookings')
         .select('client_id, barber_id, date, status')
         .limit(10)
       
       if (debugError) {
-        console.log('❌ Debug query error:', debugError)
+        logger.debug('Debug query error', { error: debugError?.message })
       } else {
-        console.log('📊 All bookings in DB (for debugging):', allBookingsDebug)
+        logger.debug('All bookings in DB (for debugging)', { count: allBookingsDebug?.length })
         const userBookings = allBookingsDebug?.filter(b => b.client_id === user?.id)
-        console.log('👤 Bookings for current user:', userBookings)
+        logger.debug('Bookings for current user', { count: userBookings?.length })
       }
 
       // Fetch service names for bookings
@@ -235,7 +233,7 @@ export default function CalendarPage() {
 
       setBookings(transformedBookings)
     } catch (error) {
-      console.error('Error in fetchClientBookings:', error)
+      logger.error('Error in fetchClientBookings', error)
       throw error
     }
   }
@@ -265,7 +263,7 @@ export default function CalendarPage() {
         .order('date', { ascending: true })
 
       if (bookingsError) {
-        console.error('Error fetching barber bookings:', bookingsError)
+        logger.error('Error fetching barber bookings', bookingsError)
         throw bookingsError
       }
 
@@ -305,7 +303,7 @@ export default function CalendarPage() {
 
       setBookings(transformedBookings)
     } catch (error) {
-      console.error('Error in fetchBarberData:', error)
+      logger.error('Error in fetchBarberData', error)
       throw error
     }
   }
@@ -511,7 +509,7 @@ export default function CalendarPage() {
                                     }
                                   )
                                 } catch (error) {
-                                  console.error('Error adding to Google Calendar:', error)
+                                  logger.error('Error adding to Google Calendar', error)
                                 }
                               }}
                               variant="outline"
@@ -551,7 +549,7 @@ export default function CalendarPage() {
                                     `appointment-${booking.id}.ics`
                                   )
                                 } catch (error) {
-                                  console.error('Error downloading iCal file:', error)
+                                  logger.error('Error downloading iCal file', error)
                                 }
                               }}
                               variant="outline"

@@ -66,7 +66,7 @@ export function WriteReviewModal({ isOpen, onClose, barber }: WriteReviewModalPr
         throw new Error('You must be logged in to submit a review');
       }
 
-      console.log('User session:', { userId: session.user.id, email: session.user.email });
+      logger.debug('User session', { userId: session.user.id, email: session.user.email });
 
       // Final validation check
       const validation = validateContent(reviewText);
@@ -83,7 +83,7 @@ export function WriteReviewModal({ isOpen, onClose, barber }: WriteReviewModalPr
 
       setModerationStatus('clean');
 
-      console.log('Checking for completed booking...', { userId: user.id, barberId: barber.id });
+      logger.debug('Checking for completed booking', { userId: user.id, barberId: barber.id });
 
       // First, find the most recent completed booking between this client and barber
       const { data: booking, error: bookingError } = await supabase
@@ -96,10 +96,10 @@ export function WriteReviewModal({ isOpen, onClose, barber }: WriteReviewModalPr
         .limit(1)
         .single();
 
-      console.log('Completed booking query result:', { booking, bookingError });
+      logger.debug('Completed booking query result', { booking, bookingError });
 
       if (bookingError || !booking) {
-        console.log('No completed booking found, checking for any booking...');
+        logger.debug('No completed booking found, checking for any booking');
         
         // Check if there are any bookings with this barber at all
         const { data: anyBooking, error: anyBookingError } = await supabase
@@ -111,7 +111,7 @@ export function WriteReviewModal({ isOpen, onClose, barber }: WriteReviewModalPr
           .limit(1)
           .single();
 
-        console.log('Any booking query result:', { anyBooking, anyBookingError });
+        logger.debug('Any booking query result', { anyBooking, anyBookingError });
 
         if (anyBookingError || !anyBooking) {
           throw new Error('You haven\'t booked any appointments with this barber yet. You can only review barbers you\'ve had appointments with.');
@@ -162,7 +162,7 @@ export function WriteReviewModal({ isOpen, onClose, barber }: WriteReviewModalPr
       setReviewText("");
       setModerationStatus('clean');
     } catch (error) {
-      console.error('Error submitting review:', error);
+      logger.error('Error submitting review', error);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to submit review. Please try again.",

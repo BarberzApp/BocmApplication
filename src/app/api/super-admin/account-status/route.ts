@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/shared/lib/supabase'
+import { logger } from '@/shared/lib/logger'
 
 export async function POST(request: Request) {
   try {
@@ -38,7 +39,7 @@ export async function POST(request: Request) {
       .eq('id', userId)
 
     if (error) {
-      console.error('Error updating account status:', error)
+      logger.error('Error updating account status', error)
       return NextResponse.json(
         { error: 'Failed to update account status' },
         { status: 500 }
@@ -52,7 +53,7 @@ export async function POST(request: Request) {
       message: `Account ${statusText} successfully`
     })
   } catch (error) {
-    console.error('Super admin account status error:', error)
+    logger.error('Super admin account status error', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

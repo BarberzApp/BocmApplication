@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import nodemailer from 'nodemailer'
+import { logger } from '@/shared/lib/logger'
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -36,16 +37,16 @@ export async function POST(request: NextRequest) {
       html
     }
 
-    console.log('Sending error email to:', to)
+    logger.debug('Sending error email', { to })
     await transporter.sendMail(mailOptions)
-    console.log('Error email sent successfully')
+    logger.debug('Error email sent successfully')
 
     return NextResponse.json({ 
       success: true, 
       message: 'Error email sent successfully' 
     })
   } catch (error) {
-    console.error('Error email sending failed:', error)
+    logger.error('Error email sending failed', error)
     return NextResponse.json(
       { 
         error: 'Failed to send error email',

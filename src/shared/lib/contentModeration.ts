@@ -192,7 +192,7 @@ export async function moderateWithOpenAI(text: string): Promise<ModerationResult
     // Fallback to heuristic moderation
     return await moderateContentWithAI(text);
   } catch (error) {
-    console.error('OpenAI moderation failed, falling back to heuristic:', error);
+    logger.error('OpenAI moderation failed, falling back to heuristic', error);
     return await moderateContentWithAI(text);
   }
 }

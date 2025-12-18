@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { CalendarSyncService } from '@/shared/lib/google-calendar-api';
+import { logger } from '@/shared/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error getting calendar connection:', error);
+    logger.error('Error getting calendar connection', error);
     return NextResponse.json(
       { error: 'Failed to get calendar connection' },
       { status: 500 }
@@ -94,7 +95,7 @@ export async function DELETE(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error removing calendar connection:', error);
+    logger.error('Error removing calendar connection', error);
     return NextResponse.json(
       { error: 'Failed to remove calendar connection' },
       { status: 500 }
@@ -148,7 +149,7 @@ export async function PATCH(request: NextRequest) {
       .single();
 
     if (updateError) {
-      console.error('Error updating calendar connection:', updateError);
+      logger.error('Error updating calendar connection', updateError);
       return NextResponse.json(
         { error: 'Failed to update calendar connection' },
         { status: 500 }
@@ -168,7 +169,7 @@ export async function PATCH(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error updating calendar connection:', error);
+    logger.error('Error updating calendar connection', error);
     return NextResponse.json(
       { error: 'Failed to update calendar connection' },
       { status: 500 }

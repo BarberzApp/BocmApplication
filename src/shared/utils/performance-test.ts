@@ -1,5 +1,7 @@
 // Performance testing utilities for the barber app
 
+import { logger } from '../lib/logger'
+
 export interface PerformanceMetrics {
   loadTime: number
   firstContentfulPaint: number
@@ -189,7 +191,7 @@ export const measureAsyncOperation = async <T>(
   const result = await operation()
   const duration = performance.now() - start
   
-  console.log(`${operationName} took ${duration.toFixed(2)}ms`)
+  logger.debug(`${operationName} took ${duration.toFixed(2)}ms`)
   return { result, duration }
 }
 
@@ -201,7 +203,7 @@ export const measureSyncOperation = <T>(
   const result = operation()
   const duration = performance.now() - start
   
-  console.log(`${operationName} took ${duration.toFixed(2)}ms`)
+  logger.debug(`${operationName} took ${duration.toFixed(2)}ms`)
   return { result, duration }
 }
 
@@ -211,7 +213,7 @@ export const createPerformanceTest = (testName: string) => {
 
   return {
     start: () => {
-      console.log(`🧪 Starting performance test: ${testName}`)
+      logger.debug(`Starting performance test: ${testName}`)
       monitor.startMeasurement()
     },
     end: () => {
@@ -219,9 +221,7 @@ export const createPerformanceTest = (testName: string) => {
       const metrics = monitor.getLatestMetrics()
       const componentMetrics = componentMonitor.getAllComponentMetrics()
       
-      console.log(`📊 Performance test results for: ${testName}`)
-      console.table(metrics)
-      console.log('Component metrics:', componentMetrics)
+      logger.debug(`Performance test results for: ${testName}`, { metrics, componentMetrics })
       
       return { metrics, componentMetrics }
     },

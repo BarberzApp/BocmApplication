@@ -2,6 +2,7 @@ import { useAuthStore, useUser, useIsAuthenticated, useIsLoading, useAuthStatus,
 import { useToast } from '@/shared/components/ui/use-toast'
 import { useEffect } from 'react'
 import { supabase } from '@/shared/lib/supabase'
+import { logger } from '@/shared/lib/logger'
 
 // Utility function to determine redirect path based on user profile
 export const getRedirectPath = async (userId: string) => {
@@ -13,7 +14,7 @@ export const getRedirectPath = async (userId: string) => {
       .maybeSingle()
     
     if (error || !profile) {
-      console.error('Profile fetch error:', error)
+      logger.error('Profile fetch error', error)
       return '/'
     }
 
@@ -35,7 +36,7 @@ export const getRedirectPath = async (userId: string) => {
           .maybeSingle()
 
         if (barberError) {
-          console.error('Barber fetch error:', barberError)
+          logger.error('Barber fetch error', barberError)
           return '/barber/onboarding'
         }
 
@@ -60,17 +61,17 @@ export const getRedirectPath = async (userId: string) => {
         
         const completionPercentage = (completedFields / totalFields) * 100;
         
-        console.log('Login redirect: Barber completion percentage', { 
+        logger.debug('Login redirect: Barber completion percentage', { 
           completedFields, 
           totalFields, 
           completionPercentage 
         });
 
         // Always redirect to onboarding for barbers
-        console.log('Login redirect: Redirecting to onboarding');
+        logger.debug('Login redirect: Redirecting to onboarding');
         return '/barber/onboarding'
       } catch (error) {
-        console.error('Error checking barber completion:', error)
+        logger.error('Error checking barber completion', error)
         return '/barber/onboarding'
       }
     } else if (profile.location) {
@@ -79,7 +80,7 @@ export const getRedirectPath = async (userId: string) => {
       return '/client/onboarding'
     }
   } catch (error) {
-    console.error('Error determining redirect path:', error)
+    logger.error('Error determining redirect path', error)
     return '/'
   }
 }
@@ -109,20 +110,20 @@ export const useAuth = () => {
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      console.log('🔐 Login hook called for:', email)
+      logger.debug('Login hook called', { email })
       const success = await loginAction(email, password)
       
       if (success) {
-        console.log('✅ Login hook: Success')
+        logger.debug('Login hook: Success')
         // Don't show toast here, let the page handle it
         return true
       } else {
-        console.log('❌ Login hook: Failed')
+        logger.debug('Login hook: Failed')
         // Don't show toast here, let the page handle it
         return false
       }
     } catch (error) {
-      console.error('❌ Login hook error:', error)
+      logger.error('Login hook error', error)
       // Don't show toast here, let the page handle it
       return false
     }
@@ -151,7 +152,7 @@ export const useAuth = () => {
       }
       return success
     } catch (error) {
-      console.error('Login with redirect error:', error)
+      logger.error('Login with redirect error', error)
       return false
     }
   }

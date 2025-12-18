@@ -1,3 +1,5 @@
+import { logger } from '../lib/logger'
+
 interface ErrorReport {
   message: string
   stack?: string
@@ -97,7 +99,7 @@ class ErrorReporter {
     const errorKey = `${fullErrorData.message}-${fullErrorData.url}-${fullErrorData.errorType}`
     
     if (this.reportedErrors.has(errorKey)) {
-      console.log('Error already reported, skipping:', errorKey)
+      logger.debug('Error already reported, skipping', { errorKey })
       return
     }
 
@@ -120,9 +122,9 @@ class ErrorReporter {
       
       try {
         await this.sendErrorReport(errorReport)
-        console.log('✅ Error reported successfully:', errorReport.message)
+        logger.debug('Error reported successfully', { message: errorReport.message })
       } catch (error) {
-        console.error('❌ Failed to report error:', error)
+        logger.error('Failed to report error', error)
         // Re-queue on failure (but only once)
         if (!errorReport.message.includes('RETRY')) {
           this.reportQueue.unshift({
@@ -141,7 +143,7 @@ class ErrorReporter {
 
   private async sendErrorReport(errorData: ErrorReport) {
     if (typeof window === 'undefined') {
-      console.error('Cannot send error report on server side')
+      logger.error('Cannot send error report on server side')
       return
     }
 

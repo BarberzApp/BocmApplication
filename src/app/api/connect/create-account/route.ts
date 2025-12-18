@@ -1,6 +1,8 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { supabase } from '@/shared/lib/supabase'
+import { logger } from '@/shared/lib/logger'
+import { handleCorsPreflight, withCors } from '@/shared/lib/cors'
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing STRIPE_SECRET_KEY')
@@ -15,7 +17,7 @@ const getBaseUrl = () => {
 };
 
 const APP_URL = getBaseUrl();
-console.log('Using app URL:', APP_URL);
+logger.debug('Using app URL', { url: APP_URL });
 
 // Mobile deep link URLs for redirecting back to the app
 const getMobileRedirectUrls = () => {
@@ -60,65 +62,49 @@ async function checkAndUpdateStripeAccountStatus(barberId: string, stripeAccount
       .eq('id', barberId)
 
     if (updateError) {
-      console.error('Error updating account status:', updateError)
+      logger.error('Error updating account status', updateError)
       return false
     }
 
     return true
   } catch (error) {
-    console.error('Error checking Stripe account status:', error)
+    logger.error('Error checking Stripe account status', error)
     return false
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    // Handle preflight requests
-    if (request.method === 'OPTIONS') {
-      return new NextResponse(null, { 
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type',
-        }
-      })
-    }
+    // Handle CORS preflight
+    const preflightResponse = handleCorsPreflight(request);
+    if (preflightResponse) return preflightResponse;
 
     const body = await request.json() as CreateAccountRequest
     const { barberId, email } = body
 
     // Input validation
     if (!barberId || typeof barberId !== 'string') {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { error: 'Barber ID is required and must be a string' },
-        { status: 400, headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type',
-        }}
+        { status: 400 }
       )
+      return withCors(request, response)
     }
 
     if (barberId.trim().length === 0) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { error: 'Barber ID cannot be empty' },
-        { status: 400, headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type',
-        }}
+        { status: 400 }
       )
+      return withCors(request, response)
     }
 
     if (!email || typeof email !== 'string' || !email.includes('@')) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { error: 'Valid email is required' },
-        { status: 400, headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type',
-        }}
+        { status: 400 }
       )
+      return withCors(request, response)
     }
 
     // Get barber details
@@ -129,26 +115,20 @@ export async function POST(request: Request) {
       .single()
 
     if (barberError) {
-      console.error('Error fetching barber:', barberError)
-      return NextResponse.json(
+      logger.error('Error fetching barber', barberError)
+      const response = NextResponse.json(
         { error: 'Failed to fetch barber details' },
-        { status: 500, headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type',
-        }}
+        { status: 500 }
       )
+      return withCors(request, response)
     }
 
     if (!barber) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { error: 'Barber not found' },
-        { status: 404, headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type',
-        }}
+        { status: 404 }
       )
+      return withCors(request, response)
     }
 
     // Check if barber already has a Stripe account in database
@@ -156,7 +136,7 @@ export async function POST(request: Request) {
       // Check if the existing account is still valid
       try {
         const existingAccount = await stripe.accounts.retrieve(barber.stripe_account_id)
-        console.log('Found existing Stripe account:', existingAccount.id)
+        logger.debug('Found existing Stripe account', { accountId: existingAccount.id })
         
         // Update the account status based on current Stripe status
         await checkAndUpdateStripeAccountStatus(barberId, existingAccount.id)
@@ -169,17 +149,14 @@ export async function POST(request: Request) {
           type: 'account_onboarding',
         })
 
-        return NextResponse.json({
+        const response = NextResponse.json({
           url: accountLink.url,
           accountId: existingAccount.id,
           existing: true,
-        }, { headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type',
-        }})
+        })
+        return withCors(request, response)
       } catch (stripeError) {
-        console.log('Existing account not found or invalid, will create new one')
+        logger.debug('Existing account not found or invalid, will create new one')
         // Continue to create new account
       }
     }
@@ -195,10 +172,10 @@ export async function POST(request: Request) {
       )
 
       if (matchingAccount) {
-        console.log('Found existing Stripe account with email:', matchingAccount.id)
+        logger.debug('Found existing Stripe account with email', { accountId: matchingAccount.id })
         
         // Update barber record with existing Stripe account ID
-        console.log('Updating barber record with existing Stripe account ID:', matchingAccount.id);
+        logger.debug('Updating barber record with existing Stripe account ID', { accountId: matchingAccount.id });
         const { error: updateError } = await supabase
           .from('barbers')
           .update({
@@ -210,18 +187,15 @@ export async function POST(request: Request) {
           .eq('id', barberId)
 
         if (updateError) {
-          console.error('Error updating barber with existing account:', updateError)
-          return NextResponse.json(
+          logger.error('Error updating barber with existing account', updateError)
+          const response = NextResponse.json(
             { error: 'Failed to update barber record with existing account' },
-            { status: 500, headers: {
-              'Access-Control-Allow-Origin': '*',
-              'Access-Control-Allow-Methods': 'POST, OPTIONS',
-              'Access-Control-Allow-Headers': 'Content-Type',
-            }}
+            { status: 500 }
           )
+          return withCors(request, response)
         }
 
-        console.log('Successfully updated barber record with existing Stripe account ID');
+        logger.debug('Successfully updated barber record with existing Stripe account ID');
 
         // Verify the update was successful
         const { data: verifyBarber, error: verifyError } = await supabase
@@ -231,9 +205,9 @@ export async function POST(request: Request) {
           .single();
 
         if (verifyError) {
-          console.error('Error verifying barber update:', verifyError);
+          logger.error('Error verifying barber update', verifyError);
         } else {
-          console.log('Verified barber record after update:', verifyBarber);
+          logger.debug('Verified barber record after update', { verifyBarber });
         }
 
         // Update the account status based on current Stripe status
@@ -247,24 +221,21 @@ export async function POST(request: Request) {
           type: 'account_onboarding',
         })
 
-        return NextResponse.json({
+        const response = NextResponse.json({
           url: accountLink.url,
           accountId: matchingAccount.id,
           existing: true,
-        }, { headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type',
-        }})
+        })
+        return withCors(request, response)
       }
     } catch (searchError) {
-      console.log('Error searching for existing accounts, will create new one:', searchError)
+      logger.debug('Error searching for existing accounts, will create new one', { error: searchError })
       // Continue to create new account
     }
 
     // Always use the production URL for business_profile.url
     const businessProfileUrl = getBusinessProfileUrl(barber.id);
-    console.log('Business profile URL:', businessProfileUrl)
+    logger.debug('Business profile URL', { url: businessProfileUrl })
 
     // Create a Stripe Connect Express account
     const account = await stripe.accounts.create({
@@ -291,7 +262,7 @@ export async function POST(request: Request) {
     })
 
     // Update barber record with Stripe account ID
-    console.log('Saving Stripe account ID to database:', account.id, 'for barber:', barberId);
+    logger.debug('Saving Stripe account ID to database', { accountId: account.id, barberId });
     
     const { error: updateError } = await supabase
       .from('barbers')
@@ -303,40 +274,29 @@ export async function POST(request: Request) {
       .eq('id', barberId)
 
     if (updateError) {
-      console.error('Error updating barber:', updateError)
+      logger.error('Error updating barber', updateError)
       // Attempt to delete the Stripe account since we couldn't save the ID
       await stripe.accounts.del(account.id)
-      return NextResponse.json(
+      const response = NextResponse.json(
         { error: 'Failed to update barber record' },
-        { status: 500, headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type',
-        }}
+        { status: 500 }
       )
+      return withCors(request, response)
     }
 
-    console.log('Successfully saved Stripe account ID to database');
+    logger.debug('Successfully saved Stripe account ID to database');
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       url: accountLink.url,
       accountId: account.id,
-    }, { headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    }})
+    })
+    return withCors(request, response)
   } catch (error) {
-    console.error('Error creating Stripe Connect account:', error)
-    return NextResponse.json(
+    logger.error('Error creating Stripe Connect account', error)
+    const response = NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to create Stripe account' },
-      {
-        status: 500, headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type',
-        }
-      }
+      { status: 500 }
     )
+    return withCors(request, response)
   }
 }

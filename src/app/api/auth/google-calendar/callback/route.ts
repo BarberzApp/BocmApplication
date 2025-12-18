@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
+import { logger } from '@/shared/lib/logger';
 
 const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest) {
     const state = searchParams.get('state'); // Extract state parameter
 
     if (error) {
-      console.error('OAuth error:', error);
+      logger.error('OAuth error', { error });
       return NextResponse.redirect(
         `${process.env.NEXT_PUBLIC_APP_URL}/settings?error=oauth_failed&message=${encodeURIComponent(error)}`
       );
@@ -45,9 +46,9 @@ export async function GET(request: NextRequest) {
     
     // First try to get the current session
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    console.log('🔐 OAuth Callback - Session check:', { 
+    logger.debug('OAuth Callback - Session check', { 
       hasSession: !!session, 
-      sessionError 
+      hasError: !!sessionError 
     });
     
     let user: any = session?.user || null;
@@ -55,13 +56,13 @@ export async function GET(request: NextRequest) {
     
     // If no session, try to refresh it
     if (!session && !sessionError) {
-      console.log('🔄 OAuth Callback - No session found, attempting refresh...');
+      logger.debug('OAuth Callback - No session found, attempting refresh');
       const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
       
       if (refreshError) {
-        console.error('❌ OAuth Callback - Session refresh failed:', refreshError);
+        logger.error('OAuth Callback - Session refresh failed', refreshError);
       } else if (refreshedSession) {
-        console.log('✅ OAuth Callback - Session refreshed successfully');
+        logger.debug('OAuth Callback - Session refreshed successfully');
         user = refreshedSession.user;
       }
     }
@@ -75,7 +76,7 @@ export async function GET(request: NextRequest) {
     
     // If still no user, try to recover from state parameter
     if (!user && state) {
-      console.log('🔄 OAuth Callback - Attempting session recovery from state parameter:', state);
+      logger.debug('OAuth Callback - Attempting session recovery from state parameter', { state });
       
       // Try to get user by ID from state parameter
       const { data: profile, error: profileError } = await supabase
@@ -85,35 +86,35 @@ export async function GET(request: NextRequest) {
         .single();
       
       if (profile && !profileError) {
-        console.log('✅ OAuth Callback - Found user from state parameter:', profile.id);
+        logger.debug('OAuth Callback - Found user from state parameter', { userId: profile.id });
         // Create a minimal user object for the callback
         user = { id: profile.id, email: profile.email } as any;
         userError = null;
       } else {
-        console.error('❌ OAuth Callback - Could not recover user from state parameter:', profileError);
+        logger.error('OAuth Callback - Could not recover user from state parameter', profileError);
       }
     }
     
-    console.log('🔐 OAuth Callback - Final user check:', { 
+    logger.debug('OAuth Callback - Final user check', { 
       hasUser: !!user, 
       userId: user?.id, 
-      error: userError 
+      hasError: !!userError 
     });
     
     if (userError || !user) {
-      console.error('❌ OAuth Callback - Authentication failed:', userError);
+      logger.error('OAuth Callback - Authentication failed', userError);
       return NextResponse.redirect(
         `${process.env.NEXT_PUBLIC_APP_URL}/login?error=not_authenticated&message=${encodeURIComponent('Session expired during OAuth flow. Please log in again.')}`
       );
     }
 
     // Save connection to database using service role to bypass RLS
-    console.log('💾 OAuth Callback - Saving calendar connection for user:', user.id);
+    logger.debug('OAuth Callback - Saving calendar connection for user', { userId: user.id });
     
     // Import the admin client
     const { supabaseAdmin } = await import('@/shared/lib/supabase');
     
-    console.log('🔧 OAuth Callback - Using service role for database operations');
+    logger.debug('OAuth Callback - Using service role for database operations');
     
     const { data: connection, error: connectionError } = await supabaseAdmin
       .from('user_calendar_connections')
@@ -132,13 +133,13 @@ export async function GET(request: NextRequest) {
       .single();
 
     if (connectionError) {
-      console.error('❌ OAuth Callback - Database save failed:', connectionError);
+      logger.error('OAuth Callback - Database save failed', connectionError);
       return NextResponse.redirect(
         `${process.env.NEXT_PUBLIC_APP_URL}/settings?error=save_failed&message=${encodeURIComponent(connectionError.message)}`
       );
     }
     
-    console.log('✅ OAuth Callback - Calendar connection saved successfully:', connection.id);
+    logger.debug('OAuth Callback - Calendar connection saved successfully', { connectionId: connection.id });
 
     // Log successful connection using service role
     await supabaseAdmin
@@ -157,7 +158,7 @@ export async function GET(request: NextRequest) {
     );
 
   } catch (error) {
-    console.error('❌ Error in Google Calendar OAuth callback:', error);
+    logger.error('Error in Google Calendar OAuth callback', error);
     
     // Provide more specific error information
     let errorMessage = 'callback_failed';

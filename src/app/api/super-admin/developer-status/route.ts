@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/shared/lib/supabase'
+import { logger } from '@/shared/lib/logger'
 
 const SUPER_ADMIN_EMAIL = 'primbocm@gmail.com'
 
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
       .eq('id', barberId)
 
     if (error) {
-      console.error('Error updating developer status:', error)
+      logger.error('Error updating developer status', error)
       return NextResponse.json(
         { error: 'Failed to update developer status' },
         { status: 500 }
@@ -56,7 +57,7 @@ export async function POST(request: Request) {
       message: `Developer status ${isDeveloper ? 'enabled' : 'disabled'} successfully`
     })
   } catch (error) {
-    console.error('Developer status update error:', error)
+    logger.error('Developer status update error', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -105,7 +106,7 @@ export async function GET(request: Request) {
       .order('created_at', { ascending: false })
 
     if (error) {
-      console.error('Error fetching barbers:', error)
+      logger.error('Error fetching barbers', error)
       return NextResponse.json(
         { error: 'Failed to fetch barbers' },
         { status: 500 }
@@ -123,7 +124,7 @@ export async function GET(request: Request) {
       barbers: transformedData
     })
   } catch (error) {
-    console.error('Get barbers error:', error)
+    logger.error('Get barbers error', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

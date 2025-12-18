@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/shared/lib/supabase'
+import { logger } from '@/shared/lib/logger'
 
 export async function POST(request: Request) {
   try {
@@ -46,7 +47,7 @@ export async function POST(request: Request) {
       .eq('id', userId)
 
     if (error) {
-      console.error('Error updating user role:', error)
+      logger.error('Error updating user role', error)
       return NextResponse.json(
         { error: 'Failed to update user role' },
         { status: 500 }
@@ -78,7 +79,7 @@ export async function POST(request: Request) {
       message: `User role updated to ${role}`
     })
   } catch (error) {
-    console.error('Super admin update role error:', error)
+    logger.error('Super admin update role error', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Card, CardContent } from '@/shared/components/ui/card'
+import { logger } from '@/shared/lib/logger'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { Label } from '@/shared/components/ui/label'
@@ -88,12 +89,12 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
   const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 
   useEffect(() => {
-    console.log('EnhancedCalendar: User changed', user)
+    logger.debug('EnhancedCalendar: User changed', { userId: user?.id })
     if (!user) {
-      console.log('EnhancedCalendar: No user, skipping fetch')
+      logger.debug('EnhancedCalendar: No user, skipping fetch')
       return
     }
-    console.log('EnhancedCalendar: Fetching bookings for user:', user.id)
+    logger.debug('EnhancedCalendar: Fetching bookings for user', { userId: user.id })
     fetchBookings()
   }, [user])
 
@@ -123,7 +124,7 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
 
   const fetchBookings = async () => {
     try {
-      console.log('EnhancedCalendar: Starting fetchBookings for user:', user?.id)
+      logger.debug('EnhancedCalendar: Starting fetchBookings for user', { userId: user?.id })
       
       // Check if user is a barber or client
       const { data: barberData, error: barberError } = await supabase
@@ -132,7 +133,7 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
         .eq('user_id', user?.id)
         .single()
 
-      console.log('EnhancedCalendar: Barber data:', barberData, 'Error:', barberError)
+      logger.debug('EnhancedCalendar: Barber data', { barberData, error: barberError })
       
       // Update isBarber state based on barberData
       setIsBarber(!!barberData)
@@ -141,7 +142,7 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
       
       if (barberData) {
         // User is a barber - fetch their bookings
-        console.log('EnhancedCalendar: User is a barber, fetching barber bookings')
+        logger.debug('EnhancedCalendar: User is a barber, fetching barber bookings')
         bookingsQuery = supabase
           .from('bookings')
           .select(`
@@ -161,7 +162,7 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
           .order('date', { ascending: true })
       } else {
         // User is a client - fetch their bookings
-        console.log('EnhancedCalendar: User is a client, fetching client bookings')
+        logger.debug('EnhancedCalendar: User is a client, fetching client bookings')
         bookingsQuery = supabase
           .from('bookings')
           .select(`
@@ -189,15 +190,15 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
 
       const { data: bookings, error } = await bookingsQuery
 
-      console.log('EnhancedCalendar: Bookings data:', bookings, 'Error:', error)
+      logger.debug('EnhancedCalendar: Bookings data', { bookings, error })
       
       if (error || !bookings) {
-        console.log('EnhancedCalendar: No bookings found or error:', error)
+        logger.debug('EnhancedCalendar: No bookings found or error', { error })
         return
       }
 
       const events = await Promise.all(bookings.map(async (booking) => {
-        console.log('EnhancedCalendar: Processing booking:', booking)
+        logger.debug('EnhancedCalendar: Processing booking', { bookingId: booking.id })
         
         // For barber view, we need to fetch service and client separately
         // For client view, service and barber info are already included in the query
@@ -240,7 +241,8 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
           ? booking.barber_payout
           : basePrice + addonTotal + (platformFee * 0.40)
         
-        console.log('EnhancedCalendar: Price calculation for booking', booking.id, {
+        logger.debug('EnhancedCalendar: Price calculation for booking', {
+          bookingId: booking.id,
           servicePrice: service?.price,
           bookingPrice: booking.price,
           basePrice,
@@ -290,11 +292,11 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
         }
       }))
 
-              console.log('EnhancedCalendar: Final events:', events)
-        console.log('EnhancedCalendar: Sample booking with addons:', bookings[0])
+        logger.debug('EnhancedCalendar: Final events', { eventCount: events.length })
+        logger.debug('EnhancedCalendar: Sample booking with addons', { booking: bookings[0] })
         setEvents(events)
     } catch (error) {
-      console.error('EnhancedCalendar: Error fetching bookings:', error)
+      logger.error('EnhancedCalendar: Error fetching bookings', error)
     }
   }
 
@@ -372,7 +374,7 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
         .eq('id', selectedEvent.id)
 
       if (error) {
-        console.error('Error marking booking as missed:', error)
+        logger.error('Error marking booking as missed', error)
         throw error
       }
 
@@ -388,9 +390,9 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
       // Refresh the events to update the calendar
       await fetchBookings()
 
-      console.log('Booking marked as missed successfully')
+      logger.debug('Booking marked as missed successfully')
     } catch (error) {
-      console.error('Failed to mark booking as missed:', error)
+      logger.error('Failed to mark booking as missed', error)
     } finally {
       setIsMarkingMissed(false)
     }
@@ -1187,7 +1189,7 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
                               }
                             )
                           } catch (error) {
-                            console.error('Error adding to Google Calendar:', error)
+                            logger.error('Error adding to Google Calendar', error)
                           }
                         }
                       }}
@@ -1214,7 +1216,7 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
                               `appointment-${selectedEvent.id}.ics`
                             )
                           } catch (error) {
-                            console.error('Error downloading iCal file:', error)
+                            logger.error('Error downloading iCal file', error)
                           }
                         }
                       }}

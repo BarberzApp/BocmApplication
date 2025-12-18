@@ -113,7 +113,7 @@ export default function SupportPage() {
         message: ''
       })
     } catch (error) {
-      console.error('Support form error:', error)
+      logger.error('Support form error', error)
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to send your message. Please try again.",

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
+import { logger } from '@/shared/lib/logger';
 
 const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
       const authHeader = request.headers.get('authorization');
       if (authHeader && authHeader.startsWith('Bearer ')) {
         const token = authHeader.replace('Bearer ', '');
-        console.log('🔐 Calendar OAuth - Using Bearer token for authentication');
+        logger.debug('Calendar OAuth - Using Bearer token for authentication');
         
         // Create a new Supabase client with the token
         const { createClient } = await import('@supabase/supabase-js');
@@ -56,14 +57,14 @@ export async function GET(request: NextRequest) {
     }
     
     if (userError || !user) {
-      console.error('❌ Calendar OAuth - User not authenticated:', userError);
+      logger.error('Calendar OAuth - User not authenticated', userError);
       return NextResponse.json(
         { error: 'User not authenticated' },
         { status: 401 }
       );
     }
     
-    console.log('✅ Calendar OAuth - User authenticated:', user.id);
+    logger.debug('Calendar OAuth - User authenticated', { userId: user.id });
     
     const url = oauth2Client.generateAuthUrl({
       access_type: 'offline',
@@ -78,7 +79,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ url });
   } catch (error) {
-    console.error('Error generating auth URL:', error);
+    logger.error('Error generating auth URL', error);
     return NextResponse.json(
       { error: 'Failed to generate authentication URL' },
       { status: 500 }
@@ -136,7 +137,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (connectionError) {
-      console.error('Error saving calendar connection:', connectionError);
+      logger.error('Error saving calendar connection', connectionError);
       return NextResponse.json(
         { error: 'Failed to save calendar connection' },
         { status: 500 }
@@ -166,7 +167,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error in Google Calendar OAuth callback:', error);
+    logger.error('Error in Google Calendar OAuth callback', error);
     return NextResponse.json(
       { error: 'Failed to complete authentication' },
       { status: 500 }

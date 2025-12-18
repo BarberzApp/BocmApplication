@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { handleCorsPreflight, withCors } from '@/shared/lib/cors';
+import { logger } from '@/shared/lib/logger';
 
 export async function GET(request: NextRequest) {
+  // Handle CORS preflight
+  const preflightResponse = handleCorsPreflight(request);
+  if (preflightResponse) return preflightResponse;
+
   const { searchParams } = new URL(request.url);
   const q = searchParams.get('q');
   const city = searchParams.get('city');
@@ -15,7 +21,8 @@ export async function GET(request: NextRequest) {
     query = state;
   }
   if (!query) {
-    return NextResponse.json({ error: 'Missing query' }, { status: 400 });
+    const response = NextResponse.json({ error: 'Missing query' }, { status: 400 });
+    return withCors(request, response);
   }
   const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=5&countrycodes=us&q=${encodeURIComponent(query)}`;
   
@@ -32,27 +39,15 @@ export async function GET(request: NextRequest) {
     }
     
     const data = await response.json();
-    
-    return NextResponse.json(data, {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      },
-    });
+    const jsonResponse = NextResponse.json(data);
+    return withCors(request, jsonResponse);
   } catch (error) {
-    console.error('Error fetching from Nominatim:', error);
-    return NextResponse.json({ error: 'Failed to fetch from Nominatim' }, { status: 500 });
+    logger.error('Error fetching from Nominatim', error);
+    const errorResponse = NextResponse.json({ error: 'Failed to fetch from Nominatim' }, { status: 500 });
+    return withCors(request, errorResponse);
   }
 }
 
-export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
-  });
+export async function OPTIONS(request: NextRequest) {
+  return handleCorsPreflight(request) || new NextResponse(null, { status: 200 });
 } 

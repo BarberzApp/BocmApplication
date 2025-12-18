@@ -1,432 +1,282 @@
-# Sentry Setup Guide for BocmApp
+# Sentry Setup Guide for Next.js Web App
 
-**Date:** December 11, 2024  
-**Status:** ✅ Code integrated, needs Sentry account setup
+## ✅ Integration Complete
 
----
+Sentry has been fully integrated into the Next.js web application. This guide will help you complete the setup by creating a Sentry account and configuring the DSN.
 
-## 🎯 What's Been Done
+## 📦 What's Been Installed
 
-### **1. Sentry Package Installed** ✅
-```bash
-npm install --save @sentry/react-native
-```
+- `@sentry/nextjs` - Official Sentry SDK for Next.js
+- Automatic error tracking for client, server, and edge runtimes
+- Performance monitoring (10% sample rate in production)
+- Session replay for debugging (1% session sample, 100% error replay)
+- Integration with logger utility (errors automatically sent to Sentry)
 
-### **2. Sentry Integration Code Added** ✅
+## 📁 Files Created
 
-**Files Created/Modified:**
-- ✅ `app/shared/lib/sentry.ts` - Sentry configuration and utilities
-- ✅ `App.tsx` - Sentry initialization
-- ✅ `app/shared/hooks/useAuth.tsx` - User context tracking
-- ✅ `sentry.properties` - Sentry configuration file
+1. **`sentry.client.config.ts`** - Client-side Sentry configuration
+2. **`sentry.server.config.ts`** - Server-side Sentry configuration
+3. **`sentry.edge.config.ts`** - Edge runtime Sentry configuration
+4. **`src/instrumentation.ts`** - Next.js instrumentation hook
+5. **`.sentryclirc`** - Sentry CLI configuration (for source maps)
 
-### **3. Features Implemented** ✅
-- ✅ Error tracking
-- ✅ User context tracking
-- ✅ Breadcrumb logging
-- ✅ Production-only mode (disabled in development)
-- ✅ Sensitive data filtering
-- ✅ Network error filtering
+## 🔧 Configuration Files Modified
 
----
+1. **`next.config.mjs`** - Added Sentry webpack plugin
+2. **`src/shared/lib/logger.ts`** - Integrated Sentry error reporting
+3. **`src/shared/components/ui/enhanced-error-boundary.tsx`** - Sends errors to Sentry
 
-## 🚀 Next Steps - Create Sentry Account (10 minutes)
+## 🚀 Quick Setup (5 minutes)
 
-### **Step 1: Create Sentry Account** (2 minutes)
+### Step 1: Create Sentry Account
 
 1. Go to [https://sentry.io/signup/](https://sentry.io/signup/)
-2. Sign up with your email or GitHub
-3. Choose the **Free Plan** (good for beta testing)
-   - 5,000 errors/month
-   - 10,000 transactions/month
-   - 30-day retention
-   - **Perfect for beta launch!**
+2. Sign up for a free account (or use existing account)
+3. Create a new project:
+   - Select **Next.js** as the platform
+   - Name it "barber-app" or similar
+   - Choose your organization
 
-### **Step 2: Create a Project** (3 minutes)
+### Step 2: Get Your DSN
 
-1. After signup, click "Create Project"
-2. Choose platform: **React Native**
-3. Set alert frequency: **On every new issue** (for beta)
-4. Project name: `bocm-app` or `BocmApp`
-5. Click "Create Project"
+1. After creating the project, Sentry will show you a DSN
+2. It looks like: `https://abc123def456@o123456.ingest.sentry.io/789012`
+3. Copy this DSN
 
-### **Step 3: Get Your DSN** (1 minute)
+### Step 3: Add Environment Variables
 
-After creating the project, you'll see a DSN (Data Source Name) that looks like:
+Add to your `.env.local` (or production environment):
 
-```
-https://abc123def456@o123456.ingest.sentry.io/789012
-```
+```env
+# Sentry Error Monitoring
+NEXT_PUBLIC_SENTRY_DSN=https://your-dsn-here@o123456.ingest.sentry.io/789012
 
-**Copy this DSN!** You'll need it in the next step.
+# Optional: Server-side DSN (can use same as NEXT_PUBLIC_SENTRY_DSN)
+SENTRY_DSN=https://your-dsn-here@o123456.ingest.sentry.io/789012
 
-### **Step 4: Add DSN to Your App** (2 minutes)
-
-1. Open `/BocmApp/.env` (or create it if it doesn't exist)
-2. Add this line:
-
-```bash
-EXPO_PUBLIC_SENTRY_DSN=https://your-dsn-here@o123456.ingest.sentry.io/789012
+# Optional: For source maps upload (recommended for production)
+SENTRY_ORG=your-org-name
+SENTRY_PROJECT=your-project-name
+SENTRY_AUTH_TOKEN=your-auth-token
 ```
 
-**Example:**
-```bash
-# Existing env vars
-EXPO_PUBLIC_SUPABASE_URL=https://...
-EXPO_PUBLIC_SUPABASE_ANON_KEY=...
-EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY=...
+### Step 4: Update .sentryclirc (Optional)
 
-# Add Sentry DSN
-EXPO_PUBLIC_SENTRY_DSN=https://abc123def456@o123456.ingest.sentry.io/789012
+If you want to upload source maps, update `.sentryclirc`:
+
+```ini
+[auth]
+token=YOUR_SENTRY_AUTH_TOKEN
+
+[defaults]
+org=YOUR_SENTRY_ORG
+project=YOUR_SENTRY_PROJECT
+url=https://sentry.io/
 ```
 
-### **Step 5: Update sentry.properties** (2 minutes)
+To get your auth token:
+1. Go to Sentry → Settings → Auth Tokens
+2. Create a new token with `project:releases` scope
+3. Copy the token
 
-1. Open `/BocmApp/sentry.properties`
-2. Update with your Sentry details:
+### Step 5: Test It
 
-```properties
-defaults.url=https://sentry.io/
-defaults.org=your-organization-name
-defaults.project=bocm-app
+1. Start your development server:
+   ```bash
+   npm run dev
+   ```
 
-# Optional: Add auth token for source maps (can do later)
-# auth.token=YOUR_SENTRY_AUTH_TOKEN
-```
+2. In development, Sentry is **disabled** (errors logged to console only)
 
-**How to find your org name:**
-- Look at your Sentry URL: `https://sentry.io/organizations/YOUR-ORG-NAME/`
+3. To test in production mode:
+   ```bash
+   NODE_ENV=production npm run build
+   NODE_ENV=production npm start
+   ```
 
----
+4. Trigger a test error (e.g., visit a non-existent page or trigger an error)
+5. Check your Sentry dashboard - you should see the error appear!
 
-## ✅ Verify Setup (5 minutes)
+## 🎯 How It Works
 
-### **Test in Development:**
+### Automatic Error Tracking
 
-1. Start your app:
-```bash
-cd BocmApp
-npx expo start
-```
-
-2. Check the logs - you should see:
-```
-🔧 Development mode: Sentry disabled (errors logged to console)
-```
-
-**This is correct!** Sentry is disabled in development to avoid noise.
-
-### **Test in Production Mode:**
-
-1. Build for production:
-```bash
-# For iOS
-npx expo run:ios --configuration Release
-
-# For Android
-npx expo run:android --variant release
-```
-
-2. Check the logs - you should see:
-```
-✅ Sentry initialized successfully
-```
-
-3. Trigger a test error (optional):
-```typescript
-// Add this temporarily to any page
-throw new Error('Test error for Sentry');
-```
-
-4. Check your Sentry dashboard - you should see the error appear!
-
----
-
-## 📊 What Sentry Will Track
-
-### **Automatically Tracked:**
-- ✅ JavaScript errors
-- ✅ Unhandled promise rejections
-- ✅ Native crashes (iOS/Android)
-- ✅ User context (ID, email)
-- ✅ Breadcrumbs (user actions)
-- ✅ Device info (OS, version, model)
-- ✅ App version
-
-### **Filtered Out:**
-- ❌ Network errors (we handle these)
-- ❌ Timeout errors (we handle these)
-- ❌ User cancelled actions
-- ❌ Passwords, tokens, secrets
-- ❌ Development errors (only production)
-
----
-
-## 🎯 Using Sentry in Your Code
-
-### **1. Capture Exceptions:**
+All errors logged via `logger.error()` are automatically sent to Sentry in production:
 
 ```typescript
-import { captureException } from '../shared/lib/sentry';
+import { logger } from '@/shared/lib/logger'
 
 try {
-  // Your code
+  // Some code that might fail
 } catch (error) {
-  captureException(error as Error, {
-    context: 'booking',
-    userId: user.id,
-  });
+  logger.error('Operation failed', error, { context: 'additional info' })
+  // This error is automatically sent to Sentry in production
 }
 ```
 
-### **2. Capture Messages:**
+### Error Boundary Integration
+
+The `EnhancedErrorBoundary` component automatically sends React errors to Sentry:
+
+```tsx
+<EnhancedErrorBoundary>
+  <YourApp />
+</EnhancedErrorBoundary>
+```
+
+### Manual Error Reporting
+
+You can also manually capture errors:
 
 ```typescript
-import { captureMessage } from '../shared/lib/sentry';
+import * as Sentry from '@sentry/nextjs'
 
-captureMessage('Payment processing started', 'info', {
-  amount: 50,
-  userId: user.id,
-});
+// Capture an exception
+Sentry.captureException(error, {
+  tags: { feature: 'booking' },
+  extra: { bookingId: '123' },
+})
+
+// Capture a message
+Sentry.captureMessage('Something important happened', {
+  level: 'warning',
+})
 ```
 
-### **3. Add Breadcrumbs:**
+## 🔒 Security Features
 
-```typescript
-import { addBreadcrumb } from '../shared/lib/sentry';
+Sentry is configured to automatically filter sensitive data:
 
-addBreadcrumb('User clicked book button', 'user-action', {
-  barberId: barber.id,
-  serviceId: service.id,
-});
-```
+- ✅ Passwords removed
+- ✅ Tokens removed
+- ✅ API keys removed
+- ✅ Secrets removed
+- ✅ Authorization headers removed
+- ✅ Cookies removed
+- ✅ Email addresses partially masked
 
-### **4. Wrap Functions:**
+## 📊 Features Enabled
 
-```typescript
-import { withSentry } from '../shared/lib/sentry';
+### Performance Monitoring
+- **Sample Rate:** 10% in production, 100% in development
+- Tracks API route performance
+- Tracks page load times
+- Tracks database query performance
 
-const processPayment = withSentry(async (amount: number) => {
-  // Your code - errors automatically captured
-});
-```
+### Session Replay
+- **Session Sample Rate:** 1% of sessions
+- **Error Replay Rate:** 100% of errors
+- Helps debug user experience issues
+- Automatically masks sensitive data
 
----
+### Error Aggregation
+- Sentry automatically groups similar errors
+- Shows error frequency and trends
+- Tracks affected users
 
-## 📱 Sentry Dashboard Overview
+## 🎨 Sentry Dashboard
 
-### **What You'll See:**
+Once set up, you can:
 
-1. **Issues Tab:**
-   - All errors grouped by type
-   - Frequency and user impact
-   - Stack traces
-   - User context
+1. **View Errors:** See all errors in real-time
+2. **Error Details:** Full stack traces, user context, browser info
+3. **Performance:** Monitor API response times
+4. **Releases:** Track errors by deployment version
+5. **Alerts:** Set up email/Slack notifications for critical errors
 
-2. **Performance Tab:**
-   - Transaction traces
-   - Slow operations
-   - API call performance
+## 🔔 Setting Up Alerts (Optional)
 
-3. **Releases Tab:**
-   - Errors by app version
-   - Deployment tracking
+1. Go to Sentry → Alerts
+2. Create a new alert rule:
+   - Trigger: When error count exceeds threshold
+   - Actions: Email notification, Slack webhook, etc.
+3. Configure alert conditions (e.g., "More than 10 errors in 5 minutes")
 
-4. **Alerts:**
-   - Email/Slack notifications
-   - Custom alert rules
+## 🚫 Ignored Errors
 
----
+The following errors are automatically ignored (not sent to Sentry):
 
-## 🔔 Recommended Alert Settings (For Beta)
+- Network errors (handled by retry logic)
+- Browser extension errors
+- User cancellation errors
+- Timeout errors
+- Service worker errors
 
-### **Go to Project Settings → Alerts:**
+You can customize this in `sentry.client.config.ts` and `sentry.server.config.ts`.
 
-1. **Create Alert Rule:**
-   - Name: "New Error in Production"
-   - Conditions: "A new issue is created"
-   - Actions: "Send notification to email"
-   - Environment: "production"
+## 🧪 Testing
 
-2. **Create Alert Rule:**
-   - Name: "High Error Volume"
-   - Conditions: "Event count is above 10 in 1 hour"
-   - Actions: "Send notification to email"
-   - Environment: "production"
+### Test in Development
 
-3. **Create Alert Rule:**
-   - Name: "Critical Error"
-   - Conditions: "Issue level is fatal"
-   - Actions: "Send notification to email immediately"
-   - Environment: "production"
+Sentry is **disabled** in development mode. Errors are logged to console only.
 
----
+### Test in Production
 
-## 🎯 Beta Launch Monitoring Strategy
+1. Build for production:
+   ```bash
+   npm run build
+   ```
 
-### **Week 1 (Daily):**
-- [ ] Check Sentry dashboard every morning
-- [ ] Review new errors
-- [ ] Fix critical issues immediately
-- [ ] Monitor error frequency
+2. Start production server:
+   ```bash
+   npm start
+   ```
 
-### **Week 2-4 (Every 2-3 days):**
-- [ ] Review error trends
-- [ ] Fix high-frequency errors
-- [ ] Monitor performance issues
-- [ ] Update alert rules
+3. Trigger a test error:
+   ```typescript
+   // In any component or API route
+   throw new Error('Test error for Sentry')
+   ```
 
----
+4. Check Sentry dashboard - you should see the error!
 
-## 💡 Pro Tips
+## 📝 Environment Variables Reference
 
-### **1. Use Environments:**
-```typescript
-// In sentry.ts, we already set this:
-environment: isProduction ? 'production' : 'development'
-```
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `NEXT_PUBLIC_SENTRY_DSN` | Yes | Sentry DSN for client and server |
+| `SENTRY_DSN` | No | Server-side DSN (can use NEXT_PUBLIC_SENTRY_DSN) |
+| `SENTRY_ORG` | No | Organization name (for source maps) |
+| `SENTRY_PROJECT` | No | Project name (for source maps) |
+| `SENTRY_AUTH_TOKEN` | No | Auth token (for source maps upload) |
 
-This lets you filter errors by environment in Sentry.
+## 🔍 Troubleshooting
 
-### **2. Use Releases:**
-```bash
-# When deploying, tag your release
-npx sentry-cli releases new 1.0.0
-npx sentry-cli releases finalize 1.0.0
-```
+### "Sentry not capturing errors"
 
-This helps track which version has which errors.
+1. Check that `NEXT_PUBLIC_SENTRY_DSN` is set
+2. Verify you're in production mode (`NODE_ENV=production`)
+3. Check browser console for Sentry initialization errors
+4. Verify DSN is correct (should start with `https://`)
 
-### **3. Source Maps (Optional):**
-```bash
-# Upload source maps for better stack traces
-npx sentry-cli sourcemaps upload --release 1.0.0 ./dist
-```
+### "Too many errors in Sentry"
 
-### **4. User Feedback:**
-```typescript
-// Let users report issues
-import Sentry from '@sentry/react-native';
+1. Adjust `ignoreErrors` in Sentry config files
+2. Increase `tracesSampleRate` to reduce performance monitoring
+3. Adjust `replaysSessionSampleRate` to reduce session replays
 
-Sentry.showReportDialog({
-  eventId: 'error-id',
-  user: {
-    email: user.email,
-    name: user.name,
-  },
-});
-```
+### "Source maps not working"
 
----
+1. Ensure `SENTRY_ORG`, `SENTRY_PROJECT`, and `SENTRY_AUTH_TOKEN` are set
+2. Run `npm run build` - source maps should upload automatically
+3. Check `.sentryclirc` configuration
 
-## 🚨 Common Issues & Solutions
+## 📚 Additional Resources
 
-### **Issue: "Sentry DSN not configured"**
-**Solution:** Add `EXPO_PUBLIC_SENTRY_DSN` to your `.env` file
-
-### **Issue: "Sentry not capturing errors"**
-**Solution:** 
-- Check you're in production mode
-- Verify DSN is correct
-- Check Sentry dashboard for rate limits
-
-### **Issue: "Too many errors"**
-**Solution:**
-- Update `ignoreErrors` in `sentry.ts`
-- Add more specific error filters
-- Fix the underlying issues!
-
-### **Issue: "Sensitive data in errors"**
-**Solution:**
-- Update `beforeSend` hook in `sentry.ts`
-- Add more field filters
-- Review error context
-
----
-
-## 📊 Cost Estimation
-
-### **Free Plan (Recommended for Beta):**
-- 5,000 errors/month
-- 10,000 transactions/month
-- 30-day retention
-- **Cost: $0**
-
-**Estimated Usage for 50 Beta Users:**
-- ~500-1,000 errors/month (if app is stable)
-- ~5,000 transactions/month
-- **Well within free tier!**
-
-### **Team Plan (If Needed Later):**
-- 50,000 errors/month
-- 100,000 transactions/month
-- 90-day retention
-- **Cost: $26/month**
-
----
+- [Sentry Next.js Docs](https://docs.sentry.io/platforms/javascript/guides/nextjs/)
+- [Sentry Dashboard](https://sentry.io/)
+- [Sentry Best Practices](https://docs.sentry.io/product/best-practices/)
 
 ## ✅ Checklist
 
-### **Setup (10 minutes):**
-- [ ] Create Sentry account
-- [ ] Create project
-- [ ] Get DSN
-- [ ] Add DSN to `.env`
-- [ ] Update `sentry.properties`
-
-### **Verification (5 minutes):**
-- [ ] Start app in dev mode (should see "Sentry disabled")
-- [ ] Build for production
-- [ ] Check logs (should see "Sentry initialized")
-- [ ] Trigger test error (optional)
-- [ ] Verify error appears in dashboard
-
-### **Configuration (5 minutes):**
-- [ ] Set up email alerts
-- [ ] Configure alert rules
-- [ ] Invite team members (if any)
-- [ ] Set up Slack integration (optional)
-
----
+- [ ] Created Sentry account
+- [ ] Created Next.js project in Sentry
+- [ ] Added `NEXT_PUBLIC_SENTRY_DSN` to environment variables
+- [ ] (Optional) Configured source maps upload
+- [ ] (Optional) Set up alerting rules
+- [ ] Tested error capture in production mode
+- [ ] Verified errors appear in Sentry dashboard
 
 ## 🎉 You're Done!
 
-**Total Time:** ~20 minutes
-
-**What You Get:**
-- ✅ Real-time error monitoring
-- ✅ User context tracking
-- ✅ Performance monitoring
-- ✅ Email alerts
-- ✅ Production-ready setup
-
-**Next Steps:**
-1. Complete Sentry setup (20 min)
-2. Test on real devices (1 hour)
-3. Create feedback channel (30 min)
-4. **LAUNCH BETA!** 🚀
-
----
-
-## 📞 Support
-
-**Sentry Docs:** [https://docs.sentry.io/platforms/react-native/](https://docs.sentry.io/platforms/react-native/)
-
-**Sentry Support:** [https://sentry.io/support/](https://sentry.io/support/)
-
-**BocmApp Sentry Config:** `/BocmApp/app/shared/lib/sentry.ts`
-
----
-
-## 🎯 Bottom Line
-
-**Sentry is now integrated into your app!**
-
-Just need to:
-1. Create Sentry account (2 min)
-2. Get DSN (1 min)
-3. Add to `.env` (1 min)
-4. **Done!** ✅
-
-**You're one step closer to beta launch!** 🚀
-
+Sentry is now fully integrated and ready to track errors in production. All errors logged via `logger.error()` and caught by error boundaries will automatically be sent to Sentry.

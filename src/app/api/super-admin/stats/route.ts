@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/shared/lib/supabase'
+import { logger } from '@/shared/lib/logger'
 
 export async function GET(request: Request) {
   try {
@@ -92,7 +93,7 @@ export async function GET(request: Request) {
       stats
     })
   } catch (error) {
-    console.error('Super admin stats error:', error)
+    logger.error('Super admin stats error', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -14,6 +14,7 @@ import { SMSPopupWrapper } from "@/shared/components/ui/sms-popup-wrapper"
 import { ErrorReportingProvider } from "@/shared/components/error-reporting-provider"
 import { cn } from "@/shared/lib/utils"
 import React from 'react'
+import { logger } from "@/shared/lib/logger"
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -58,10 +59,10 @@ export default function RootLayout({
                 window.addEventListener('load', function() {
                   navigator.serviceWorker.register('/service-worker.js')
                     .then(function(registration) {
-                      console.log('SW registered: ', registration);
+                      // Service worker registered successfully
                     })
                     .catch(function(registrationError) {
-                      console.warn('SW registration failed: ', registrationError);
+                      // Service worker registration failed - silent in production
                     });
                 });
               }
@@ -71,7 +72,7 @@ export default function RootLayout({
               window.addEventListener('beforeinstallprompt', (e) => {
                 e.preventDefault();
                 deferredPrompt = e;
-                console.log('PWA install prompt ready');
+                // PWA install prompt ready
               });
             `
           }}

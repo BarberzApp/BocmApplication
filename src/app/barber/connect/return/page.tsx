@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/shared/lib/supabase';
+import { logger } from '@/shared/lib/logger';
 
 export default function StripeConnectReturn() {
   const router = useRouter();
@@ -17,13 +18,13 @@ export default function StripeConnectReturn() {
         const error = urlParams.get('error');
         
         if (error) {
-          console.error('Stripe connect error:', error);
+          logger.error('Stripe connect error', { error });
           setStatus('error');
           return;
         }
 
         if (accountId) {
-          console.log('Stripe connect successful, account_id:', accountId);
+          logger.debug('Stripe connect successful', { accountId });
           setStatus('success');
           
           // Find the barber with this Stripe account ID and update their status
@@ -34,7 +35,7 @@ export default function StripeConnectReturn() {
               .eq('stripe_account_id', accountId);
 
             if (findError) {
-              console.error('Error finding barber:', findError);
+              logger.error('Error finding barber', findError);
             } else if (barbers && barbers.length > 0) {
               // Update the barber's status
               const { error: updateError } = await supabase
@@ -47,9 +48,9 @@ export default function StripeConnectReturn() {
                 .eq('stripe_account_id', accountId);
 
               if (updateError) {
-                console.error('Error updating barber status:', updateError);
+                logger.error('Error updating barber status', updateError);
               } else {
-                console.log('Successfully updated barber status for account:', accountId);
+                logger.debug('Successfully updated barber status for account', { accountId });
               }
             } else {
               // If no barber found with this account ID, try to find by pending status
@@ -73,20 +74,20 @@ export default function StripeConnectReturn() {
                   .eq('id', pendingBarbers[0].id);
 
                 if (updateError) {
-                  console.error('Error updating pending barber:', updateError);
+                  logger.error('Error updating pending barber', updateError);
                 } else {
-                  console.log('Successfully updated pending barber with account ID:', accountId);
+                  logger.debug('Successfully updated pending barber with account ID', { accountId });
                 }
               }
             }
           } catch (dbError) {
-            console.error('Database update error:', dbError);
+            logger.error('Database update error', dbError);
           }
           
           // Try to open the mobile app with deep link
           const mobileDeepLink = `bocm://stripe-connect/return?account_id=${accountId}`;
           
-          console.log('Attempting to redirect to mobile app:', mobileDeepLink);
+          logger.debug('Attempting to redirect to mobile app', { mobileDeepLink });
           
           // Try multiple methods to open the mobile app
           try {
@@ -124,19 +125,19 @@ export default function StripeConnectReturn() {
             }, 1500);
             
           } catch (error) {
-            console.error('Error redirecting to mobile app:', error);
+            logger.error('Error redirecting to mobile app', error);
           }
           
           // Fallback: redirect to web app after a longer delay
           setTimeout(() => {
-            console.log('Fallback: redirecting to web app');
+            logger.debug('Fallback: redirecting to web app');
             router.push('/barber/onboarding?stripe_success=true');
           }, 3000);
         } else {
           setStatus('error');
         }
       } catch (error) {
-        console.error('Error handling Stripe return:', error);
+        logger.error('Error handling Stripe return', error);
         setStatus('error');
       }
     };

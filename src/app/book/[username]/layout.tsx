@@ -98,7 +98,7 @@ export async function generateMetadata({ params }: { params: { username: string 
       },
     }
   } catch (error) {
-    console.error('Error generating metadata:', error)
+    logger.error('Error generating metadata', error)
     
     // Fallback metadata
     const atUsername = params.username ? `@${params.username}` : 'Barber'

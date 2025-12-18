@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from '@/shared/components/ui/alert'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Loader2, Plus, Edit, Trash2, Scissors, AlertCircle, CheckCircle, Sparkles, Clock, DollarSign, Package } from 'lucide-react'
 import { Badge } from '@/shared/components/ui/badge'
+import { logger } from '@/shared/lib/logger'
 
 interface Service {
   id?: string
@@ -63,7 +64,7 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
         loadServices(data.id)
       }
     } catch (error) {
-      console.error('Error loading barber ID:', error)
+      logger.error('Error loading barber ID', error)
       toast({
         title: 'Error',
         description: 'Failed to load barber information. Please try again.',
@@ -84,7 +85,7 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
       if (error) throw error
       if (data) setServices(data)
     } catch (error) {
-      console.error('Error loading services:', error)
+      logger.error('Error loading services', error)
       toast({
         title: 'Error',
         description: 'Failed to load services. Please try again.',
@@ -142,7 +143,7 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
           .eq('id', editingService.id)
 
         if (updateError) {
-          console.error('Error updating service:', updateError)
+          logger.error('Error updating service', updateError)
           toast({
             title: 'Error',
             description: 'Failed to update service. Please try again.',
@@ -167,7 +168,7 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
           })
 
         if (insertError) {
-          console.error('Error creating service:', insertError)
+          logger.error('Error creating service', insertError)
           toast({
             title: 'Error',
             description: 'Failed to create service. Please try again.',
@@ -188,7 +189,7 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
       // Call onUpdate to refresh settings data
       onUpdate?.()
     } catch (error) {
-      console.error('Error saving service:', error)
+      logger.error('Error saving service', error)
       toast({
         title: 'Error',
         description: 'Failed to save service. Please try again.',
@@ -220,7 +221,7 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
       await loadServices(barberId!)
       onUpdate?.()
     } catch (error) {
-      console.error('Error deleting service:', error)
+      logger.error('Error deleting service', error)
       toast({
         title: 'Error',
         description: 'Failed to delete service. Please try again.',

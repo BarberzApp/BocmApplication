@@ -136,7 +136,7 @@ export function WeeklySchedule({ barberId, initialSchedule, onUpdate }: WeeklySc
       // Call onUpdate to refresh settings data
       onUpdate?.();
     } catch (error) {
-      console.error('Error saving availability:', error);
+      logger.error('Error saving availability', error);
       toast({
         title: "Error",
         description: "Failed to save schedule",

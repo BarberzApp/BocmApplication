@@ -6,6 +6,7 @@ import { useAuth } from "@/shared/hooks/use-auth-zustand"
 import { supabase } from '@/shared/lib/supabase'
 import type { CalendarEvent } from "@/shared/types/calendar"
 import type { Barber, Booking, Service } from '@/shared/types'
+import { logger } from '@/shared/lib/logger'
 
 // Database-specific types that match the actual database schema
 interface BarberFromDB {
@@ -108,7 +109,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           .from('barbers')
           .select('*')
         if (barbersError) {
-          console.error('Error fetching barbers:', barbersError)
+          logger.error('Error fetching barbers', barbersError)
           throw new Error('Failed to load barbers')
         }
         setBarbers(barbersData || [])
@@ -118,7 +119,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           .from('services')
           .select('*')
         if (servicesError) {
-          console.error('Error fetching services:', servicesError)
+          logger.error('Error fetching services', servicesError)
           throw new Error('Failed to load services')
         }
         setServices(servicesData || [])
@@ -129,13 +130,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           .select('*')
           .or(`barber_id.eq.${user.id},client_id.eq.${user.id}`)
         if (bookingsError) {
-          console.error('Error fetching bookings:', bookingsError)
+          logger.error('Error fetching bookings', bookingsError)
           throw new Error('Failed to load bookings')
         }
         setBookings(bookingsData || [])
 
       } catch (err) {
-        console.error('Error fetching data:', err)
+        logger.error('Error fetching data', err)
         setError(err instanceof Error ? err.message : 'Failed to load data')
       } finally {
         setLoading(false)
@@ -167,7 +168,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         barber.user_id === user_id ? { ...barber, ...barberData } : barber
       ))
     } catch (err) {
-      console.error('Error updating barber:', err)
+      logger.error('Error updating barber', err)
       throw err
     }
   }
@@ -185,7 +186,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       setBookings(prev => [...prev, data])
       return data.id
     } catch (err) {
-      console.error('Error creating booking:', err)
+      logger.error('Error creating booking', err)
       throw err
     }
   }
@@ -202,7 +203,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         booking.id === id ? { ...booking, status } : booking
       ))
     } catch (err) {
-      console.error('Error updating booking status:', err)
+      logger.error('Error updating booking status', err)
       throw err
     }
   }
@@ -219,7 +220,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         booking.id === id ? { ...booking, payment_status: status } : booking
       ))
     } catch (err) {
-      console.error('Error updating payment status:', err)
+      logger.error('Error updating payment status', err)
       throw err
     }
   }
@@ -275,7 +276,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         guest_phone: booking.guest_phone
       })))
     } catch (err) {
-      console.error('Error fetching bookings:', err)
+      logger.error('Error fetching bookings', err)
     }
   }
 

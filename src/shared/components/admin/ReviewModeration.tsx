@@ -16,6 +16,7 @@ import {
 import { useToast } from "@/shared/components/ui/use-toast";
 import { supabase } from "@/shared/lib/supabase";
 import { sanitizeContent } from "@/shared/lib/contentModeration";
+import { logger } from "@/shared/lib/logger";
 
 interface Review {
   id: string;
@@ -72,7 +73,7 @@ export function ReviewModeration() {
       if (error) throw error;
       setReviews((data || []) as unknown as Review[]);
     } catch (error) {
-      console.error('Error fetching pending reviews:', error);
+      logger.error('Error fetching pending reviews', error);
       toast({
         title: "Error",
         description: "Failed to load pending reviews",
@@ -103,7 +104,7 @@ export function ReviewModeration() {
       // Remove from list
       setReviews(reviews.filter(r => r.id !== reviewId));
     } catch (error) {
-      console.error('Error approving review:', error);
+      logger.error('Error approving review', error);
       toast({
         title: "Error",
         description: "Failed to approve review",
@@ -132,7 +133,7 @@ export function ReviewModeration() {
       // Remove from list
       setReviews(reviews.filter(r => r.id !== reviewId));
     } catch (error) {
-      console.error('Error rejecting review:', error);
+      logger.error('Error rejecting review', error);
       toast({
         title: "Error",
         description: "Failed to reject review",
@@ -164,7 +165,7 @@ export function ReviewModeration() {
       setSelectedReview(null);
       setEditingComment("");
     } catch (error) {
-      console.error('Error editing review:', error);
+      logger.error('Error editing review', error);
       toast({
         title: "Error",
         description: "Failed to edit review",

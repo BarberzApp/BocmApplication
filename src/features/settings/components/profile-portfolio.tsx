@@ -23,6 +23,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/shared/components/ui
 import { cn } from '@/lib/utils';
 import { BookingForm } from '@/shared/components/booking/booking-form';
 import { Progress } from '@/shared/components/ui/progress';
+import { logger } from '@/shared/lib/logger';
 
 interface UserProfile {
   id: string;
@@ -117,10 +118,12 @@ export default function ProfilePortfolio() {
   
   // Debug logging
   useEffect(() => {
-    console.log('Profile Portfolio - Cuts data:', cuts)
-    console.log('Profile Portfolio - Cuts loading:', cutsLoading)
-    console.log('Profile Portfolio - User:', user)
-    console.log('Profile Portfolio - Barber Profile:', barberProfile)
+    logger.debug('Profile Portfolio - State', { 
+      cutsCount: cuts?.length, 
+      cutsLoading, 
+      userId: user?.id, 
+      barberProfileId: barberProfile?.id 
+    })
   }, [cuts, cutsLoading, user, barberProfile])
 
   // Test database connection
@@ -133,12 +136,12 @@ export default function ProfilePortfolio() {
           .limit(1)
         
         if (error) {
-          console.error('Database connection test failed:', error)
+          logger.error('Database connection test failed', error)
         } else {
-          console.log('Database connection test successful')
+          logger.debug('Database connection test successful')
         }
       } catch (error) {
-        console.error('Database connection test error:', error)
+        logger.error('Database connection test error', error)
       }
     }
 
@@ -151,7 +154,7 @@ export default function ProfilePortfolio() {
 
     try {
       setServicesLoading(true)
-      console.log('Fetching services for barber:', barberProfile.id)
+      logger.debug('Fetching services for barber', { barberId: barberProfile.id })
       
       const { data: servicesData, error: servicesError } = await supabase
         .from('services')
@@ -160,15 +163,15 @@ export default function ProfilePortfolio() {
         .order('created_at', { ascending: false })
 
       if (servicesError) {
-        console.error('Error fetching services:', servicesError)
+        logger.error('Error fetching services', servicesError)
         throw servicesError
       }
 
-      console.log('Found services data:', servicesData)
+      logger.debug('Found services data', { count: servicesData?.length })
       setServices(servicesData || [])
 
     } catch (error) {
-      console.error('Error fetching services:', error)
+      logger.error('Error fetching services', error)
       toast({
         title: 'Error',
         description: 'Failed to load services.',
@@ -185,7 +188,7 @@ export default function ProfilePortfolio() {
 
     try {
       setAddonsLoading(true)
-      console.log('Fetching add-ons for barber:', barberProfile.id)
+      logger.debug('Fetching add-ons for barber', { barberId: barberProfile.id })
       
       const { data: addonsData, error: addonsError } = await supabase
         .from('service_addons')
@@ -194,15 +197,15 @@ export default function ProfilePortfolio() {
         .order('created_at', { ascending: false })
 
       if (addonsError) {
-        console.error('Error fetching add-ons:', addonsError)
+        logger.error('Error fetching add-ons', addonsError)
         throw addonsError
       }
 
-      console.log('Found add-ons data:', addonsData)
+      logger.debug('Found add-ons data', { count: addonsData?.length })
       setAddons(addonsData || [])
 
     } catch (error) {
-      console.error('Error fetching add-ons:', error)
+      logger.error('Error fetching add-ons', error)
       toast({
         title: 'Error',
         description: 'Failed to load add-ons.',
@@ -289,7 +292,7 @@ export default function ProfilePortfolio() {
           });
         },
         (error) => {
-          console.error('Error getting location:', error);
+          logger.error('Error getting location', error)
           toast({
             title: 'Location Error',
             description: 'Could not get your current location.',
@@ -323,7 +326,7 @@ export default function ProfilePortfolio() {
 
       try {
         setLoading(true);
-        console.log('Fetching profile data for user:', user.id);
+        logger.debug('Fetching profile data for user', { userId: user.id })
         
         // Fetch profile and barber data in parallel
         const [profileResult, barberResult] = await Promise.all([
@@ -339,15 +342,15 @@ export default function ProfilePortfolio() {
             .single()
         ]);
 
-        console.log('Profile result:', profileResult);
-        console.log('Barber result:', barberResult);
+        logger.debug('Profile fetch result', { hasData: !!profileResult.data, hasError: !!profileResult.error })
+        logger.debug('Barber fetch result', { hasData: !!barberResult.data, hasError: !!barberResult.error })
 
         if (profileResult.error) {
-          console.error('Profile fetch error:', profileResult.error);
+          logger.error('Profile fetch error', profileResult.error)
         }
 
         if (barberResult.error) {
-          console.error('Barber fetch error:', barberResult.error);
+          logger.error('Barber fetch error', barberResult.error)
         }
 
         if (profileResult.data) {
@@ -369,11 +372,11 @@ export default function ProfilePortfolio() {
           // Remove fetchUserCuts call - useCuts hook handles this
         } else {
           // User is not a barber - they are a client
-          console.log('User is a client (no barber profile found):', user.id);
+          logger.debug('User is a client (no barber profile found)', { userId: user.id })
           setBarberProfile(null); // Explicitly set to null to ensure client interface
         }
       } catch (error) {
-        console.error('Error fetching profile data:', error);
+        logger.error('Error fetching profile data', error)
         toast({
           title: 'Error',
           description: 'Failed to load profile data.',
@@ -532,7 +535,7 @@ export default function ProfilePortfolio() {
         description: 'Portfolio item uploaded successfully!',
       });
     } catch (error) {
-      console.error('Error uploading portfolio item:', error);
+      logger.error('Error uploading portfolio item', error)
       toast({
         title: 'Error',
         description: 'Failed to upload portfolio item. Please try again.',
@@ -657,7 +660,7 @@ export default function ProfilePortfolio() {
       setVideoPreviewUrl(null);
 
     } catch (error) {
-      console.error('Error posting cut:', error)
+      logger.error('Error posting cut', error)
       toast({
         title: 'Error',
         description: 'Failed to post cut. Please try again.',
@@ -717,7 +720,7 @@ export default function ProfilePortfolio() {
         tags: ''
       });
     } catch (error) {
-      console.error('Error updating cut:', error);
+      logger.error('Error updating cut', error)
       toast({
         title: 'Error',
         description: 'Failed to update cut. Please try again.',
@@ -747,7 +750,7 @@ export default function ProfilePortfolio() {
       // Refresh cuts
       refreshCuts(); // Use refreshCuts from useCuts
     } catch (error) {
-      console.error('Error deleting cut:', error);
+      logger.error('Error deleting cut', error)
       toast({
         title: 'Error',
         description: 'Failed to delete cut. Please try again.',
@@ -775,7 +778,7 @@ export default function ProfilePortfolio() {
       // Refresh cuts
       refreshCuts(); // Use refreshCuts from useCuts
     } catch (error) {
-      console.error('Error updating cut visibility:', error);
+      logger.error('Error updating cut visibility', error)
       toast({
         title: 'Error',
         description: 'Failed to update cut visibility. Please try again.',
@@ -803,7 +806,7 @@ export default function ProfilePortfolio() {
       // Refresh cuts
       refreshCuts(); // Use refreshCuts from useCuts
     } catch (error) {
-      console.error('Error updating cut featured status:', error);
+      logger.error('Error updating cut featured status', error)
       toast({
         title: 'Error',
         description: 'Failed to update cut featured status. Please try again.',
@@ -866,7 +869,7 @@ export default function ProfilePortfolio() {
         description: 'Profile updated successfully!',
       });
     } catch (error) {
-      console.error('Error updating profile:', error);
+      logger.error('Error updating profile', error)
       toast({
         title: 'Error',
         description: 'Failed to update profile.',
@@ -1009,7 +1012,7 @@ export default function ProfilePortfolio() {
           <div className="text-white/70 text-base font-medium mb-2 font-pacifico">
             {(() => {
               const parts = profile.location.split(',').map(s => s.trim());
-              console.log('Location parts:', parts); // Debug log
+              logger.debug('Location parts', { parts })
               
               if (parts.length >= 8) {
                 // For old Nominatim format: pull parts 1, 2, and 8 (0-indexed)
@@ -1139,7 +1142,7 @@ export default function ProfilePortfolio() {
                               })
                             }
                           } catch (error) {
-                            console.error('Error creating test cut:', error)
+                            logger.error('Error creating test cut', error)
                             toast({
                               title: 'Error',
                               description: 'Failed to create test cut.',
@@ -1745,7 +1748,7 @@ export default function ProfilePortfolio() {
                         description: `Cut ${checked ? 'featured' : 'unfeatured'} successfully!`,
                       });
                     } catch (error) {
-                      console.error('Error updating featured status:', error);
+                      logger.error('Error updating featured status', error)
                       toast({
                         title: 'Error',
                         description: 'Failed to update featured status. Please try again.',
@@ -1841,7 +1844,7 @@ export default function ProfilePortfolio() {
                 setPortfolio(portfolioItems);
               }
             } catch (error) {
-              console.error('Error refreshing portfolio:', error);
+              logger.error('Error refreshing portfolio', error)
             }
           }
         }}
@@ -1873,7 +1876,7 @@ export default function ProfilePortfolio() {
               if (profileResult.data) setProfile(profileResult.data);
               if (barberResult.data) setBarberProfile(barberResult.data);
             } catch (error) {
-              console.error('Error refreshing profile:', error);
+              logger.error('Error refreshing profile', error)
             } finally {
               setLoading(false);
             }

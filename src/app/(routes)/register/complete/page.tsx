@@ -10,6 +10,7 @@ import { Input } from "@/shared/components/ui/input"
 import { toast } from "@/shared/components/ui/use-toast"
 import { Scissors } from "lucide-react"
 import Link from "next/link"
+import { logger } from '@/shared/lib/logger'
 
 export default function RegisterCompletePage() {
   const router = useRouter()
@@ -77,7 +78,7 @@ export default function RegisterCompletePage() {
 
     // If barber, ensure a barbers row exists
     if (form.role === 'barber') {
-      console.log('💈 Checking for existing barber row...')
+      logger.debug('Checking for existing barber row', { userId: user.id })
       const { data: existingBarber, error: barberCheckError } = await supabase
         .from('barbers')
         .select('id')
@@ -85,12 +86,12 @@ export default function RegisterCompletePage() {
         .maybeSingle()
       
       if (barberCheckError) {
-        console.error('❌ Error checking barber row:', barberCheckError)
+        logger.error('Error checking barber row', barberCheckError)
         throw barberCheckError
       }
       
       if (!existingBarber) {
-        console.log('💈 Creating new barber row...')
+        logger.debug('Creating new barber row', { userId: user.id })
         const { error: insertError } = await supabase
           .from('barbers')
           .insert({
@@ -102,12 +103,12 @@ export default function RegisterCompletePage() {
           })
         
         if (insertError) {
-          console.error('❌ Failed to create barber row:', insertError)
+          logger.error('Failed to create barber row', insertError)
           throw insertError
         }
-        console.log('✅ Barber row created successfully')
+        logger.debug('Barber row created successfully')
       } else {
-        console.log('✅ Barber row already exists')
+        logger.debug('Barber row already exists')
       }
     }
 

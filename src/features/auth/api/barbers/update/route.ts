@@ -1,6 +1,7 @@
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
+import { logger } from '@/shared/lib/logger'
 
 export async function PUT(request: Request) {
   try {
@@ -15,7 +16,7 @@ export async function PUT(request: Request) {
 
     // Verify the user is authorized to update this profile
     if (session.user.id !== id) {
-      console.error('Unauthorized access attempt:', {
+      logger.warn('Unauthorized access attempt', {
         userId: session.user.id,
         targetId: id,
       })
@@ -33,7 +34,7 @@ export async function PUT(request: Request) {
       .single()
 
     if (error) {
-      console.error('Error updating barber profile:', error)
+      logger.error('Error updating barber profile', error)
       return NextResponse.json(
         { error: 'Failed to update profile' },
         { status: 500 }
@@ -42,7 +43,7 @@ export async function PUT(request: Request) {
 
     return NextResponse.json(data)
   } catch (error) {
-    console.error('Error in barber update route:', error)
+    logger.error('Error in barber update route', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

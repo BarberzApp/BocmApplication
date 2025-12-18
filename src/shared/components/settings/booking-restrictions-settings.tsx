@@ -14,6 +14,7 @@ import { Alert, AlertDescription } from '@/shared/components/ui/alert'
 import { useToast } from '@/shared/components/ui/use-toast'
 import { supabase } from '@/shared/lib/supabase'
 import { useAuth } from '@/shared/hooks/use-auth-zustand'
+import { logger } from '@/shared/lib/logger'
 import { 
   Clock, 
   Calendar, 
@@ -82,7 +83,7 @@ export function BookingRestrictionsSettings({ barberId, onUpdate }: BookingRestr
         })
       }
     } catch (error) {
-      console.error('Error loading booking restrictions:', error)
+      logger.error('Error loading booking restrictions', error)
       toast({
         title: 'Error',
         description: 'Failed to load booking restrictions',
@@ -117,7 +118,7 @@ export function BookingRestrictionsSettings({ barberId, onUpdate }: BookingRestr
 
       onUpdate?.()
     } catch (error) {
-      console.error('Error updating booking restrictions:', error)
+      logger.error('Error updating booking restrictions', error)
       toast({
         title: 'Error',
         description: 'Failed to update booking restrictions',

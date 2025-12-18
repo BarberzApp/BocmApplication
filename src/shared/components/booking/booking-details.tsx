@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useAuth } from '@/shared/hooks/use-auth-zustand'
 import { Button } from '@/shared/components/ui/button'
+import { logger } from '@/shared/lib/logger'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/shared/components/ui/dialog'
 import { useToast } from '@/shared/components/ui/use-toast'
 import { Booking } from '@/shared/types/booking'
@@ -29,7 +30,7 @@ export function BookingDetails({ booking, isOpen, onClose, onBookingCancelled }:
 
     // Additional safety check
     if (!booking || !booking.id) {
-      console.error('No valid booking to cancel');
+      logger.error('No valid booking to cancel');
       toast({
         title: "Error",
         description: "Invalid booking data",
@@ -50,11 +51,11 @@ export function BookingDetails({ booking, isOpen, onClose, onBookingCancelled }:
 
     setLoading(true)
     try {
-      console.log(`Cancelling booking ${booking.id} for user ${user.id}`);
+      logger.debug(`Cancelling booking ${booking.id} for user ${user.id}`);
       
       await syncService.cancelBooking(booking.id)
       
-      console.log(`Successfully cancelled booking ${booking.id}`);
+      logger.debug(`Successfully cancelled booking ${booking.id}`);
       
       toast({
         title: "Booking cancelled",
@@ -63,7 +64,7 @@ export function BookingDetails({ booking, isOpen, onClose, onBookingCancelled }:
       onBookingCancelled(booking.id)
       onClose()
     } catch (error) {
-      console.error(`Failed to cancel booking ${booking.id}:`, error);
+      logger.error(`Failed to cancel booking ${booking.id}`, error);
       toast({
         title: "Error",
         description: "Failed to cancel booking. Please try again.",

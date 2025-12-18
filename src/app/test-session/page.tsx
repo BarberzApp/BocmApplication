@@ -16,28 +16,28 @@ export default function TestSessionPage() {
         setLoading(true)
         
         // Test 1: Check auth hook status
-        console.log('🔍 Auth hook status:', { user: user?.id, status })
+        logger.debug('Auth hook status', { userId: user?.id, status })
         
         // Test 2: Check session directly
         const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-        console.log('📋 Direct session check:', { 
+        logger.debug('Direct session check', { 
           hasSession: !!session, 
-          sessionError: sessionError?.message,
+          hasError: !!sessionError,
           userId: session?.user?.id 
         })
         
         // Test 3: Check user directly
         const { data: { user: directUser }, error: userError } = await supabase.auth.getUser()
-        console.log('👤 Direct user check:', { 
+        logger.debug('Direct user check', { 
           hasUser: !!directUser, 
-          userError: userError?.message,
+          hasError: !!userError,
           userId: directUser?.id 
         })
         
         // Test 4: Call our debug API endpoint
         const response = await fetch('/api/debug-session')
         const apiData = await response.json()
-        console.log('🌐 API debug response:', apiData)
+        logger.debug('API debug response', { hasData: !!apiData })
         
         setSessionData({
           authHook: { user: user?.id, status },
@@ -47,7 +47,7 @@ export default function TestSessionPage() {
         })
         
       } catch (err) {
-        console.error('❌ Session test error:', err)
+        logger.error('Session test error', err)
         setError(err instanceof Error ? err.message : 'Unknown error')
       } finally {
         setLoading(false)

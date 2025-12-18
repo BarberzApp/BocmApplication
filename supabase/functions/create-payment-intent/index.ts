@@ -234,33 +234,37 @@ serve(async (req: Request) => {
     
     // Stripe fee calculation: Stripe takes ~$0.38 (2.9% + $0.30)
     // After Stripe fee: $3.38 - $0.38 = $3.00
-    // Split the $3.00: 60% to BOCM, 40% to barber
-    const stripeFee = 38 // $0.38 in cents (approximate Stripe fee)
+    // Split the $3.00: 60% to BOCM ($1.80), 40% to barber ($1.20)
+    // BOCM absorbs the Stripe fee as a platform cost, so BOCM net = $1.80 - $0.38 = $1.42
+    const stripeFee = 38 // $0.38 in cents (approximate Stripe fee - absorbed by platform)
     const netAfterStripe = platformFee - stripeFee // $3.00 = 300 cents
-    const bocmShare = Math.round(netAfterStripe * 0.60) // 60% = $1.80 = 180 cents
+    const bocmGrossShare = Math.round(netAfterStripe * 0.60) // 60% = $1.80 = 180 cents
+    const bocmShare = bocmGrossShare - stripeFee // Platform net after absorbing Stripe fee = $1.42 = 142 cents
     const barberShare = Math.round(netAfterStripe * 0.40) // 40% = $1.20 = 120 cents
     
     console.log('Payment: customer only pays platform fee', { 
       totalCharged: platformFee,
       stripeFee,
       netAfterStripe,
-      bocmShare,
+      bocmGrossShare,
+      bocmShare, // Net after absorbing Stripe fee
       barberShare,
-      note: 'Service and addons paid directly to barber at appointment'
+      note: 'Service and addons paid directly to barber at appointment. BOCM absorbs Stripe fee as platform cost.'
     })
 
     // Create Payment Intent
     // Fee breakdown:
     // - Total charged to customer: $3.38
-    // - Stripe fee: ~$0.38
+    // - Stripe fee: ~$0.38 (absorbed by platform)
     // - Net after Stripe: $3.00
-    // - BOCM receives: $1.80 (60% of net)
+    // - BOCM gross: $1.80 (60% of net)
+    // - BOCM net: $1.42 (after absorbing Stripe fee)
     // - Barber receives: $1.20 (40% of net)
     // Note: Service price and addons are paid directly to barber at appointment
     const paymentIntent = await stripe.paymentIntents.create({
       amount: totalAmount, // Always $3.38 (platform fee only)
       currency: 'usd',
-      application_fee_amount: bocmShare, // 60% of net after Stripe = $1.80
+      application_fee_amount: bocmShare, // Platform net after absorbing Stripe fee = $1.42
       transfer_data: {
         destination: barber.stripe_account_id, // Barber gets 40% of net = $1.20
       },

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/shared/lib/supabase';
+const { logger } = require('@/shared/lib/logger');
 
 export async function POST(req) {
   try {
@@ -11,7 +12,7 @@ export async function POST(req) {
       }, { status: 400 });
     }
 
-    console.log('🔧 Manually updating barber profile for booking:', bookingId);
+    logger.debug('Manually updating barber profile for booking', { bookingId });
 
     // Get the booking to find the barber
     const { data: booking, error: bookingError } = await supabaseAdmin
@@ -21,7 +22,7 @@ export async function POST(req) {
       .single();
 
     if (bookingError) {
-      console.error('❌ Error fetching booking:', bookingError);
+      logger.error('Error fetching booking', bookingError);
       return NextResponse.json({ error: 'Failed to fetch booking' }, { status: 500 });
     }
 
@@ -37,12 +38,12 @@ export async function POST(req) {
       .single();
 
     if (barberError) {
-      console.error('❌ Error fetching barber:', barberError);
+      logger.error('Error fetching barber', barberError);
       return NextResponse.json({ error: 'Failed to fetch barber' }, { status: 500 });
     }
 
-    console.log('📋 Found barber user_id:', barber.user_id);
-    console.log('📋 Client SMS data:', booking.client);
+    logger.debug('Found barber user_id', { userId: barber.user_id });
+    logger.debug('Client SMS data', { hasPhone: !!booking.client?.phone, hasCarrier: !!booking.client?.carrier });
 
     // Update the barber's profile with SMS data
     const { error: updateError } = await supabaseAdmin
@@ -55,11 +56,11 @@ export async function POST(req) {
       .eq('id', barber.user_id);
 
     if (updateError) {
-      console.error('❌ Error updating profile:', updateError);
+      logger.error('Error updating profile', updateError);
       return NextResponse.json({ error: 'Failed to update profile' }, { status: 500 });
     }
 
-    console.log('✅ Profile updated successfully');
+    logger.debug('Profile updated successfully');
 
     // Verify the update
     const { data: updatedProfile, error: verifyError } = await supabaseAdmin
@@ -69,7 +70,7 @@ export async function POST(req) {
       .single();
 
     if (verifyError) {
-      console.error('❌ Error verifying update:', verifyError);
+      logger.error('Error verifying update', verifyError);
       return NextResponse.json({ error: 'Failed to verify update' }, { status: 500 });
     }
 
@@ -85,7 +86,7 @@ export async function POST(req) {
     });
 
   } catch (error) {
-    console.error('❌ Update barber profile error:', error);
+    logger.error('Update barber profile error', error);
     return NextResponse.json({ 
       error: 'Failed to update barber profile',
       details: error.message 

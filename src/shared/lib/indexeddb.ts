@@ -1,4 +1,5 @@
 import { Booking } from '@/shared/types/booking';
+import { logger } from './logger';
 
 const DB_NAME = 'bocm-db';
 const DB_VERSION = 1;
@@ -73,11 +74,11 @@ export class IndexedDBService {
     // Check if booking exists before deletion
     const existingBooking = await this.getBooking(id);
     if (!existingBooking) {
-      console.warn(`Attempted to delete non-existent booking from IndexedDB: ${id}`);
+      logger.warn(`Attempted to delete non-existent booking from IndexedDB: ${id}`);
       return;
     }
 
-    console.log(`Deleting booking ${id} from IndexedDB`);
+    logger.debug(`Deleting booking ${id} from IndexedDB`);
     
     return new Promise((resolve, reject) => {
       const transaction = this.db!.transaction(BOOKINGS_STORE, 'readwrite');
@@ -85,18 +86,18 @@ export class IndexedDBService {
       const request = store.delete(id);
 
       request.onerror = () => {
-        console.error(`Failed to delete booking ${id} from IndexedDB:`, request.error);
+        logger.error(`Failed to delete booking ${id} from IndexedDB`, request.error);
         reject(request.error);
       };
       request.onsuccess = () => {
-        console.log(`Successfully deleted booking ${id} from IndexedDB`);
+        logger.debug(`Successfully deleted booking ${id} from IndexedDB`);
         resolve();
       };
     });
   }
 
   async clearAllBookings(): Promise<void> {
-    console.warn('⚠️ CLEARING ALL BOOKINGS FROM INDEXEDDB - This is a destructive operation!');
+    logger.warn('CLEARING ALL BOOKINGS FROM INDEXEDDB - This is a destructive operation!');
     
     if (!this.db) await this.init();
     
@@ -105,11 +106,11 @@ export class IndexedDBService {
     const bookingCount = allBookings.length;
     
     if (bookingCount === 0) {
-      console.log('No bookings to clear from IndexedDB');
+      logger.debug('No bookings to clear from IndexedDB');
       return;
     }
     
-    console.log(`Clearing ${bookingCount} bookings from IndexedDB`);
+    logger.debug(`Clearing ${bookingCount} bookings from IndexedDB`);
     
     return new Promise((resolve, reject) => {
       const transaction = this.db!.transaction(BOOKINGS_STORE, 'readwrite');
@@ -117,11 +118,11 @@ export class IndexedDBService {
       const request = store.clear();
 
       request.onerror = () => {
-        console.error('Failed to clear bookings from IndexedDB:', request.error);
+        logger.error('Failed to clear bookings from IndexedDB', request.error);
         reject(request.error);
       };
       request.onsuccess = () => {
-        console.log(`Successfully cleared ${bookingCount} bookings from IndexedDB`);
+        logger.debug(`Successfully cleared ${bookingCount} bookings from IndexedDB`);
         resolve();
       };
     });
