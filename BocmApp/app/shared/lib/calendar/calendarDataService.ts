@@ -155,7 +155,7 @@ export async function fetchBarberBookings(
         .from('bookings')
         .select('*')
         .eq('client_id', userId)
-        .eq('payment_status', 'succeeded') // Only show successful payments
+        .in('payment_status', ['succeeded', 'paid']) // Show both succeeded and paid bookings
         .order('date', { ascending: true });
 
       if (bookingsError) {
@@ -186,7 +186,7 @@ export async function fetchClientBookings(userId: string): Promise<any[]> {
       .from('bookings')
       .select('*')
       .eq('client_id', userId)
-      .eq('payment_status', 'succeeded') // Only show successful payments
+      .in('payment_status', ['succeeded', 'paid']) // Show both succeeded and paid bookings
       .order('date', { ascending: true });
 
     logger.log('📊 [CALENDAR] Client bookings query result:', { bookings, error });

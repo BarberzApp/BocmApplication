@@ -369,24 +369,23 @@ export default function CalendarPage() {
         // Process barber bookings
         await processBookings(bookings, userRoleToUse);
       } else if (userRoleToUse === 'client') {
-        logger.log('🔍 [CALENDAR] Fetching client bookings for user ID:', user?.id);
-        // Fetch bookings for this client
-        const { data: bookings, error } = await supabase
+        // Fetch bookings where client is the user (same logic as barber bookings mode)
+        logger.log('📅 [CALENDAR] Fetching client bookings (client going somewhere)');
+        const { data: bookingsData, error: bookingsError } = await supabase
           .from('bookings')
           .select('*')
           .eq('client_id', user?.id)
           .eq('payment_status', 'succeeded') // Only show successful payments
           .order('date', { ascending: true });
 
-        logger.log('📊 [CALENDAR] Client bookings query result:', { bookings, error });
-
-        if (error || !bookings) {
-          logger.error('❌ [CALENDAR] Error fetching client bookings:', error);
+        if (bookingsError) {
+          logger.error('❌ [CALENDAR] Error fetching client bookings:', bookingsError);
           return;
         }
 
+        const bookings = bookingsData || [];
         logger.log('✅ [CALENDAR] Found', bookings.length, 'bookings for client');
-        // Process client bookings
+        // Process client bookings (same as barber bookings mode)
         await processBookings(bookings, userRoleToUse);
       }
     } catch (error) {
@@ -401,10 +400,11 @@ export default function CalendarPage() {
       const userRoleToUse = role || userRole;
       // Process each booking to create calendar events
       const events = await Promise.all(bookings.map(async (booking) => {
-        // Fetch service details
+        // Fetch service details (for name and duration only)
+        // Use booking.service_price for historical price accuracy
         const { data: service } = await supabase
           .from('services')
-          .select('name, duration, price')
+          .select('name, duration')
           .eq('id', booking.service_id)
           .single();
 
@@ -477,14 +477,36 @@ export default function CalendarPage() {
           }
         }
 
-        // Compute monetary fields using helper
-        // Pass booking.price to ensure we use historical pricing, not current service price
-        const pricing = getBookingPricingData({
-          price: booking.price,
-          platform_fee: booking.platform_fee,
-          barber_payout: booking.barber_payout,
-          addon_total: calculatedAddonTotal || booking.addon_total,
-        }, service?.price); // service?.price is only used as fallback if booking data is incomplete
+        // Compute monetary fields using role-specific helpers
+        // For clients or barbers viewing "My Bookings" (where they're the client), use client view
+        // For barbers viewing "My Appointments" (where they're providing service), use barber view
+        const isClientView = userRoleToUse === 'client' || (userRoleToUse === 'barber' && barberViewMode === 'bookings');
+        
+        // Use stored service_price from booking (historical price) if available,
+        // otherwise fall back to fetching current service price
+        let historicalServicePrice = booking.service_price || 0;
+        if (!historicalServicePrice) {
+          // Fallback: fetch current service price if historical price not stored
+          const { data: currentService } = await supabase
+            .from('services')
+            .select('price')
+            .eq('id', booking.service_id)
+            .single();
+          historicalServicePrice = currentService?.price || 0;
+        }
+        
+        const breakdown = isClientView
+          ? getClientBookingDetails({
+              price: booking.price,
+              platform_fee: booking.platform_fee,
+              addon_total: calculatedAddonTotal || booking.addon_total,
+            }, historicalServicePrice)
+          : getBarberBookingDetails({
+              price: booking.price,
+              platform_fee: booking.platform_fee,
+              barber_payout: booking.barber_payout,
+              addon_total: calculatedAddonTotal || booking.addon_total,
+            }, historicalServicePrice);
 
         return {
           id: booking.id,
@@ -500,12 +522,12 @@ export default function CalendarPage() {
             clientName: client?.name || booking.guest_name || 'Guest',
             barberName: barber?.name || 'Barber',
             barberId: booking.barber_id, // Add barber_id for review functionality
-            price: pricing.totalCharged, // Total charged to client (for client view) or barber payout (for barber view - will be overridden)
-            basePrice: pricing.basePrice,
-            addonTotal: pricing.addonTotal,
-            platformFee: pricing.platformFee,
-            barberPayout: pricing.barberPayout,
-            totalCharged: pricing.totalCharged,
+            price: breakdown.total, // Total charged to client or barber payout
+            basePrice: breakdown.servicePrice,
+            addonTotal: breakdown.addons,
+            platformFee: breakdown.platformFee,
+            barberPayout: breakdown.barberPayout || 0,
+            totalCharged: breakdown.total,
             addonNames,
             isGuest: !client,
             guestEmail: booking.guest_email,
@@ -1337,10 +1359,42 @@ export default function CalendarPage() {
                               <Text style={[tw`text-xs font-semibold`, { 
                                 color: isMissed ? '#ef4444' : isPast ? '#22c55e' : theme.colors.secondary 
                               }]}>
-                                ${userRole === 'client' 
-                                  ? event.extendedProps.totalCharged.toFixed(2)
-                                  : event.extendedProps.barberPayout.toFixed(2)
-                                }
+                                ${(() => {
+                                  if (userRole === 'client') {
+                                    // Always recalculate to ensure accuracy
+                                    // Total = service price + addons + platform fee
+                                    let basePrice = event.extendedProps.basePrice || 0;
+                                    const addons = event.extendedProps.addonTotal || 0;
+                                    let platformFee = event.extendedProps.platformFee || 0;
+                                    
+                                    // If basePrice is 0 but we have a platformFee, try to get service price from price field
+                                    // For non-developer bookings: price = platform_fee + barber_payout (platform fee total)
+                                    // If basePrice is missing, we can't calculate accurately, but we'll use what we have
+                                    // The total should be: service_price + addons + (platform_fee + barber_payout)
+                                    // If basePrice is 0, the stored totalCharged might be wrong, so we need to fix it
+                                    const storedTotal = event.extendedProps.totalCharged || 0;
+                                    
+                                    // If stored total seems wrong (equals just platform fee when we should have service price),
+                                    // and we have a platform fee, try to infer service price
+                                    // But actually, if basePrice is 0, we can't fix it here - it should be fixed when creating the event
+                                    // So just use the recalculated total if basePrice exists, otherwise use stored total
+                                    if (basePrice > 0) {
+                                      const recalculatedTotal = basePrice + addons + platformFee;
+                                      return recalculatedTotal.toFixed(2);
+                                    } else {
+                                      // Fallback: use stored total, but log a warning
+                                      logger.warn('Calendar event missing basePrice, using stored totalCharged', {
+                                        eventId: event.id,
+                                        storedTotal,
+                                        platformFee,
+                                        addons
+                                      });
+                                      return storedTotal.toFixed(2);
+                                    }
+                                  } else {
+                                    return event.extendedProps.barberPayout.toFixed(2);
+                                  }
+                                })()}
                       </Text>
                             </View>
                     </View>

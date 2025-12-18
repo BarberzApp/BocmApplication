@@ -23,6 +23,7 @@
       }
     },
     "android": {
+      "package": "com.yaskhalil.bocm",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"

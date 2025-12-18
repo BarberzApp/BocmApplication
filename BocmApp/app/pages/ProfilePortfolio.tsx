@@ -124,20 +124,16 @@ export default function ProfilePortfolio() {
   const [barberProfile, setBarberProfile] = useState<BarberProfile | null>(null);
   const [allCuts, setAllCuts] = useState<Cut[]>([]);
   const [cuts, setCuts] = useState<Cut[]>([]);
-  const [allLikedCuts, setAllLikedCuts] = useState<Cut[]>([]);
-  const [displayedLikedCuts, setDisplayedLikedCuts] = useState<Cut[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [likedCuts, setLikedCuts] = useState<Cut[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [openDialog, setOpenDialog] = useState<null | 'video'>(null);
-  const [activeTab, setActiveTab] = useState('portfolio');
+  const [activeTab, setActiveTab] = useState(userProfile?.role === 'barber' ? 'portfolio' : 'cuts');
   const [selectedVideo, setSelectedVideo] = useState<Cut | null>(null);
   const [selectedPortfolioImage, setSelectedPortfolioImage] = useState<string | null>(null);
   const [showAvatarUpload, setShowAvatarUpload] = useState(false);
   const [showCoverUpload, setShowCoverUpload] = useState(false);
   const [cutsPage, setCutsPage] = useState(0);
-  const [likedCutsPage, setLikedCutsPage] = useState(0);
   const CUTS_PER_PAGE = 12;
 
   // Fetch profile data
@@ -229,55 +225,6 @@ export default function ProfilePortfolio() {
             }
           }
       } else {
-        // Fetch client's liked cuts
-        const { data: likedData, error: likedError } = await supabase
-          .from('cut_analytics')
-          .select(`
-            cut_id,
-            cuts (
-              id,
-              title,
-              description,
-              url,
-              thumbnail,
-              views,
-              likes,
-              shares,
-              created_at,
-              is_public,
-              is_featured,
-              barber_id,
-              barbers:barber_id(
-                id,
-                user_id,
-                profiles:user_id(name, avatar_url)
-              )
-            )
-          `)
-          .eq('user_id', user.id)
-          .eq('action_type', 'like');
-
-        if (likedError) {
-          logger.error('Error fetching liked cuts:', likedError);
-        } else {
-          const formattedLikedCuts = (likedData || []).map((item: any) => {
-            const cutData = item.cuts;
-            return {
-              ...cutData,
-              barber: {
-                id: cutData.barbers?.id,
-                name: cutData.barbers?.profiles?.name || 'Unknown',
-                image: cutData.barbers?.profiles?.avatar_url
-              }
-            };
-          });
-          setAllLikedCuts(formattedLikedCuts);
-          setLikedCuts(formattedLikedCuts);
-          // Load first page
-          setLikedCutsPage(0);
-          setDisplayedLikedCuts(formattedLikedCuts.slice(0, CUTS_PER_PAGE));
-        }
-
         // Fetch client bookings
         const { data: bookingsData, error: bookingsError } = await supabase
           .from('bookings')
@@ -320,7 +267,6 @@ export default function ProfilePortfolio() {
   const onRefresh = async () => {
     setRefreshing(true);
     setCutsPage(0);
-    setLikedCutsPage(0);
     await fetchProfileData();
     setRefreshing(false);
   };
@@ -336,16 +282,6 @@ export default function ProfilePortfolio() {
         const newCuts = allCuts.slice(startIndex, endIndex);
         setCuts(prev => [...prev, ...newCuts]);
         setCutsPage(nextPage);
-      }
-    } else {
-      const nextPage = likedCutsPage + 1;
-      const startIndex = nextPage * CUTS_PER_PAGE;
-      const endIndex = startIndex + CUTS_PER_PAGE;
-      
-      if (startIndex < allLikedCuts.length) {
-        const newCuts = allLikedCuts.slice(startIndex, endIndex);
-        setDisplayedLikedCuts(prev => [...prev, ...newCuts]);
-        setLikedCutsPage(nextPage);
       }
     }
   };
@@ -408,6 +344,17 @@ export default function ProfilePortfolio() {
     });
   };
 
+  // Set initial tab based on user role
+  useEffect(() => {
+    if (userProfile) {
+      if (userProfile.role === 'barber') {
+        setActiveTab('portfolio');
+      } else {
+        setActiveTab('cuts');
+      }
+    }
+  }, [userProfile]);
+
   if (loading) {
     return (
       <SafeAreaView style={[tw`flex-1 justify-center items-center`, { backgroundColor: theme.colors.background }]}>
@@ -433,8 +380,6 @@ export default function ProfilePortfolio() {
   }
 
   const isBarber = userProfile?.role === 'barber';
-  const displayCuts = isBarber ? cuts : displayedLikedCuts;
-  const allDisplayCuts = isBarber ? allCuts : allLikedCuts;
   const pastBarbers = [...new Set(bookings.map(b => b.barber.id))].map(barberId => {
     const booking = bookings.find(b => b.barber.id === barberId);
     return booking?.barber;
@@ -511,60 +456,11 @@ export default function ProfilePortfolio() {
 
               </View>
             ) : (
-              // Client Portfolio - Show liked cuts
-              <View style={tw`flex-1 px-4`}>
-                {displayCuts.length === 0 ? (
-                  <View style={tw`flex-1 justify-center items-center py-8`}>
-                    <Heart size={48} style={[tw`mb-4`, { color: 'rgba(255,255,255,0.4)' }]} />
-                    <Text style={[tw`font-bold text-xl mb-2 text-center`, { color: theme.colors.foreground }]}>
-                      No liked cuts yet
-                    </Text>
-                    <Text style={[tw`text-sm text-center`, { color: theme.colors.mutedForeground }]}>
-                      Start exploring and liking cuts from your favorite stylists
-                    </Text>
-                  </View>
-                ) : (
-                  <ScrollView
-                    style={tw`py-4`}
-                    onScroll={(event) => {
-                      const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
-                      const paddingToBottom = 20;
-                      if (layoutMeasurement.height + contentOffset.y >= contentSize.height - paddingToBottom) {
-                        loadMoreCuts();
-                      }
-                    }}
-                    scrollEventThrottle={400}
-                  >
-                    {/* Grid Layout for Cuts */}
-                    <View style={tw`flex-row flex-wrap justify-between`}>
-                      {displayCuts.map((cut, index) => {
-                        return (
-                          <VideoPreview
-                            key={cut.id}
-                            videoUrl={cut.url}
-                            title={cut.title}
-                            barberName={cut.barber.name}
-                            barberAvatar={cut.barber.image}
-                            views={cut.views}
-                            likes={cut.likes}
-                            onPress={() => {
-                              // Navigate to cuts page for this specific video from this barber
-                              if (barberProfile?.id) {
-                                // @ts-ignore - Navigation type issue
-                                navigation.navigate('Cuts', { cutId: cut.id, barberId: barberProfile.id });
-                              }
-                            }}
-                          />
-                        );
-                      })}
-                    </View>
-                    {displayCuts.length < allDisplayCuts.length && (
-                      <View style={tw`py-4 items-center`}>
-                        <ActivityIndicator size="small" color={theme.colors.secondary} />
-                      </View>
-                    )}
-                  </ScrollView>
-                )}
+              // Client Portfolio - Empty state (portfolio tab hidden for clients)
+              <View style={tw`flex-1 justify-center items-center py-8`}>
+                <Text style={[tw`text-sm text-center`, { color: theme.colors.mutedForeground }]}>
+                  Portfolio view not available for clients
+                </Text>
               </View>
             )}
           </View>
@@ -928,21 +824,23 @@ export default function ProfilePortfolio() {
 
         {/* Tabs Under Avatar */}
         <View style={[tw`flex-row border-b`, { borderColor: 'rgba(255,255,255,0.1)', backgroundColor: theme.colors.background }]}>
-          <TouchableOpacity
-            style={tw`flex-1 py-3 items-center`}
-            onPress={() => setActiveTab('portfolio')}
-          >
-            <Heart 
-              size={20} 
-              color={activeTab === 'portfolio' ? theme.colors.secondary : theme.colors.mutedForeground} 
-            />
-            <Text style={[
-              tw`text-xs mt-1`, 
-              { color: activeTab === 'portfolio' ? theme.colors.secondary : theme.colors.mutedForeground }
-            ]}>
-              {isBarber ? 'Portfolio' : 'Liked Cuts'}
-            </Text>
-          </TouchableOpacity>
+          {isBarber && (
+            <TouchableOpacity
+              style={tw`flex-1 py-3 items-center`}
+              onPress={() => setActiveTab('portfolio')}
+            >
+              <Heart 
+                size={20} 
+                color={activeTab === 'portfolio' ? theme.colors.secondary : theme.colors.mutedForeground} 
+              />
+              <Text style={[
+                tw`text-xs mt-1`, 
+                { color: activeTab === 'portfolio' ? theme.colors.secondary : theme.colors.mutedForeground }
+              ]}>
+                Portfolio
+              </Text>
+            </TouchableOpacity>
+          )}
           
           <TouchableOpacity
             style={tw`flex-1 py-3 items-center`}

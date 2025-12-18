@@ -36,39 +36,41 @@ export function calculateTotalCharged(
  * Get booking pricing breakdown for display
  * Uses historical booking data, not current service prices
  * This ensures historical accuracy even if service prices change
+ * 
+ * IMPORTANT: The price field in bookings represents the total charged (platform_fee + barber_payout),
+ * NOT (service_price + addons + platform_fee). Service price is paid directly to barber at appointment.
  */
 export function getBookingPricingData(booking: {
-  price?: number; // Total charged (basePrice + addonTotal + platformFee)
+  price?: number; // Total charged (platform_fee + barber_payout for fee-only bookings)
   platform_fee?: number;
   barber_payout?: number;
   addon_total?: number;
 }, servicePrice?: number): BookingPricingData {
-  // Use stored booking values for historical accuracy
-  const totalCharged = booking.price || 0;
   const addonTotal = booking.addon_total || 0;
   const platformFee = booking.platform_fee || 0;
+  const barberPayout = booking.barber_payout || 0;
+  const totalCharged = booking.price || 0;
   
-  // Calculate base service price from stored booking data
-  // basePrice = totalCharged - addonTotal - platformFee
-  // This ensures we use the historical price, not the current service price
-  const basePrice = Math.max(0, totalCharged - addonTotal - platformFee);
+  // Service price is NOT included in the booking.price field
+  // It's paid directly to the barber at the appointment
+  // We need to get it from the service table or use the provided servicePrice
+  // If servicePrice is not provided, we cannot calculate it from booking.price
+  // because booking.price = platform_fee + barber_payout (not service + platform_fee)
+  const basePrice = servicePrice || 0;
   
-  // If basePrice calculation seems wrong (e.g., totalCharged is 0), fallback to servicePrice
-  // This handles edge cases where booking data might be incomplete
-  const historicalBasePrice = basePrice > 0 ? basePrice : (servicePrice || 0);
+  // For fee-only bookings (current model):
+  // - Customer pays: platform_fee + barber_payout = $3.38 (platform fee only)
+  // - Service price is paid directly to barber at appointment
+  // - Total charged = platform_fee + barber_payout
   
-  // Calculate barber payout: prefer stored value, otherwise calculate
-  const barberPayout = typeof booking.barber_payout === 'number' 
-    ? booking.barber_payout 
-    : historicalBasePrice + addonTotal + (platformFee * 0.40); // 40% of platform fee goes to barber
-  
-  // Use calculated total if we have all components, otherwise use stored price
-  const finalTotalCharged = totalCharged > 0 
-    ? totalCharged 
-    : calculateTotalCharged(historicalBasePrice, addonTotal, platformFee);
+  // Calculate total charged: if we have service price, it's service + addons + platform fee
+  // Otherwise, it's just the platform fee split (platform_fee + barber_payout)
+  const finalTotalCharged = basePrice > 0
+    ? calculateTotalCharged(basePrice, addonTotal, platformFee)
+    : totalCharged || (platformFee + barberPayout);
   
   return {
-    basePrice: historicalBasePrice,
+    basePrice,
     addonTotal,
     platformFee,
     barberPayout,
@@ -81,22 +83,39 @@ export function getBookingPricingData(booking: {
  * Shows: Service Price, Add-ons, Platform Fee, Total Charged
  * Does NOT show barber payout
  * Uses historical booking data for accuracy
+ * 
+ * IMPORTANT: For fee-only bookings, the `price` field represents the platform fee charged to the customer.
+ * The `platform_fee` field in the database is BOCM's share, not the total platform fee.
+ * 
+ * For developer bookings (price = 0, platform_fee = 0, barber_payout = 0), we use service_price + addon_total.
  */
 export function getClientBookingDetails(
   booking: {
-    price?: number;
-    platform_fee?: number;
+    price?: number; // Total platform fee charged to customer
+    platform_fee?: number; // BOCM's share (not the total platform fee)
     addon_total?: number;
   },
   servicePrice?: number
 ): BookingDetailsBreakdown {
   const pricing = getBookingPricingData(booking, servicePrice);
   
+  // Check if this is a developer booking (all fees are 0)
+  const isDeveloperBooking = (booking.price || 0) === 0 && 
+                            (booking.platform_fee || 0) === 0;
+  
+  // For developer bookings, there's no platform fee charged
+  // For regular bookings, platform fee is what customer paid via Stripe
+  const platformFeeCharged = isDeveloperBooking ? 0 : (booking.price || 0);
+  
+  // Total is service price (paid at appointment) + addons + platform fee (if any)
+  // For developer bookings, total = service_price + addons (no platform fee)
+  const total = (servicePrice || 0) + (booking.addon_total || 0) + platformFeeCharged;
+  
   return {
     servicePrice: pricing.basePrice,
     addons: pricing.addonTotal,
-    platformFee: pricing.platformFee,
-    total: pricing.totalCharged,
+    platformFee: platformFeeCharged, // What customer paid via Stripe (0 for developer bookings)
+    total,
   };
 }
 
@@ -104,24 +123,65 @@ export function getClientBookingDetails(
  * Get booking details breakdown for BARBER view
  * Shows: Service Price, Add-ons, Platform Fee, Your Payout
  * Uses historical booking data for accuracy
+ * 
+ * IMPORTANT: For barbers, the payout includes:
+ * - Service price (paid directly at appointment)
+ * - Add-ons (paid directly at appointment)
+ * - Barber's share from platform fee (barber_payout from database)
+ * 
+ * For developer bookings (price = 0, platform_fee = 0, barber_payout = 0), 
+ * the barber receives service_price + addon_total (no platform fee split).
  */
 export function getBarberBookingDetails(
   booking: {
-    price?: number;
-    platform_fee?: number;
-    barber_payout?: number;
+    price?: number; // Total platform fee charged to customer
+    platform_fee?: number; // BOCM's share
+    barber_payout?: number; // Barber's share from platform fee
     addon_total?: number;
   },
   servicePrice?: number
 ): BookingDetailsBreakdown {
   const pricing = getBookingPricingData(booking, servicePrice);
   
+  // Check if this is a developer booking (all fees are 0)
+  const isDeveloperBooking = (booking.price || 0) === 0 && 
+                            (booking.platform_fee || 0) === 0 &&
+                            (booking.barber_payout || 0) === 0;
+  
+  // For barber view:
+  // - Service price: what customer pays at appointment
+  // - Platform fee: what customer paid via Stripe (0 for developer bookings)
+  // - Barber payout: service + addons (at appointment) + barber_payout (from platform fee, 0 for developer)
+  const servicePriceAtAppointment = servicePrice || 0;
+  const addonsAtAppointment = booking.addon_total || 0;
+  const platformFeeShare = booking.barber_payout || 0;
+  
+  // For developer bookings, there's no platform fee
+  // For regular bookings, calculate platform fee charged to customer
+  // The database constraint ensures: platform_fee + barber_payout = price
+  let validatedPlatformFee = 0;
+  if (!isDeveloperBooking) {
+    const platformFeeCharged = (booking.platform_fee || 0) + (booking.barber_payout || 0);
+    // Fallback: If platform_fee and barber_payout are missing, use price
+    // But validate that price makes sense (should be around $3.38 for platform fee)
+    validatedPlatformFee = platformFeeCharged > 0 
+      ? platformFeeCharged 
+      : (booking.price && booking.price < 20 ? booking.price : 0);
+  }
+  
+  // For developer bookings, barber gets full service price + addons (no platform fee split)
+  // For regular bookings, barber gets service + addons + their share of platform fee
+  const totalBarberPayout = servicePriceAtAppointment + addonsAtAppointment + platformFeeShare;
+  
+  // Total charged to customer = service + addons (at appointment) + platform fee (via Stripe, if any)
+  const totalCharged = servicePriceAtAppointment + addonsAtAppointment + validatedPlatformFee;
+  
   return {
-    servicePrice: pricing.basePrice,
-    addons: pricing.addonTotal,
-    platformFee: pricing.platformFee,
-    total: pricing.totalCharged,
-    barberPayout: pricing.barberPayout,
+    servicePrice: servicePriceAtAppointment,
+    addons: addonsAtAppointment,
+    platformFee: validatedPlatformFee, // Total platform fee charged (0 for developer bookings)
+    total: totalCharged,
+    barberPayout: totalBarberPayout,
   };
 }
 

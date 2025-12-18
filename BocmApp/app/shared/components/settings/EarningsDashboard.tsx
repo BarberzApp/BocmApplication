@@ -78,39 +78,65 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
 
       // Get bookings data
       const now = new Date();
-      const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
+      // Fix: Create new date objects to avoid mutation
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - now.getDay());
+      startOfWeek.setHours(0, 0, 0, 0);
+      
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      startOfMonth.setHours(0, 0, 0, 0);
+      
       const startOfYear = new Date(now.getFullYear(), 0, 1);
+      startOfYear.setHours(0, 0, 0, 0);
 
+      // Fetch bookings with service and addon data
       const { data: bookings, error } = await supabase
         .from('bookings')
-        .select('id, created_at, barber_payout')
+        .select(`
+          id,
+          created_at,
+          barber_payout,
+          service_id,
+          addon_total,
+          services:service_id(price)
+        `)
         .eq('barber_id', barberId)
         .eq('status', 'completed');
 
       if (error) throw error;
 
       // Calculate earnings
+      // Barber earnings = service price (paid at appointment) + addons (paid at appointment) + barber_payout (from platform fee)
       let totalEarnings = 0;
       let monthlyEarnings = 0;
       let weeklyEarnings = 0;
       let yearlyEarnings = 0;
 
       bookings?.forEach(booking => {
-        // Net amount barber earns (already stored in dollars)
-        const amount = Number(booking.barber_payout || 0);
         const bookingDate = new Date(booking.created_at);
         
-        totalEarnings += amount;
+        // Get service price (paid directly at appointment)
+        const servicePrice = Number((booking.services as any)?.price || 0);
+        
+        // Get addon total (paid directly at appointment)
+        const addonTotal = Number(booking.addon_total || 0);
+        
+        // Get barber's share from platform fee (from Stripe)
+        const barberPayout = Number(booking.barber_payout || 0);
+        
+        // Total earnings for this booking
+        const bookingEarnings = servicePrice + addonTotal + barberPayout;
+        
+        totalEarnings += bookingEarnings;
         
         if (bookingDate >= startOfWeek) {
-          weeklyEarnings += amount;
+          weeklyEarnings += bookingEarnings;
         }
         if (bookingDate >= startOfMonth) {
-          monthlyEarnings += amount;
+          monthlyEarnings += bookingEarnings;
         }
         if (bookingDate >= startOfYear) {
-          yearlyEarnings += amount;
+          yearlyEarnings += bookingEarnings;
         }
       });
 
@@ -530,6 +556,9 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
           
           <Text style={[tw`text-3xl font-bold mb-4`, { color: theme.colors.foreground }]}>
             ${earnings.monthlyEarnings.toFixed(2)}
+          </Text>
+          <Text style={[tw`text-xs mb-2`, { color: theme.colors.mutedForeground }]}>
+            Includes: Service price + Add-ons (at appointment) + Platform fee share (via Stripe)
           </Text>
 
           <View style={tw`flex-row justify-between`}>

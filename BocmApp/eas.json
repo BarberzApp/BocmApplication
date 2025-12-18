@@ -8,28 +8,40 @@
       "developmentClient": true,
       "distribution": "internal",
       "ios": {
-        "resourceClass": "m-medium",
-        "entitlements": {
-          "aps-environment": "development"
-        }
+        "resourceClass": "medium"
+      },
+      "android": {
+        "resourceClass": "medium",
+        "buildType": "apk"
+      },
+      "env": {
+        "NODE_ENV": "development"
       }
     },
     "preview": {
       "distribution": "internal",
       "ios": {
-        "resourceClass": "m-medium",
-        "entitlements": {
-          "aps-environment": "development"
-        }
+        "resourceClass": "medium"
+      },
+      "android": {
+        "resourceClass": "medium",
+        "buildType": "apk"
+      },
+      "env": {
+        "NODE_ENV": "production"
       }
     },
     "production": {
       "autoIncrement": true,
       "ios": {
-        "resourceClass": "m-medium",
-        "entitlements": {
-          "aps-environment": "production"
-        }
+        "resourceClass": "medium"
+      },
+      "android": {
+        "resourceClass": "medium",
+        "buildType": "app-bundle"
+      },
+      "env": {
+        "NODE_ENV": "production"
       }
     }
   },
@@ -38,6 +50,10 @@
       "ios": {
         "appleId": "yaskhalil06@icloud.com",
         "appleTeamId": "6CL27WHBRU"
+      },
+      "android": {
+        "serviceAccountKeyPath": "./google-service-account.json",
+        "track": "internal"
       }
     }
   }

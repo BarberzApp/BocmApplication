@@ -315,8 +315,18 @@ export default function BookingForm({
       const [hours, minutes] = selectedTime.split(':');
       bookingDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
-      if (isDeveloperAccount) {
-        logger.log('🔧 Developer account detected - using create-developer-booking endpoint');
+      // Double-check barber status before using developer booking
+      // This ensures we don't accidentally use developer booking for non-developer barbers
+      const { data: barberCheck, error: barberCheckError } = await supabase
+        .from('barbers')
+        .select('is_developer')
+        .eq('id', barberId)
+        .single();
+      
+      const isActuallyDeveloper = barberCheck?.is_developer === true;
+      
+      if (isDeveloperAccount && isActuallyDeveloper) {
+        logger.log('🔧 Developer account confirmed - using create-developer-booking endpoint');
         logger.log('📦 Request data:', {
           barberId,
           serviceId: selectedService.id,
@@ -367,6 +377,10 @@ export default function BookingForm({
           [{ text: 'OK', onPress: () => onBookingCreated(data.booking) }]
         );
       } else {
+        // Barber is NOT a developer - must use Stripe payment flow
+        logger.log('💳 Regular barber account - using Stripe payment flow');
+        logger.log('⚠️ Developer booking was requested but barber is not a developer account');
+        
         if (!user) {
           Alert.alert('Error', 'Please sign in to book with this barber.');
           return;
@@ -1147,7 +1161,7 @@ export default function BookingForm({
 
                 {/* Card Input Section */}
                 <View style={[
-                  tw`p-6 rounded-2xl`,
+                  tw`p-6 rounded-2xl mb-8`,
                   { 
                     backgroundColor: 'rgba(255,255,255,0.08)',
                     borderWidth: 1,
@@ -1177,14 +1191,14 @@ export default function BookingForm({
                     style={{
                       width: '100%',
                       height: 56,
-                      marginVertical: 8,
+                      marginVertical: 20,
                     }}
                   />
                   
-                  <View style={tw`flex-row items-center mt-3`}>
+                  <View style={tw`flex-row items-center mt-2`}>
                     <Icon name="info" size={14} color={theme.colors.mutedForeground} />
                     <Text style={[tw`ml-2 text-xs`, { color: theme.colors.mutedForeground }]}>
-                      Test: 4242 4242 4242 4242 • Any future date • Any CVC
+                      All transactions are processed securely by Stripe.
                     </Text>
                   </View>
                 </View>
@@ -1198,7 +1212,7 @@ export default function BookingForm({
                     borderColor: 'rgba(255,255,255,0.1)'
                   }
                 ]}>
-                  <View style={tw`flex-row items-center mb-4`}>
+                  <View style={tw`flex-row items-center mb-3`}>
                     <Icon name="receipt" size={20} color={theme.colors.secondary} />
                     <Text style={[tw`ml-2 text-lg font-semibold`, { color: theme.colors.foreground }]}>
                       Payment Summary
@@ -1259,7 +1273,7 @@ export default function BookingForm({
                 {/* Trust Indicators */}
                 <View style={tw`items-center mt-4`}>
                   <View style={tw`flex-row items-center space-x-4`}>
-                    <View style={tw`items-center`}>
+                    <View style={tw`items-center mr-4`}>
                       <Icon name="lock" size={16} color={theme.colors.mutedForeground} />
                       <Text style={[tw`text-xs mt-1`, { color: theme.colors.mutedForeground }]}>
                         Encrypted
@@ -1271,7 +1285,7 @@ export default function BookingForm({
                         Secure
                       </Text>
                     </View>
-                    <View style={tw`items-center`}>
+                    <View style={tw`items-center ml-4`}>
                       <Icon name="check-circle" size={16} color={theme.colors.mutedForeground} />
                       <Text style={[tw`text-xs mt-1`, { color: theme.colors.mutedForeground }]}>
                         Verified
