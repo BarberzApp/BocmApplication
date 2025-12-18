@@ -859,6 +859,74 @@ After addressing critical issues:
 
 ---
 
+## 🔮 Future Database Improvements
+
+**Status:** 🟡 **OPTIONAL - FOR FUTURE OPTIMIZATION**
+
+These improvements are not blocking for production launch but should be addressed in future sprints for better performance and security:
+
+### **Critical Security Issues**
+1. **RLS on Public Tables** 🔴
+   - **Issue:** `cut_analytics` and `booking_texts` tables have RLS disabled
+   - **Risk:** Data exposure without proper access control
+   - **Fix:** Enable RLS and add appropriate policies
+   - **Priority:** High (security concern)
+
+2. **Function Search Path Security** 🟠
+   - **Issue:** Many database functions don't set `search_path` parameter
+   - **Risk:** Potential SQL injection vulnerabilities
+   - **Fix:** Add `SET search_path = public` to all functions
+   - **Priority:** Medium (security hardening)
+
+### **Performance Optimizations**
+1. **Missing Foreign Key Index** 🟡
+   - **Issue:** `bookings.service_id` foreign key lacks covering index
+   - **Impact:** Slower queries when joining with services table
+   - **Fix:** Add index: `CREATE INDEX idx_bookings_service_id ON bookings(service_id)`
+   - **Priority:** Medium (performance improvement)
+
+2. **RLS Policy Optimization** 🟡
+   - **Issue:** Multiple permissive RLS policies on many tables
+   - **Impact:** Policies re-evaluate for each row, causing performance degradation
+   - **Fix:** Consolidate policies and use `(select auth.uid())` pattern
+   - **Priority:** Medium (scales better with more users)
+
+3. **Unused Indexes** 🟢
+   - **Issue:** Many indexes are never used (detected by Supabase advisors)
+   - **Impact:** Wasted storage and slower writes
+   - **Fix:** Remove unused indexes after monitoring
+   - **Priority:** Low (cleanup task)
+
+### **Auth Configuration**
+1. **OTP Expiry** 🟡
+   - **Issue:** OTP expiry exceeds recommended threshold (>1 hour)
+   - **Fix:** Reduce to <1 hour for better security
+   - **Priority:** Medium (security best practice)
+
+2. **Leaked Password Protection** 🟡
+   - **Issue:** HaveIBeenPwned integration disabled
+   - **Fix:** Enable leaked password protection in Supabase Auth settings
+   - **Priority:** Medium (security enhancement)
+
+3. **Postgres Version** 🟡
+   - **Issue:** Current version has security patches available
+   - **Fix:** Upgrade Postgres to latest version
+   - **Priority:** Medium (security patches)
+
+### **Implementation Notes**
+- These are **non-blocking** issues for production launch
+- Current database setup is **functionally correct** and **secure enough** for beta
+- All critical constraints and triggers are working properly
+- Bookings data integrity is guaranteed
+- Service price historical tracking is implemented
+
+**Recommended Timeline:**
+- **Sprint 1-2:** Fix RLS issues (security)
+- **Sprint 3-4:** Performance optimizations (indexes, RLS policies)
+- **Sprint 5+:** Auth configuration improvements
+
+---
+
 **Document Version:** 1.2  
 **Last Updated:** January 8, 2025  
 **Last Progress Update:** 

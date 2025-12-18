@@ -106,6 +106,7 @@ export async function POST(request: Request) {
       status: 'confirmed',
       payment_status: 'succeeded', // Developer bookings are automatically paid
       price: servicePrice + addonTotal,
+      service_price: servicePrice, // Store historical service price
       addon_total: 0, // Let the trigger calculate this from booking_addons
       platform_fee: platformFee,
       barber_payout: barberPayout,

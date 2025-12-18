@@ -57,7 +57,7 @@ function isOriginAllowed(origin: string | null): boolean {
  */
 export function getCorsHeaders(request: NextRequest): Record<string, string> {
   const origin = request.headers.get('origin')
-  const allowedOrigin = isOriginAllowed(origin) ? origin : getAllowedOrigins()[0] || '*'
+  const allowedOrigin = isOriginAllowed(origin) ? (origin as string) : (getAllowedOrigins()[0] || '*')
 
   return {
     'Access-Control-Allow-Origin': allowedOrigin,

@@ -133,6 +133,7 @@ serve(async (req) => {
       status: 'confirmed',
       payment_status: 'succeeded',
       price: totalPrice,
+      service_price: service.price, // Store historical service price
       addon_total: addonTotal,
       platform_fee: platformFee,
       barber_payout: barberPayout,

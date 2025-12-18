@@ -332,21 +332,24 @@ export async function POST(request: Request) {
             )
           }
 
-          // (Optional) Look up the service price (stored in dollars)
-          let price = 0
           // Convert Stripe cents to dollars for bookings table (which stores NUMERIC dollars)
           const platform_fee_cents = paymentIntent.application_fee_amount || 0
           const platform_fee = platform_fee_cents / 100
           const barber_payout_cents = paymentIntent.amount - platform_fee_cents
           const barber_payout = barber_payout_cents / 100
+          
+          // Price should be the total amount charged (platform_fee + barber_payout)
+          // This satisfies the check_payment_amounts constraint: platform_fee + barber_payout = price
+          const price = platform_fee + barber_payout
+          
+          // Get service price to store historically (so it doesn't change if service price is updated later)
           const { data: service } = await supabase
             .from('services')
             .select('price')
             .eq('id', serviceId)
             .single()
-          if (service && service.price) {
-            price = Number(service.price)
-          }
+
+          const servicePrice = service?.price ? Number(service.price) : 0
 
           // Calculate add-on total from add-ons table using addonIds (deduplicate first)
           let addon_total = 0
@@ -373,10 +376,11 @@ export async function POST(request: Request) {
             status: 'confirmed',
             payment_status: 'succeeded',
             payment_intent_id: paymentIntent.id,
-            price,        // base service price only
+            price,        // total amount charged (platform_fee + barber_payout) to satisfy constraint
+            service_price: servicePrice, // Store historical service price
             addon_total: 0,  // Let the trigger calculate this from booking_addons
-            platform_fee, // dollars
-            barber_payout, // dollars
+            platform_fee, // dollars - platform's share
+            barber_payout, // dollars - barber's share from platform fee
             notes: notes || null,
             guest_name: guestName || null,
             guest_email: guestEmail || null,
