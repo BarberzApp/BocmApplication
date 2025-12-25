@@ -1598,7 +1598,7 @@ export default function CalendarPage() {
                               </Text>
                             </View>
                             <Text style={[tw`text-xs mt-1`, { color: theme.colors.mutedForeground }]}>
-                              Amount you'll receive for this appointment
+                              Amount you&apos;ll receive for this appointment
                             </Text>
                           </>
                         )}

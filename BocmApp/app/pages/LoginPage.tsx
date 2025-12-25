@@ -608,7 +608,7 @@ export default function LoginPage() {
                     color: 'rgba(255, 255, 255, 0.8)',
                     textAlign: 'center',
                   }}>
-                    Don't have an account?{' '}
+                    Don&apos;t have an account?{' '}
                     <Text
                       onPress={handleSignUp}
                       style={{

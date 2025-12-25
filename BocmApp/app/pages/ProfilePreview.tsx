@@ -518,7 +518,7 @@ export default function ProfilePreview() {
                   No services available
                 </Text>
                 <Text style={[tw`text-sm text-center`, { color: theme.colors.mutedForeground }]}>
-                  This barber hasn't added any services yet
+                  This barber hasn&apos;t added any services yet
                 </Text>
               </View>
             ) : (
@@ -865,7 +865,7 @@ export default function ProfilePreview() {
               Block {profile.name}?
             </Text>
             <Text style={[tw`text-sm mb-4`, { color: theme.colors.mutedForeground }]}>
-              You will no longer see this user's content, and they won't be able to contact you. This action can be undone from your settings.
+              You will no longer see this user&apos;s content, and they won&apos;t be able to contact you. This action can be undone from your settings.
             </Text>
             <View style={tw`flex-row gap-3`}>
               <TouchableOpacity

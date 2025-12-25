@@ -613,7 +613,7 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
             <AlertCircle size={16} color={theme.colors.destructive} style={tw`mr-2 mt-0.5`} />
             <View style={tw`flex-1`}>
               <Text style={[tw`text-sm`, { color: theme.colors.destructive }]}>
-                Your profile is currently private and won't appear in search results. Enable public profile to start receiving bookings from new clients.
+                Your profile is currently private and won&apos;t appear in search results. Enable public profile to start receiving bookings from new clients.
               </Text>
             </View>
           </View>

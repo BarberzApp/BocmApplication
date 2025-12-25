@@ -911,7 +911,7 @@ export default function BookingForm({
                     Tell us about yourself
                   </Text>
                   <Text style={[tw`text-center`, { color: theme.colors.mutedForeground }]}>
-                    We'll use this to confirm your booking
+                    We&apos;ll use this to confirm your booking
                   </Text>
                 </View>
 
@@ -992,7 +992,7 @@ export default function BookingForm({
                         Welcome back, {userProfile?.name}!
                       </Text>
                       <Text style={[tw`text-center`, { color: theme.colors.mutedForeground }]}>
-                        We'll use your account information for this booking
+                        We&apos;ll use your account information for this booking
                       </Text>
                     </View>
                   </View>

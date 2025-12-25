@@ -57,7 +57,7 @@ export default function BookingCalendarPage() {
                             Ready to Book Your Appointment?
                         </Text>
                         <Text style={[tw`text-center`, { color: theme.colors.mutedForeground }]}>
-                            Choose your service, pick a time, and we'll handle the rest
+                            Choose your service, pick a time, and we&apos;ll handle the rest
                         </Text>
                     </View>
                 </View>

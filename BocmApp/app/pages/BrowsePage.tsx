@@ -1594,7 +1594,7 @@ export default function BrowsePage() {
                 {!hasMoreBarbers && barbers.length > 0 && (
                   <View style={tw`py-6 px-4 items-center`}>
                     <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>
-                      You've seen all available barbers!
+                      You&apos;ve seen all available barbers!
                     </Text>
                   </View>
                 )}

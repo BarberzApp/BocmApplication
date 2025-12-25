@@ -636,7 +636,7 @@ export default function NotificationTestPage() {
             lineHeight: 18,
           }}>
             💡 Tap any button above to test different notification types.{'\n'}
-            📱 Notifications will appear on your device's lock screen.{'\n'}
+            📱 Notifications will appear on your device&apos;s lock screen.{'\n'}
             ⏰ Scheduled reminders will be sent at the specified time.{'\n'}
             🔔 Make sure notifications are enabled in your device settings.
           </Text>

@@ -327,7 +327,7 @@ export function AvailabilityManager({ barberId, onUpdate }: AvailabilityManagerP
           <AlertCircle size={16} color={theme.colors.accent} style={tw`mr-2 mt-0.5`} />
           <View style={tw`flex-1`}>
             <Text style={[tw`text-sm`, { color: theme.colors.accent }]}>
-              You haven't set any available days. Clients won't be able to book appointments until you set your schedule.
+              You haven&apos;t set any available days. Clients won&apos;t be able to book appointments until you set your schedule.
             </Text>
           </View>
         </View>

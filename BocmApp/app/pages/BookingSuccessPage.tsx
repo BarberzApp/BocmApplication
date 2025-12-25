@@ -48,7 +48,7 @@ export default function BookingSuccessPage() {
         </Text>
         
         <Text style={[tw`text-center mb-8`, { color: theme.colors.mutedForeground }]}>
-          Your appointment has been successfully booked. You'll receive a confirmation email shortly.
+          Your appointment has been successfully booked. You&apos;ll receive a confirmation email shortly.
         </Text>
 
         <TouchableOpacity

@@ -247,7 +247,7 @@ export function LocationInput({
                 searchQuery.length >= 3 ? (
                   <View style={tw`flex-1 justify-center items-center p-8`}>
                     <Text style={[tw`text-center text-sm`, { color: theme.colors.mutedForeground }]}>
-                      No addresses found for "{searchQuery}"
+                      No addresses found for &quot;{searchQuery}&quot;
                     </Text>
                   </View>
                 ) : (
