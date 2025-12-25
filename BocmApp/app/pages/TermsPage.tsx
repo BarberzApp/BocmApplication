@@ -13,7 +13,7 @@ import { RootStackParamList } from '../shared/types';
 
 const terms = `BOCM TERMS OF SERVICE
 
-Effective Date: January 2025
+Effective Date: December 2025
 
 Welcome to BOCM. These Terms of Service ("Terms") govern your access to and use of the BOCM website, mobile application, and all associated services (collectively, the "Services"). The Services are provided by BOCM ("BOCM," "we," "us," or "our").
 

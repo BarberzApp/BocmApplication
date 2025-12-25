@@ -55,14 +55,12 @@ export function getColorFromString(str?: string | null): string {
 /**
  * Gets gradient colors for cover photo based on name
  * @param name - Name to generate gradient from
- * @returns Array of two color strings for gradient
+ * @returns Tuple of two color strings for gradient
  */
-export function getCoverGradientColors(name?: string | null): string[] {
-  const baseColor = getColorFromString(name);
-  
+export function getCoverGradientColors(name?: string | null): [string, string] {
   // Create a darker and lighter variant for gradient
   // Simple approach: use theme gradients or create variations
-  const gradients = [
+  const gradients: [string, string][] = [
     [theme.colors.secondary, theme.colors.accent],
     ['#272a2f', '#2d2a26'],
     ['#c78e3f', '#8d7250'],
@@ -109,7 +107,7 @@ export function getAvatarFallbackProps(name?: string | null): AvatarFallbackProp
  * Cover photo fallback props
  */
 export interface CoverFallbackProps {
-  gradientColors: string[];
+  gradientColors: [string, string];
 }
 
 /**

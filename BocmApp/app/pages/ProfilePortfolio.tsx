@@ -768,7 +768,7 @@ export default function ProfilePortfolio() {
             />
           ) : (
             <LinearGradient
-              colors={getCoverFallbackProps(profile.name || profile.username).gradientColors}
+              colors={getCoverFallbackProps(profile.name || profile.username).gradientColors as [string, string]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={tw`absolute inset-0 w-full h-full`}
