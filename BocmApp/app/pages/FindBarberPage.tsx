@@ -363,7 +363,7 @@ export default function FindBarberPage() {
                                             </Text>
                                         ) : (
                                             <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>
-                                                Coming soon
+                                                Not available for booking
                                             </Text>
                                         )}
                                     </View>

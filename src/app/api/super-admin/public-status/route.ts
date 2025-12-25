@@ -1,22 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { supabase, supabaseAdmin } from '@/shared/lib/supabase'
 import { logger } from '@/shared/lib/logger'
+
+const SUPER_ADMIN_EMAIL = 'primbocm@gmail.com'
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
+    // Get the authorization header
+    const authHeader = request.headers.get('authorization')
     
-    // Check if user is authenticated
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
-      logger.debug('Unauthorized access attempt')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      logger.debug('Missing authorization header')
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check if user is super admin (primbocm@gmail.com)
-    if (session.user.email !== 'primbocm@gmail.com') {
-      logger.debug('Access denied for user', { email: session.user.email })
+    const token = authHeader.replace('Bearer ', '')
+    
+    // Verify the token and get user info
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+    
+    if (authError || !user || user.email !== SUPER_ADMIN_EMAIL) {
+      logger.debug('Access denied for user', { email: user?.email, error: authError })
       return NextResponse.json({ success: false, error: 'Access denied' }, { status: 403 })
     }
 
@@ -28,8 +32,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Invalid parameters' }, { status: 400 })
     }
 
-    // First, verify the profile exists
-    const { data: existingProfile, error: fetchError } = await supabase
+    // First, verify the profile exists using admin client
+    const { data: existingProfile, error: fetchError } = await supabaseAdmin
       .from('profiles')
       .select('id, name, email, is_public')
       .eq('id', userId)
@@ -47,8 +51,8 @@ export async function POST(request: NextRequest) {
       newIsPublic: isPublic
     })
 
-    // Update the profile's public status
-    const { error } = await supabase
+    // Update the profile's public status using admin client
+    const { error } = await supabaseAdmin
       .from('profiles')
       .update({ is_public: isPublic })
       .eq('id', userId)

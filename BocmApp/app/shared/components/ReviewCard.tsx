@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Star, MessageSquare, Calendar } from 'lucide-react-native';
+import { Star, MessageSquare, Calendar, Flag } from 'lucide-react-native';
 import tw from 'twrnc';
 import { Review } from '../types';
 import { Avatar } from './ui';
+import { ReportContentModal } from './ReportContentModal';
+import { useAuth } from '../hooks/useAuth';
 
 interface ReviewCardProps {
   review: Review;
@@ -20,6 +22,10 @@ export function ReviewCard({
   onEdit, 
   onDelete 
 }: ReviewCardProps) {
+  const { user } = useAuth();
+  const [showReportModal, setShowReportModal] = useState(false);
+  const isOwnReview = user?.id === review.client_id;
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
@@ -42,6 +48,7 @@ export function ReviewCard({
   };
 
   return (
+    <>
     <TouchableOpacity
       style={tw`bg-white/5 border border-white/10 rounded-lg p-4 mb-3`}
       onPress={onPress}
@@ -121,6 +128,31 @@ export function ReviewCard({
           <Text style={tw`text-green-400 text-xs font-medium`}>✓ Verified</Text>
         </View>
       )}
+
+      {/* Report Button - Show for non-own reviews */}
+      {!isOwnReview && (
+        <TouchableOpacity
+          style={tw`absolute top-2 left-2 bg-red-500/20 px-2 py-1 rounded-full flex-row items-center`}
+          onPress={(e) => {
+            e.stopPropagation();
+            setShowReportModal(true);
+          }}
+        >
+          <Flag size={12} color="#ef4444" />
+          <Text style={tw`text-red-400 text-xs font-medium ml-1`}>Report</Text>
+        </TouchableOpacity>
+      )}
     </TouchableOpacity>
+    
+    {/* Report Modal */}
+    <ReportContentModal
+      visible={showReportModal}
+      onClose={() => setShowReportModal(false)}
+      contentType="review"
+      contentId={review.id}
+      reportedUserId={review.client_id}
+      contentDescription={`Review by ${review.client?.name || 'Anonymous'}: ${review.comment?.substring(0, 100) || 'No comment'}...`}
+    />
+    </>
   );
 }

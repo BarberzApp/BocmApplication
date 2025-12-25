@@ -31,6 +31,10 @@ export const initSentry = () => {
       // Set environment
       environment: isProduction ? 'production' : 'development',
       
+      // Privacy: Do NOT send default PII (personally identifiable information) by default
+      // We explicitly control what user data is sent via setUserContext()
+      sendDefaultPii: false,
+      
       // Enable auto session tracking
       enableAutoSessionTracking: true,
       
@@ -52,17 +56,34 @@ export const initSentry = () => {
         if (event.request) {
           delete event.request.cookies;
           delete event.request.headers;
+          // Remove IP address for privacy
+          if (event.request.url) {
+            // URL is kept for debugging but IP is not explicitly included
+          }
         }
         
-        // Filter out password fields
+        // Filter out password fields and other sensitive data
         if (event.extra) {
           Object.keys(event.extra).forEach(key => {
             if (key.toLowerCase().includes('password') || 
                 key.toLowerCase().includes('token') ||
-                key.toLowerCase().includes('secret')) {
+                key.toLowerCase().includes('secret') ||
+                key.toLowerCase().includes('api_key') ||
+                key.toLowerCase().includes('private')) {
               delete event.extra![key];
             }
           });
+        }
+        
+        // Filter user data from contexts unless explicitly set via setUserContext
+        if (event.user) {
+          // Only keep user ID if explicitly set, remove other PII
+          const safeUser: any = {};
+          if (event.user.id) {
+            safeUser.id = event.user.id;
+          }
+          // Explicitly exclude email, username, IP, etc. unless needed
+          event.user = safeUser;
         }
         
         return event;

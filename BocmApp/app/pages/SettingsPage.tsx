@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Text,
   StatusBar,
+  TextInput,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -32,13 +33,15 @@ import {
   Calendar, 
   DollarSign, 
   Settings as SettingsIcon,
-  Sparkles,
   AlertCircle,
   LogOut,
   CheckCircle,
-  RefreshCw
+  RefreshCw,
+  FileText,
+  Shield
 } from 'lucide-react-native';
 import type { Tab, SettingsData } from '../shared/types/settings.types';
+import { useAccountDeletionHelper } from '../shared/helpers/accountDeletionHelper';
 
 type SettingsNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Settings'>;
 
@@ -58,6 +61,15 @@ export default function SettingsPage() {
   const [showVerifyBanner, setShowVerifyBanner] = useState(true);
 
   const isBarber = userProfile?.role === 'barber';
+  const {
+    isConfirming,
+    isDeleting,
+    confirmText,
+    setConfirmText,
+    requestDelete,
+    deleteAccount,
+    isConfirmed,
+  } = useAccountDeletionHelper({ barberId });
 
   useEffect(() => {
     if (user) {
@@ -135,12 +147,6 @@ export default function SettingsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const getCompletionPercentage = () => {
-    const totalSections = isBarber ? 5 : 2;
-    const completedSections = Object.values(settingsData).filter(Boolean).length;
-    return Math.round((completedSections / totalSections) * 100);
   };
 
   const getTabStatus = (tab: Tab) => {
@@ -221,53 +227,6 @@ export default function SettingsPage() {
           </View>
         )}
 
-        {/* Progress Section */}
-        {getCompletionPercentage() < 100 && (
-          <View style={tw`mx-6 mb-6`}>
-            <Card style={[{ backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
-              <CardContent style={tw`p-4`}>
-                <View style={tw`flex-row items-center justify-between mb-3`}>
-                  <View style={tw`flex-row items-center`}>
-                    <Sparkles size={16} color={theme.colors.secondary} style={tw`mr-2`} />
-                    <Text style={[tw`text-sm font-medium`, { color: theme.colors.foreground }]}>
-                      Profile Completion
-                    </Text>
-                  </View>
-                  <View style={[tw`px-2 py-1 rounded-full`, { backgroundColor: theme.colors.secondary + '20' }]}>
-                    <Text style={[tw`text-xs font-bold`, { color: theme.colors.secondary }]}>
-                      {getCompletionPercentage()}%
-                    </Text>
-                  </View>
-                </View>
-                
-                <View style={[tw`h-3 rounded-full overflow-hidden`, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
-                  <View 
-                    style={[
-                      tw`h-full rounded-full`,
-                      { width: `${getCompletionPercentage()}%`, backgroundColor: theme.colors.secondary }
-                    ]} 
-                  />
-                </View>
-                
-                <Text style={[tw`text-xs text-center mt-3`, { color: theme.colors.mutedForeground }]}>
-                  Complete all sections to optimize your profile
-                </Text>
-                
-                {isBarber && (
-                  <TouchableOpacity
-                    style={[tw`mt-4 py-2 rounded-xl`, { backgroundColor: theme.colors.secondary }]}
-                    onPress={() => navigation.navigate('BarberOnboarding')}
-                  >
-                    <Text style={[tw`text-center font-medium`, { color: theme.colors.primaryForeground }]}>
-                      Complete Onboarding
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </CardContent>
-            </Card>
-          </View>
-        )}
-
         {/* Tabs */}
         <ScrollView 
           horizontal 
@@ -332,8 +291,37 @@ export default function SettingsPage() {
           )}
         </View>
 
-        {/* Logout Button */}
+        {/* Legal Information */}
         <View style={tw`px-6 mt-8`}>
+          <Card style={{ backgroundColor: 'rgba(255,255,255,0.05)' }}>
+            <CardContent style={tw`p-4`}>
+              <Text style={[tw`text-base font-semibold mb-4`, { color: theme.colors.foreground }]}>
+                Legal Information
+              </Text>
+              <TouchableOpacity
+                style={tw`flex-row items-center py-3 border-b border-white/10`}
+                onPress={() => navigation.navigate('Terms' as any)}
+              >
+                <FileText size={18} color={theme.colors.secondary} style={tw`mr-3`} />
+                <Text style={[tw`flex-1 text-base`, { color: theme.colors.foreground }]}>
+                  Terms & Conditions
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={tw`flex-row items-center py-3`}
+                onPress={() => navigation.navigate('PrivacyPolicy' as any)}
+              >
+                <Shield size={18} color={theme.colors.secondary} style={tw`mr-3`} />
+                <Text style={[tw`flex-1 text-base`, { color: theme.colors.foreground }]}>
+                  Privacy Policy
+                </Text>
+              </TouchableOpacity>
+            </CardContent>
+          </Card>
+        </View>
+
+        {/* Logout Button */}
+        <View style={tw`px-6 mt-6`}>
           <TouchableOpacity
             style={[tw`py-3 rounded-xl`, { backgroundColor: theme.colors.destructive }]}
             onPress={handleLogout}
@@ -343,6 +331,81 @@ export default function SettingsPage() {
               <Text style={[tw`font-semibold`, { color: theme.colors.destructiveForeground }]}>Log Out</Text>
             </View>
           </TouchableOpacity>
+        </View>
+        {/* Development-only onboarding button - hidden in production */}
+        {__DEV__ && (
+          <View style={tw`px-6 mt-6 mb-10`}>
+            <Button onPress={() => navigation.navigate('BarberOnboarding')}>
+              <View style={tw`flex-row items-center justify-center`}>
+                <Text style={[tw`font-semibold`, { color: theme.colors.secondary }]}>Onboarding (Dev Only)</Text>
+              </View>
+            </Button>
+          </View>
+        )}
+        {/* Account Deletion */}
+        <View style={tw`px-6 mt-6 mb-10`}>
+          <Card style={[{ backgroundColor: 'rgba(255,0,0,0.05)', borderColor: theme.colors.destructive + '40' }]}>
+            <CardContent style={tw`p-4`}>
+              <View style={tw`flex-row items-center mb-3`}>
+                <AlertCircle size={18} color={theme.colors.destructive} style={tw`mr-2`} />
+                <Text style={[tw`text-base font-semibold`, { color: theme.colors.destructive }]}>
+                  Delete Account
+                </Text>
+              </View>
+              <Text style={[tw`text-sm mb-4`, { color: theme.colors.mutedForeground }]}>
+                This will permanently remove your account and data. Type YES in all caps to confirm.
+              </Text>
+
+              {isConfirming && (
+                <View style={tw`mb-3`}>
+                  <TextInput
+                    style={[
+                      tw`w-full px-4 py-3 rounded-xl text-base`,
+                      { backgroundColor: 'rgba(255,255,255,0.05)', color: theme.colors.foreground },
+                    ]}
+                    placeholder="Type YES to confirm"
+                    placeholderTextColor={theme.colors.mutedForeground}
+                    autoCapitalize="characters"
+                    value={confirmText}
+                    onChangeText={(text) => setConfirmText(text.toUpperCase())}
+                  />
+                  <TouchableOpacity
+                    style={[
+                      tw`mt-3 py-3 rounded-xl`,
+                      {
+                        backgroundColor: isConfirmed ? theme.colors.destructive : 'rgba(255,255,255,0.1)',
+                        opacity: isDeleting ? 0.7 : 1,
+                      },
+                    ]}
+                    onPress={deleteAccount}
+                    disabled={!isConfirmed || isDeleting}
+                  >
+                    <Text
+                      style={[
+                        tw`text-center font-semibold`,
+                        { color: isConfirmed ? theme.colors.destructiveForeground : theme.colors.mutedForeground },
+                      ]}
+                    >
+                      {isDeleting ? 'Deleting...' : 'Confirm Delete'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              <TouchableOpacity
+                style={[
+                  tw`py-3 rounded-xl`,
+                  { backgroundColor: theme.colors.destructive },
+                ]}
+                onPress={requestDelete}
+                disabled={isDeleting}
+              >
+                <Text style={[tw`text-center font-semibold`, { color: theme.colors.destructiveForeground }]}>
+                  Delete My Account
+                </Text>
+              </TouchableOpacity>
+            </CardContent>
+          </Card>
         </View>
       </ScrollView>
     </SafeAreaView>

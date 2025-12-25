@@ -28,6 +28,7 @@ import { AnimatedText } from '../shared/components/AnimatedText';
 import { ActionButton } from '../shared/components/ActionButton';
 
 type RootStackParamList = {
+  Home: undefined;
   Login: undefined;
   SignUp: undefined;
   MainTabs: undefined;
@@ -181,9 +182,7 @@ export default function LoginPage() {
         }
       } else if (profile.location) {
         redirectPath = 'MainTabs';
-      } else {
-        redirectPath = 'ClientOnboarding' as any;
-      }
+      } 
 
       logger.log('🎯 Redirecting to:', redirectPath);
       navigation.replace(redirectPath as any);
@@ -349,17 +348,15 @@ export default function LoginPage() {
   };
 
   const handleGoogleSignIn = async () => {
+    // Google Sign-In is not yet implemented
+    // This function is kept for future implementation
+    // For now, Google Sign-In button is hidden from the UI
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    try {
-      Alert.alert('Coming Soon', 'Google Sign-In will be available soon!');
-    } catch (error) {
-      logger.error('Google sign-in error:', error);
-    }
   };
 
   const handleBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    navigation.goBack();
+    navigation.navigate('Home' as any);
   };
 
   if (checkingSession) {
@@ -600,53 +597,7 @@ export default function LoginPage() {
                     {isLoading ? 'Signing in...' : 'Sign in'}
                   </ActionButton>
 
-                  {/* Divider */}
-                  <View style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    marginVertical: 24,
-                  }}>
-                    <View style={{
-                      flex: 1,
-                      height: 1,
-                      backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                    }} />
-                    <Text style={{
-                      marginHorizontal: 16,
-                      color: 'rgba(255, 255, 255, 0.6)',
-                      fontSize: 14,
-                    }}>
-                      or
-                    </Text>
-                    <View style={{
-                      flex: 1,
-                      height: 1,
-                      backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                    }} />
-                  </View>
-
-                  {/* Google Sign In */}
-                  <TouchableOpacity
-                    onPress={handleGoogleSignIn}
-                    disabled={isLoading}
-                    style={{
-                      height: 56,
-                      borderRadius: 20,
-                      borderWidth: 1,
-                      borderColor: 'rgba(255, 255, 255, 0.2)',
-                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <Text style={{
-                      color: theme.colors.foreground,
-                      fontSize: 16,
-                      fontWeight: '600',
-                    }}>
-                      Continue with Google
-                    </Text>
-                  </TouchableOpacity>
+                  {/* Google Sign-In removed - feature not yet implemented */}
                 </BlurView>
                 </View>
 

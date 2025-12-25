@@ -9,6 +9,7 @@ import { RadioGroup, RadioGroupItem } from "@/shared/components/ui/radio-group"
 import { useToast } from "@/shared/components/ui/use-toast"
 import { useRouter } from "next/navigation"
 import { useSafeNavigation } from '@/shared/hooks/use-safe-navigation'
+import { logger } from "@/shared/lib/logger"
 
 export function SignupForm() {
   const { register } = useAuth()

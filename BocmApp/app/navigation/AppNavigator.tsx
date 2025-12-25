@@ -18,6 +18,7 @@ import EmailConfirmationScreen from '../pages/EmailConfirmationScreen';
 import BookingSuccessPage from '../pages/BookingSuccessPage';
 import SettingsPage from '../pages/SettingsPage';
 import TermsPage from '../pages/TermsPage';
+import PrivacyPolicyPage from '../pages/PrivacyPolicyPage';
 import ProfilePortfolio from '../pages/ProfilePortfolio';
 import ProfilePreview from '../pages/ProfilePreview';
 import tw from 'twrnc';
@@ -354,6 +355,7 @@ export const AppNavigator = () => {
         <Stack.Screen name="SignUp" component={SignUpPage} />
         <Stack.Screen name="EmailConfirmation" component={EmailConfirmationScreen} />
         <Stack.Screen name="Terms" component={TermsPage} />
+        <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyPage} />
         
         {/* Protected screens - auth required */}
         <Stack.Screen name="MainTabs" component={MainTabs} />
@@ -380,8 +382,8 @@ export const AppNavigator = () => {
             <RoleBasedRoute 
               component={() => (
                 <View style={tw`flex-1 justify-center items-center`}>
-                  <Text style={tw`text-white text-xl`}>Super Admin Page</Text>
-                  <Text style={tw`text-gray-400 mt-2`}>Coming soon...</Text>
+                  <Text style={tw`text-white text-xl`}>Admin Dashboard</Text>
+                  <Text style={tw`text-gray-400 mt-2`}>Admin features coming soon</Text>
                 </View>
               )} 
               requiredRole="admin"

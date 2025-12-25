@@ -14,11 +14,14 @@ import {
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../shared/types';
-import { ArrowLeft, Calendar, MapPin, Star, Video as VideoIcon, Heart, Users, History, Camera, Loader2, Eye, Clock, Share2 } from 'lucide-react-native';
+import { ArrowLeft, Calendar, MapPin, Star, Video as VideoIcon, Heart, Users, History, Camera, Loader2, Eye, Clock, Share2, Flag, Ban, MoreVertical } from 'lucide-react-native';
 import tw from 'twrnc';
 import { theme } from '../shared/lib/theme';
 import { supabase } from '../shared/lib/supabase';
 import { logger } from '../shared/lib/logger';
+import { useAuth } from '../shared/hooks/useAuth';
+import { useReporting } from '../shared/hooks/useReporting';
+import { ReportContentModal } from '../shared/components/ReportContentModal';
 import VideoPreview from '../shared/components/VideoPreview';
 import {
   Button,
@@ -118,7 +121,12 @@ export default function ProfilePreview() {
   const navigation = useNavigation<ProfilePreviewNavigationProp>();
   const route = useRoute<ProfilePreviewRouteProp>();
   const { barberId } = route.params;
+  const { user } = useAuth();
+  const { blockUser } = useReporting();
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [showBlockConfirm, setShowBlockConfirm] = useState(false);
+  const isOwnProfile = user?.id === profile?.id;
   const [barberProfile, setBarberProfile] = useState<BarberProfile | null>(null);
   const [allCuts, setAllCuts] = useState<Cut[]>([]);
   const [cuts, setCuts] = useState<Cut[]>([]);
@@ -702,7 +710,8 @@ export default function ProfilePreview() {
             </Text>
           )}
           
-          {/* Book Button */}
+          {/* Action Buttons */}
+          <View style={tw`flex-row items-center gap-3`}>
           <TouchableOpacity
             style={[
               tw`px-6 py-2 rounded-full`,
@@ -721,6 +730,41 @@ export default function ProfilePreview() {
               Book Appointment
             </Text>
           </TouchableOpacity>
+            
+            {/* Report/Block Menu - Only show if not own profile */}
+            {!isOwnProfile && (
+              <TouchableOpacity
+                style={[
+                  tw`p-2 rounded-full`,
+                  { backgroundColor: 'rgba(255, 255, 255, 0.1)' }
+                ]}
+                onPress={() => {
+                  Alert.alert(
+                    'Profile Actions',
+                    'What would you like to do?',
+                    [
+                      {
+                        text: 'Report Profile',
+                        style: 'default',
+                        onPress: () => setShowReportModal(true),
+                      },
+                      {
+                        text: 'Block User',
+                        style: 'destructive',
+                        onPress: () => setShowBlockConfirm(true),
+                      },
+                      {
+                        text: 'Cancel',
+                        style: 'cancel',
+                      },
+                    ]
+                  );
+                }}
+              >
+                <MoreVertical size={20} color={theme.colors.foreground} />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
         {/* Tabs Under Avatar */}
@@ -800,6 +844,53 @@ export default function ProfilePreview() {
           </View>
         )}
       </Dialog>
+
+      {/* Report Modal */}
+      {profile && (
+        <ReportContentModal
+          visible={showReportModal}
+          onClose={() => setShowReportModal(false)}
+          contentType="profile"
+          contentId={profile.id}
+          reportedUserId={profile.id}
+          contentDescription={`Profile: ${profile.name}${profile.username ? ` (@${profile.username})` : ''}`}
+        />
+      )}
+
+      {/* Block Confirmation Dialog */}
+      {profile && (
+        <Dialog visible={showBlockConfirm} onClose={() => setShowBlockConfirm(false)}>
+          <DialogContent>
+            <Text style={[tw`text-lg font-bold mb-2`, { color: theme.colors.foreground }]}>
+              Block {profile.name}?
+            </Text>
+            <Text style={[tw`text-sm mb-4`, { color: theme.colors.mutedForeground }]}>
+              You will no longer see this user's content, and they won't be able to contact you. This action can be undone from your settings.
+            </Text>
+            <View style={tw`flex-row gap-3`}>
+              <TouchableOpacity
+                style={[tw`flex-1 py-3 rounded-xl`, { backgroundColor: 'rgba(255,255,255,0.1)' }]}
+                onPress={() => setShowBlockConfirm(false)}
+              >
+                <Text style={[tw`text-center font-semibold`, { color: theme.colors.foreground }]}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[tw`flex-1 py-3 rounded-xl`, { backgroundColor: theme.colors.destructive }]}
+                onPress={async () => {
+                  setShowBlockConfirm(false);
+                  await blockUser(profile.id, profile.name);
+                }}
+              >
+                <Text style={[tw`text-center font-semibold`, { color: theme.colors.destructiveForeground }]}>
+                  Block
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </DialogContent>
+        </Dialog>
+      )}
     </SafeAreaView>
   );
 } 

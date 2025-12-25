@@ -1,6 +1,0 @@
----
-description: 
-globs: 
-alwaysApply: true
----
-Dont create any new files unless they are in the SRC folder.

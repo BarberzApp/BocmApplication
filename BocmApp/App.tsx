@@ -13,28 +13,8 @@ import { theme } from './app/shared/lib/theme';
 import { AppNavigator } from './app/navigation/AppNavigator';
 import { AuthProvider } from './app/shared/hooks/useAuth';
 import { StripeProvider } from '@stripe/stripe-react-native';
-import * as Sentry from '@sentry/react-native';
-
-Sentry.init({
-  dsn: 'https://a0acbe33ae2db6424431f49587a00eef@o4510517801517056.ingest.us.sentry.io/4510517839069185',
-
-  // Adds more context data to events (IP address, cookies, user, etc.)
-  // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
-  sendDefaultPii: true,
-
-  // Enable Logs
-  enableLogs: true,
-
-  // Configure Session Replay
-  replaysSessionSampleRate: 0.1,
-  replaysOnErrorSampleRate: 1,
-  integrations: [Sentry.mobileReplayIntegration(), Sentry.feedbackIntegration()],
-
-  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
-  // spotlight: __DEV__,
-});
-
-// Initialize Sentry as early as possible
+// Initialize Sentry as early as possible (using secure configuration from sentry.ts)
+// The initSentry() function handles proper configuration with data privacy protections
 initSentry();
 
 const App = () => {
@@ -202,4 +182,4 @@ const App = () => {
     );
 };
 
-export default Sentry.wrap(App);
+export default App;

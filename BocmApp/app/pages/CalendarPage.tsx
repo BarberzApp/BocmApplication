@@ -502,10 +502,10 @@ export default function CalendarPage() {
               addon_total: calculatedAddonTotal || booking.addon_total,
             }, historicalServicePrice)
           : getBarberBookingDetails({
-              price: booking.price,
-              platform_fee: booking.platform_fee,
-              barber_payout: booking.barber_payout,
-              addon_total: calculatedAddonTotal || booking.addon_total,
+          price: booking.price,
+          platform_fee: booking.platform_fee,
+          barber_payout: booking.barber_payout,
+          addon_total: calculatedAddonTotal || booking.addon_total,
             }, historicalServicePrice);
 
         return {
@@ -1393,7 +1393,7 @@ export default function CalendarPage() {
                                     }
                                   } else {
                                     return event.extendedProps.barberPayout.toFixed(2);
-                                  }
+                                }
                                 })()}
                       </Text>
                             </View>

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/shared/lib/supabase'
+import { supabase, supabaseAdmin } from '@/shared/lib/supabase'
 import { logger } from '@/shared/lib/logger'
 
 const SUPER_ADMIN_EMAIL = 'primbocm@gmail.com'
@@ -38,8 +38,23 @@ export async function POST(request: Request) {
       )
     }
 
-    // Update the barber's developer status
-    const { error } = await supabase
+    // Verify barber exists first
+    const { data: existingBarber, error: checkError } = await supabaseAdmin
+      .from('barbers')
+      .select('id, business_name, is_developer')
+      .eq('id', barberId)
+      .single()
+
+    if (checkError || !existingBarber) {
+      logger.error('Barber not found', { barberId, error: checkError })
+      return NextResponse.json(
+        { error: 'Barber not found' },
+        { status: 404 }
+      )
+    }
+
+    // Update the barber's developer status using admin client
+    const { error } = await supabaseAdmin
       .from('barbers')
       .update({ is_developer: isDeveloper })
       .eq('id', barberId)
@@ -89,8 +104,8 @@ export async function GET(request: Request) {
       )
     }
 
-    // Get all barbers with their developer status
-    const { data, error } = await supabase
+    // Get all barbers with their developer status using admin client
+    const { data, error } = await supabaseAdmin
       .from('barbers')
       .select(`
         id,

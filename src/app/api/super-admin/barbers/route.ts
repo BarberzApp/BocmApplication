@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/shared/lib/supabase'
+import { supabase, supabaseAdmin } from '@/shared/lib/supabase'
 import { logger } from '@/shared/lib/logger'
 
 export async function GET(request: Request) {
@@ -23,8 +23,8 @@ export async function GET(request: Request) {
       )
     }
 
-    // Fetch barbers with comprehensive data
-    const { data: barbers, error } = await supabase
+    // Fetch barbers with comprehensive data using admin client
+    const { data: barbers, error } = await supabaseAdmin
       .from('barbers')
       .select(`
         id,
@@ -41,7 +41,9 @@ export async function GET(request: Request) {
           location,
           bio,
           is_disabled,
-          join_date
+          is_public,
+          join_date,
+          avatar_url
         )
       `)
       .order('created_at', { ascending: false })
@@ -54,9 +56,15 @@ export async function GET(request: Request) {
       )
     }
 
+    // Normalize profiles data (handle both array and object formats)
+    const normalizedBarbers = (barbers || []).map(barber => ({
+      ...barber,
+      profiles: Array.isArray(barber.profiles) ? barber.profiles[0] : barber.profiles
+    }))
+
     return NextResponse.json({
       success: true,
-      barbers: barbers || []
+      barbers: normalizedBarbers
     })
   } catch (error) {
     logger.error('Super admin barbers error', error)

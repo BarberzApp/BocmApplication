@@ -35,6 +35,7 @@ export type RootStackParamList = {
     userType: 'client' | 'barber';
   };
   Terms: undefined;
+  PrivacyPolicy: undefined;
   BookingWebView: {
     barberId: string;
     barberName: string;

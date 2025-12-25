@@ -11,6 +11,7 @@ import {
   Dimensions,
   SafeAreaView,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../shared/hooks/useAuth';
 import { theme } from '../shared/lib/theme';
@@ -41,6 +42,10 @@ import { logger } from '../shared/lib/logger';
 import VideoPreview from '../shared/components/VideoPreview';
 import { ImageUpload } from '../shared/components/ui/ImageUpload';
 import { VideoUpload } from '../shared/components/ui/VideoUpload';
+import {
+  getAvatarFallbackProps,
+  getCoverFallbackProps,
+} from '../shared/helpers/fallbackImageHelper';
 
 const { width, height } = Dimensions.get('window');
 
@@ -134,6 +139,8 @@ export default function ProfilePortfolio() {
   const [showAvatarUpload, setShowAvatarUpload] = useState(false);
   const [showCoverUpload, setShowCoverUpload] = useState(false);
   const [cutsPage, setCutsPage] = useState(0);
+  const [avatarError, setAvatarError] = useState(false);
+  const [coverError, setCoverError] = useState(false);
   const CUTS_PER_PAGE = 12;
 
   // Fetch profile data
@@ -142,6 +149,9 @@ export default function ProfilePortfolio() {
 
     try {
       setLoading(true);
+      // Reset image error states when fetching new data
+      setAvatarError(false);
+      setCoverError(false);
       logger.log('🔄 Fetching profile data for user:', user.id);
       logger.log('👤 User profile role:', userProfile?.role);
 
@@ -297,6 +307,7 @@ export default function ProfilePortfolio() {
         logger.error('Error updating avatar:', error);
         Alert.alert('Error', 'Failed to update avatar. Please try again.');
       } else {
+        setAvatarError(false); // Reset error state
         setProfile(prev => prev ? { ...prev, avatar_url: imageUrl } : null);
         Alert.alert('Success', 'Avatar updated successfully!');
         await fetchProfileData();
@@ -318,6 +329,7 @@ export default function ProfilePortfolio() {
         logger.error('Error updating cover photo:', error);
         Alert.alert('Error', 'Failed to update cover photo. Please try again.');
       } else {
+        setCoverError(false); // Reset error state
         setProfile(prev => prev ? { ...prev, coverphoto: imageUrl } : null);
         Alert.alert('Success', 'Cover photo updated successfully!');
         await fetchProfileData();
@@ -457,10 +469,10 @@ export default function ProfilePortfolio() {
               </View>
             ) : (
               // Client Portfolio - Empty state (portfolio tab hidden for clients)
-              <View style={tw`flex-1 justify-center items-center py-8`}>
-                <Text style={[tw`text-sm text-center`, { color: theme.colors.mutedForeground }]}>
+                  <View style={tw`flex-1 justify-center items-center py-8`}>
+                    <Text style={[tw`text-sm text-center`, { color: theme.colors.mutedForeground }]}>
                   Portfolio view not available for clients
-                </Text>
+                    </Text>
               </View>
             )}
           </View>
@@ -745,14 +757,22 @@ export default function ProfilePortfolio() {
       <View style={tw`relative w-full overflow-hidden`}>
         {/* Cover Photo */}
         <View style={[tw`h-32 w-full flex items-center justify-center relative`, { backgroundColor: theme.colors.muted }]}>
-          {profile.coverphoto ? (
+          {profile.coverphoto && !coverError ? (
             <Image
               source={{ uri: profile.coverphoto }}
               style={tw`absolute inset-0 w-full h-full`}
               resizeMode="cover"
+              onError={() => {
+                setCoverError(true);
+              }}
             />
           ) : (
-            <View style={[tw`absolute inset-0 w-full h-full`, { backgroundColor: theme.colors.muted }]} />
+            <LinearGradient
+              colors={getCoverFallbackProps(profile.name || profile.username).gradientColors}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={tw`absolute inset-0 w-full h-full`}
+            />
           )}
           {/* Camera button for cover photo */}
           <TouchableOpacity
@@ -768,11 +788,35 @@ export default function ProfilePortfolio() {
         {/* Avatar - Positioned exactly where cover photo ends */}
         <View style={tw`absolute left-3/8 top-20 -translate-x-1/2  z-20`}>
           <View style={[tw`w-24 h-24 rounded-full overflow-hidden border-2`, { borderColor: theme.colors.secondary }]}>
-            <Image
-              source={{ uri: profile.avatar_url }}
-              style={tw`w-full h-full`}
-              resizeMode="cover"
-            />
+            {profile.avatar_url && !avatarError ? (
+              <Image
+                source={{ uri: profile.avatar_url }}
+                style={tw`w-full h-full`}
+                resizeMode="cover"
+                onError={() => {
+                  setAvatarError(true);
+                }}
+              />
+            ) : (
+              <LinearGradient
+                colors={[
+                  getAvatarFallbackProps(profile.name || profile.username).backgroundColor,
+                  getCoverFallbackProps(profile.name || profile.username).gradientColors[1] || getAvatarFallbackProps(profile.name || profile.username).backgroundColor,
+                ]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={tw`w-full h-full items-center justify-center`}
+              >
+                <Text
+                  style={[
+                    tw`text-3xl font-bold`,
+                    { color: getAvatarFallbackProps(profile.name || profile.username).textColor },
+                  ]}
+                >
+                  {getAvatarFallbackProps(profile.name || profile.username).initials}
+                </Text>
+              </LinearGradient>
+            )}
           </View>
           <TouchableOpacity
             style={[tw`absolute bottom-0 right-0 h-8 w-8 rounded-full items-center justify-center`, { backgroundColor: theme.colors.secondary }]}
@@ -825,21 +869,21 @@ export default function ProfilePortfolio() {
         {/* Tabs Under Avatar */}
         <View style={[tw`flex-row border-b`, { borderColor: 'rgba(255,255,255,0.1)', backgroundColor: theme.colors.background }]}>
           {isBarber && (
-            <TouchableOpacity
-              style={tw`flex-1 py-3 items-center`}
-              onPress={() => setActiveTab('portfolio')}
-            >
-              <Heart 
-                size={20} 
-                color={activeTab === 'portfolio' ? theme.colors.secondary : theme.colors.mutedForeground} 
-              />
-              <Text style={[
-                tw`text-xs mt-1`, 
-                { color: activeTab === 'portfolio' ? theme.colors.secondary : theme.colors.mutedForeground }
-              ]}>
+          <TouchableOpacity
+            style={tw`flex-1 py-3 items-center`}
+            onPress={() => setActiveTab('portfolio')}
+          >
+            <Heart 
+              size={20} 
+              color={activeTab === 'portfolio' ? theme.colors.secondary : theme.colors.mutedForeground} 
+            />
+            <Text style={[
+              tw`text-xs mt-1`, 
+              { color: activeTab === 'portfolio' ? theme.colors.secondary : theme.colors.mutedForeground }
+            ]}>
                 Portfolio
-              </Text>
-            </TouchableOpacity>
+            </Text>
+          </TouchableOpacity>
           )}
           
           <TouchableOpacity
