@@ -6,6 +6,7 @@
     "target": "ES6",
     "skipLibCheck": true,
     "strict": true,
+    "forceConsistentCasingInFileNames": true,
     "noEmit": true,
     "esModuleInterop": true,
     "module": "esnext",
@@ -24,5 +25,13 @@
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules", "future-features/**/*", "BocmApp/**/*", "supabase/functions/**/*"]
+  "exclude": [
+    "node_modules",
+    "future-features/**/*",
+    "BocmApp/**/*",
+    "supabase/functions/**/*",
+    "**/__tests__/**/*",
+    "**/*.test.*",
+    "**/*.spec.*"
+  ]
 }
