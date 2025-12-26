@@ -44,23 +44,19 @@ export default function ClientNavWrapper({ children }: { children: React.ReactNo
   // Define pages where navigation should be hidden
   const hiddenPages = ["/", "/landing"];
   
-  // Define pages that need special navigation handling
-  const isCutsPage = pathname?.startsWith('/cuts') || false;
-  
   // Determine what to show
   const showNavbar = pathname ? !hiddenPages.includes(pathname) : true;
   const isSettingsPage = pathname?.startsWith('/settings') || false;
   const isProfilePage = pathname?.startsWith('/profile') || false;
-  const shouldShowNav = showNavbar || isSettingsPage || isProfilePage || isCutsPage;
-  const showMobileNav = (showNavbar || isSettingsPage || isProfilePage) && !isCutsPage;
-  const isFullScreenVideo = isCutsPage;
+  const shouldShowNav = showNavbar || isSettingsPage || isProfilePage;
+  const showMobileNav = showNavbar || isSettingsPage || isProfilePage;
 
   // Debug logging can be re-enabled if needed
 
   return (
     <>
       {shouldShowNav && <Navbar />}
-      <div className={isFullScreenVideo ? 'h-screen w-screen overflow-hidden' : ''}>
+      <div>
         {children}
       </div>
       {showMobileNav && <MobileNav />}

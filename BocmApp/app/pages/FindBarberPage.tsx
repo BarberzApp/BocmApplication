@@ -17,6 +17,7 @@ import tw from 'twrnc';
 import { RootStackParamList } from '../shared/types';
 import { supabase, theme } from '../shared/lib';
 import { useAuth } from '../shared/hooks';
+import { logger } from '../shared/lib/logger';
 const Icon = require('react-native-vector-icons/Feather').default;
 
 type FindBarberNavigationProp = NativeStackNavigationProp<RootStackParamList, 'FindBarber'>;
@@ -98,7 +99,7 @@ export default function FindBarberPage() {
                 .select('id, user_id, business_name, specialties, price_range, stripe_account_status');
 
             if (barbersError) {
-                console.error('Supabase error:', barbersError);
+                logger.error('Supabase error:', barbersError);
                 throw barbersError;
             }
 
@@ -116,7 +117,7 @@ export default function FindBarberPage() {
                 .in('id', userIds);
 
             if (profilesError) {
-                console.error('Supabase error (profiles):', profilesError);
+                logger.error('Supabase error (profiles):', profilesError);
                 throw profilesError;
             }
 
@@ -145,7 +146,7 @@ export default function FindBarberPage() {
 
             setBarbers(formattedBarbers);
         } catch (error) {
-            console.error('Error fetching barbers:', error);
+            logger.error('Error fetching barbers:', error);
             setError('Failed to load barbers. Please try again.');
             Alert.alert('Error', 'Failed to load barbers. Please refresh to try again.');
         } finally {
@@ -362,7 +363,7 @@ export default function FindBarberPage() {
                                             </Text>
                                         ) : (
                                             <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>
-                                                Coming soon
+                                                Not available for booking
                                             </Text>
                                         )}
                                     </View>

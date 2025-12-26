@@ -42,7 +42,7 @@ export default function LandingPage() {
   const [averageMonthlyAmount, setAverageMonthlyAmount] = useState("5000");
   const [cutCost, setCutCost] = useState("50");
   const [numberOfCuts, setNumberOfCuts] = useState(100);
-  const [platformFeeBonus, setPlatformFeeBonus] = useState(135);
+  const [platformFeeBonus, setPlatformFeeBonus] = useState(120); // $1.20 per cut (40% of $3.00 after Stripe fee)
   const [extraAnnual, setExtraAnnual] = useState(1620);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [headerState, setHeaderState] = useState<'default' | 'scrolled' | 'hidden'>('default');
@@ -51,7 +51,8 @@ export default function LandingPage() {
     const monthlyAmount = parseFloat(averageMonthlyAmount) || 5000;
     const servicePrice = parseFloat(cutCost) || 50;
     const cuts = Math.round(monthlyAmount / servicePrice);
-    const bonus = cuts * 1.35;
+    // Barber gets $1.20 per booking (40% of $3.00 after Stripe fee)
+    const bonus = cuts * 1.20;
     const annual = bonus * 12;
     setNumberOfCuts(cuts);
     setPlatformFeeBonus(bonus);
@@ -151,39 +152,14 @@ export default function LandingPage() {
   ];
 
   const mobileNavItems = [
-    { href: "#features", label: "Features" },
-    { href: "#testimonials", label: "Success Stories" },
     { href: "#calculator", label: "Calculator" },
+    { href: "#testimonials", label: "Success Stories" },
+    { href: "#features", label: "Features" },
     { href: "/browse", label: "Browse" },
     { href: "/login", label: "Login" },
     { href: "/register", label: "Get Started" },
   ];
 
-  // Mock data for reels showcase
-  const showcaseCuts = [
-    {
-      id: "1",
-      title: "Fade Masterpiece",
-      barber: "Chance Robenson",
-      views: "2.4K",
-      likes: "156",
-      comments: "23",
-      category: "Fade",
-      price: "$45",
-      location: "Princeton, NJ"
-    },
-    {
-      id: "2",
-      title: "Classic Taper",
-      barber: "Caleb Bock",
-      views: "1.8K",
-      likes: "120",
-      comments: "15",
-      category: "Taper",
-      price: "$40",
-      location: "Blacksburg, VA"
-    }
-  ];
 
 
 
@@ -254,14 +230,14 @@ export default function LandingPage() {
           
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
+          <Link href="#calculator" className="text-white hover:text-secondary transition-colors font-medium">
+              Calculator
+            </Link>
             <Link href="#features" className="text-white hover:text-secondary transition-colors font-medium">
               Features
             </Link>
             <Link href="#testimonials" className="text-white hover:text-secondary transition-colors font-medium">
               Success Stories
-            </Link>
-            <Link href="#calculator" className="text-white hover:text-secondary transition-colors font-medium">
-              Calculator
             </Link>
             <Link href="/browse" className="text-white hover:text-secondary transition-colors font-medium">
               Browse
@@ -366,112 +342,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Reels Showcase Section */}
-        <section className="py-16 sm:py-20 bg-background backdrop-blur-sm animate-fade-in">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-12 sm:mb-16">
-              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bebas font-bold text-white mb-4">
-              Showcase Your Work
-            </h2>
-            <p className="text-lg sm:text-xl text-white/80 max-w-3xl mx-auto">
-              Share your best cuts, build your brand, and attract new clients with our social-first video platform.
-            </p>
-          </div>
-
-          {/* Reels Grid */}
-            <div className="flex justify-center w-full">
-              <div className="grid grid-cols-2 gap-6 sm:gap-8 max-w-4xl w-full">
-            {showcaseCuts.map((cut, index) => (
-                  <Link key={cut.id} href="/cuts">
-              <Card
-                key={cut.id}
-                className={
-                  showcaseCuts.length === 1
-                    ? 'md:col-start-2 group bg-white/5 border border-white/10 shadow-xl backdrop-blur-xl rounded-2xl overflow-hidden hover:shadow-2xl hover:border-secondary/30 transition-all duration-300 hover:-translate-y-2'
-                    : 'group bg-white/5 border border-white/10 shadow-xl backdrop-blur-xl rounded-2xl overflow-hidden hover:shadow-2xl hover:border-secondary/30 transition-all duration-300 hover:-translate-y-2'
-                }
-              >
-                <CardContent className="p-0">
-                  {/* Video Placeholder */}
-                  <div className="relative aspect-[9/16] bg-gradient-to-br from-secondary/20 via-purple-500/20 to-secondary/20 overflow-hidden">
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="bg-black/30 rounded-full p-4 backdrop-blur-sm">
-                        <Play className="h-8 w-8 text-white" />
-                      </div>
-                    </div>
-                    
-                    {/* Action Buttons */}
-                    <div className="absolute right-3 bottom-20 flex flex-col gap-4">
-                      <button className="flex flex-col items-center">
-                        <div className="bg-black/30 rounded-full p-2 mb-1 backdrop-blur-sm">
-                          <Heart className="h-5 w-5 text-white" />
-                        </div>
-                        <span className="text-white text-xs font-medium">{cut.likes}</span>
-                      </button>
-                      <button className="flex flex-col items-center">
-                        <div className="bg-black/30 rounded-full p-2 mb-1 backdrop-blur-sm">
-                          <MessageCircle className="h-5 w-5 text-white" />
-                        </div>
-                        <span className="text-white text-xs font-medium">{cut.comments}</span>
-                      </button>
-                      <button className="flex flex-col items-center">
-                        <div className="bg-black/30 rounded-full p-2 mb-1 backdrop-blur-sm">
-                          <Share2 className="h-5 w-5 text-white" />
-                        </div>
-                        <span className="text-white text-xs font-medium">Share</span>
-                      </button>
-                    </div>
-
-                    {/* Bottom Info */}
-                    <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 via-black/50 to-transparent">
-                      <div className="flex items-center mb-2">
-                        <div className="h-8 w-8 border-2 border-white rounded-full mr-3 bg-secondary/20 flex items-center justify-center">
-                          <User className="h-4 w-4 text-secondary" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-white text-sm truncate">@{cut.barber.toLowerCase().replace(/\s+/g, '')}</p>
-                          <p className="text-white/70 text-xs truncate">{cut.barber}</p>
-                        </div>
-                      </div>
-                      <p className="text-white text-sm mb-2 line-clamp-2">{cut.title}</p>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Badge className="bg-white/10 text-white border-0 text-xs">
-                            {cut.category}
-                          </Badge>
-                          <div className="flex items-center text-white/70 text-xs">
-                            <Eye className="h-3 w-3 mr-1" />
-                            {cut.views}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge className="bg-secondary/20 text-secondary border-secondary/30 text-xs">
-                            {cut.price}
-                          </Badge>
-                          <div className="flex items-center text-white/70 text-xs">
-                            <MapPin className="h-3 w-3 mr-1" />
-                            {cut.location}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-                  </Link>
-            ))}
-              </div>
-          </div>
-
-          <div className="text-center mt-12">
-            <Link href="/login" className="inline-flex items-center bg-secondary text-black px-8 py-4 rounded-xl font-semibold text-lg hover:bg-secondary/90 transition-all duration-300 transform hover:scale-105 shadow-lg shadow-secondary/25">
-              <Video className="mr-2 h-5 w-5" />
-              Explore All Cuts
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Link>
-          </div>
-        </div>
-      </section>
 
       {/* Revenue Calculator Section */}
         <section id="calculator" className="py-16 sm:py-20 bg-background backdrop-blur-sm animate-fade-in">
@@ -528,7 +398,7 @@ export default function LandingPage() {
                   <div className="text-base sm:text-lg text-white/80 mb-4">That's <span className="font-bold text-secondary">${extraAnnual.toLocaleString(undefined, {maximumFractionDigits: 0})}</span> per year in extra income!</div>
                   <div className="bg-secondary/20 rounded-2xl p-4 sm:p-6 border border-secondary/30 inline-block mt-4">
                     <div className="text-white/80 text-xs sm:text-sm mb-1">Breakdown:</div>
-                    <div className="text-white text-sm sm:text-base font-semibold">{numberOfCuts} cuts × $1.35 = <span className="text-secondary">${platformFeeBonus.toLocaleString(undefined, {maximumFractionDigits: 0})}</span> per month</div>
+                    <div className="text-white text-sm sm:text-base font-semibold">{numberOfCuts} cuts × $1.20 = <span className="text-secondary">${platformFeeBonus.toLocaleString(undefined, {maximumFractionDigits: 0})}</span> per month</div>
                   </div>
                 </div>
               </div>
@@ -601,7 +471,7 @@ export default function LandingPage() {
                   <h3 className="text-lg sm:text-xl font-semibold text-white mb-0">{feature.title}</h3>
                   {feature.beta && (
                       <Badge className="bg-gradient-to-r from-secondary/80 to-secondary/80 text-white border-secondary/40 animate-pulse">
-                      Beta
+                      Alpha
                       </Badge>
                   )}
                 </div>

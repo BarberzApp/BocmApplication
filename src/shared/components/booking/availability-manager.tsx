@@ -10,6 +10,7 @@ import { supabase } from '@/shared/lib/supabase'
 import { toast } from 'sonner'
 import { Loader2, Calendar, Clock, Umbrella, Settings, Sparkles } from 'lucide-react'
 import { Card, CardContent } from '@/shared/components/ui/card'
+import { logger } from '@/shared/lib/logger'
 
 interface TimeOff {
   id: string
@@ -92,7 +93,7 @@ export function AvailabilityManager({ barberId, onUpdate }: AvailabilityManagerP
       setSpecialHours(specialHoursData || [])
       setTimeOff(timeOffData || [])
     } catch (error) {
-      console.error('Error fetching availability:', error)
+      logger.error('Error fetching availability', error)
       toast.error('Failed to load availability settings')
     } finally {
       setLoading(false)
@@ -115,7 +116,7 @@ export function AvailabilityManager({ barberId, onUpdate }: AvailabilityManagerP
       toast.success('Time off added successfully')
       onUpdate?.()
     } catch (error) {
-      console.error('Error adding time off:', error)
+      logger.error('Error adding time off', error)
       toast.error('Failed to add time off')
     } finally {
       setLoading(false)
@@ -133,7 +134,7 @@ export function AvailabilityManager({ barberId, onUpdate }: AvailabilityManagerP
       toast.success('Time off removed successfully')
       onUpdate?.()
     } catch (error) {
-      console.error('Error removing time off:', error)
+      logger.error('Error removing time off', error)
       toast.error('Failed to remove time off')
     } finally {
       setLoading(false)
@@ -158,7 +159,7 @@ export function AvailabilityManager({ barberId, onUpdate }: AvailabilityManagerP
       toast.success('Special hours added successfully')
       onUpdate?.()
     } catch (error) {
-      console.error('Error adding special hours:', error)
+      logger.error('Error adding special hours', error)
       toast.error('Failed to add special hours')
     } finally {
       setLoading(false)
@@ -176,7 +177,7 @@ export function AvailabilityManager({ barberId, onUpdate }: AvailabilityManagerP
       toast.success('Special hours removed successfully')
       onUpdate?.()
     } catch (error) {
-      console.error('Error removing special hours:', error)
+      logger.error('Error removing special hours', error)
       toast.error('Failed to remove special hours')
     } finally {
       setLoading(false)

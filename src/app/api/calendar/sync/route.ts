@@ -3,6 +3,7 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { GoogleCalendarAPI, CalendarSyncService } from '@/shared/lib/google-calendar-api';
+import { logger } from '@/shared/lib/logger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -64,7 +65,7 @@ export async function POST(request: NextRequest) {
         connection.access_token = newTokens.access_token;
         connection.expires_at = newTokens.expires_at;
       } catch (refreshError) {
-        console.error('Error refreshing token:', refreshError);
+        logger.error('Error refreshing token', refreshError);
         return NextResponse.json(
           { error: 'Failed to refresh access token' },
           { status: 401 }
@@ -136,12 +137,12 @@ export async function POST(request: NextRequest) {
               syncResults.syncedToGoogle++;
             }
           } catch (bookingError) {
-            console.error(`Error syncing booking ${booking.id}:`, bookingError);
+            logger.error(`Error syncing booking ${booking.id}`, bookingError);
             syncResults.errors.push(`Failed to sync booking ${booking.id}`);
           }
         }
       } catch (error) {
-        console.error('Error syncing bookings to Google:', error);
+        logger.error('Error syncing bookings to Google', error);
         syncResults.errors.push('Failed to sync bookings to Google Calendar');
       }
     }
@@ -186,12 +187,12 @@ export async function POST(request: NextRequest) {
               syncResults.syncedFromGoogle++;
             }
           } catch (eventError) {
-            console.error(`Error syncing event ${event.id}:`, eventError);
+            logger.error(`Error syncing event ${event.id}`, eventError);
             syncResults.errors.push(`Failed to sync event ${event.id}`);
           }
         }
       } catch (error) {
-        console.error('Error syncing events from Google:', error);
+        logger.error('Error syncing events from Google', error);
         syncResults.errors.push('Failed to sync events from Google Calendar');
       }
     }
@@ -221,7 +222,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error in calendar sync:', error);
+    logger.error('Error in calendar sync', error);
     return NextResponse.json(
       { error: 'Failed to sync calendar' },
       { status: 500 }
@@ -231,7 +232,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('Calendar sync GET called');
+    logger.debug('Calendar sync GET called');
     
     // Get authorization header
     const authHeader = request.headers.get('authorization');
@@ -260,7 +261,7 @@ export async function GET(request: NextRequest) {
     // Get current user
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     
-    console.log('Calendar sync - Auth result:', { user: user?.id, error: userError });
+    logger.debug('Calendar sync - Auth result', { userId: user?.id, hasError: !!userError });
     
     if (userError || !user) {
       return NextResponse.json(
@@ -309,7 +310,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error getting calendar sync status:', error);
+    logger.error('Error getting calendar sync status', error);
     return NextResponse.json(
       { error: 'Failed to get calendar sync status' },
       { status: 500 }

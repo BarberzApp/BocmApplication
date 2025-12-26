@@ -12,6 +12,7 @@ import { format, addMinutes, isSameDay, isBefore, isAfter } from 'date-fns';
 import { supabase } from '../lib/supabase';
 import { theme } from '../lib/theme';
 import tw from 'twrnc';
+import { logger } from '../lib/logger';
 import { Clock, ChevronDown, ChevronUp } from 'lucide-react-native';
 
 interface TimePickerProps {
@@ -89,7 +90,7 @@ export default function TimePicker({
         .neq('status', 'cancelled');
 
       if (error) {
-        console.error('Error fetching bookings:', error);
+        logger.error('Error fetching bookings:', error);
         return slots;
       }
 
@@ -113,7 +114,7 @@ export default function TimePicker({
         available: !slot.isPast && !bookedTimes.has(slot.time),
       }));
     } catch (error) {
-      console.error('Error checking booking conflicts:', error);
+      logger.error('Error checking booking conflicts:', error);
       return slots;
     }
   };
@@ -126,7 +127,7 @@ export default function TimePicker({
         const slotsWithConflicts = await checkBookingConflicts(slots);
         setTimeSlots(slotsWithConflicts);
       } catch (error) {
-        console.error('Error loading time slots:', error);
+        logger.error('Error loading time slots:', error);
       } finally {
         setLoading(false);
       }

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useToast } from '../components/ui/use-toast';
+import { logger } from '../lib/logger';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "https://barber-app-five.vercel.app";
 
@@ -43,7 +44,7 @@ export function usePayment() {
         client_secret: data.client_secret,
       };
     } catch (error) {
-      console.error('Error creating payment intent:', error);
+      logger.error('Error creating payment intent:', error);
       toast({
         title: 'Error',
         description: 'Failed to create payment intent.',
@@ -81,7 +82,7 @@ export function usePayment() {
         description: 'Payment confirmed successfully.',
       });
     } catch (error) {
-      console.error('Error confirming payment:', error);
+      logger.error('Error confirming payment:', error);
       toast({
         title: 'Error',
         description: 'Failed to confirm payment.',
@@ -107,7 +108,7 @@ export function usePayment() {
       // - Stripe Mobile SDK
       // - Other mobile payment providers
 
-      console.log('Processing mobile payment:', { amount, currency, metadata });
+      logger.log('Processing mobile payment:', { amount, currency, metadata });
 
       // Simulate payment processing
       await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -119,7 +120,7 @@ export function usePayment() {
 
       return true;
     } catch (error) {
-      console.error('Error processing mobile payment:', error);
+      logger.error('Error processing mobile payment:', error);
       toast({
         title: 'Error',
         description: 'Failed to process payment.',

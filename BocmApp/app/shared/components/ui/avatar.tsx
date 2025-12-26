@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Text, Image, TouchableOpacity } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleProp, ViewStyle } from 'react-native';
 import { User } from 'lucide-react-native';
 import { theme } from '../../lib/theme';
 import tw from 'twrnc';
+import { logger } from '../../lib/logger';
 
 interface AvatarProps {
   src?: string;
@@ -11,6 +12,7 @@ interface AvatarProps {
   fallback?: string;
   onPress?: () => void;
   className?: string;
+  style?: StyleProp<ViewStyle>;
 }
 
 const Avatar: React.FC<AvatarProps> = ({
@@ -20,6 +22,7 @@ const Avatar: React.FC<AvatarProps> = ({
   fallback,
   onPress,
   className = '',
+  style,
 }) => {
   const getSizeStyles = () => {
     switch (size) {
@@ -74,6 +77,7 @@ const Avatar: React.FC<AvatarProps> = ({
         tw`rounded-full overflow-hidden items-center justify-center`,
         getSizeStyles(),
         { backgroundColor: theme.colors.muted },
+        style,
       ]}
       onPress={onPress}
     >
@@ -83,7 +87,7 @@ const Avatar: React.FC<AvatarProps> = ({
           style={[tw`w-full h-full`, getSizeStyles()]}
           resizeMode="cover"
           onError={(error) => {
-            console.log('Avatar image error:', error.nativeEvent.error);
+            logger.log('Avatar image error:', error.nativeEvent.error);
           }}
         />
       ) : fallback ? (

@@ -12,6 +12,7 @@ import tw from 'twrnc';
 import { theme } from '../../lib/theme';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
+import { logger } from '../../lib/logger';
 import { Card, CardContent, LoadingSpinner } from '../ui';
 import { 
   DollarSign,
@@ -77,39 +78,65 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
 
       // Get bookings data
       const now = new Date();
-      const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
+      // Fix: Create new date objects to avoid mutation
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - now.getDay());
+      startOfWeek.setHours(0, 0, 0, 0);
+      
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      startOfMonth.setHours(0, 0, 0, 0);
+      
       const startOfYear = new Date(now.getFullYear(), 0, 1);
+      startOfYear.setHours(0, 0, 0, 0);
 
+      // Fetch bookings with service and addon data
       const { data: bookings, error } = await supabase
         .from('bookings')
-        .select('id, created_at, barber_payout')
+        .select(`
+          id,
+          created_at,
+          barber_payout,
+          service_id,
+          addon_total,
+          services:service_id(price)
+        `)
         .eq('barber_id', barberId)
         .eq('status', 'completed');
 
       if (error) throw error;
 
       // Calculate earnings
+      // Barber earnings = service price (paid at appointment) + addons (paid at appointment) + barber_payout (from platform fee)
       let totalEarnings = 0;
       let monthlyEarnings = 0;
       let weeklyEarnings = 0;
       let yearlyEarnings = 0;
 
       bookings?.forEach(booking => {
-        // Net amount barber earns (already stored in dollars)
-        const amount = Number(booking.barber_payout || 0);
         const bookingDate = new Date(booking.created_at);
         
-        totalEarnings += amount;
+        // Get service price (paid directly at appointment)
+        const servicePrice = Number((booking.services as any)?.price || 0);
+        
+        // Get addon total (paid directly at appointment)
+        const addonTotal = Number(booking.addon_total || 0);
+        
+        // Get barber's share from platform fee (from Stripe)
+        const barberPayout = Number(booking.barber_payout || 0);
+        
+        // Total earnings for this booking
+        const bookingEarnings = servicePrice + addonTotal + barberPayout;
+        
+        totalEarnings += bookingEarnings;
         
         if (bookingDate >= startOfWeek) {
-          weeklyEarnings += amount;
+          weeklyEarnings += bookingEarnings;
         }
         if (bookingDate >= startOfMonth) {
-          monthlyEarnings += amount;
+          monthlyEarnings += bookingEarnings;
         }
         if (bookingDate >= startOfYear) {
-          yearlyEarnings += amount;
+          yearlyEarnings += bookingEarnings;
         }
       });
 
@@ -126,7 +153,7 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
         stripeAccountId: barber?.stripe_account_id
       });
     } catch (error) {
-      console.error('Error loading earnings:', error);
+      logger.error('Error loading earnings:', error);
       Alert.alert('Error', 'Failed to load earnings data');
     } finally {
       setIsLoading(false);
@@ -135,7 +162,7 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
 
   const handleStripeConnect = async () => {
     try {
-      console.log('Starting Stripe Connect process for barber:', barberId);
+      logger.log('Starting Stripe Connect process for barber:', barberId);
       
       const response = await fetch(`${API_BASE_URL}/api/connect/create-account`, {
         method: 'POST',
@@ -154,7 +181,7 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
       }
 
       const data = await response.json();
-      console.log('Stripe Connect response:', data);
+      logger.log('Stripe Connect response:', data);
 
       if (data.url) {
         // Open Stripe onboarding in browser
@@ -166,14 +193,14 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
         throw new Error('No redirect URL received from Stripe');
       }
     } catch (error) {
-      console.error('Error connecting Stripe:', error);
+      logger.error('Error connecting Stripe:', error);
       Alert.alert('Error', error instanceof Error ? error.message : 'Failed to connect Stripe account. Please try again.');
     }
   };
 
   const handleViewStripeDetails = async () => {
     try {
-      console.log('Opening Stripe Dashboard for barber:', barberId);
+      logger.log('Opening Stripe Dashboard for barber:', barberId);
       
       // Create Stripe dashboard link
       const { data, error } = await supabase.functions.invoke('stripe-dashboard', {
@@ -181,7 +208,7 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
       });
 
       if (error) {
-        console.error('Supabase function error:', error);
+        logger.error('Supabase function error:', error);
         throw new Error(error.message || 'Failed to create dashboard link');
       }
 
@@ -189,8 +216,8 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
         throw new Error('No dashboard URL received');
       }
 
-      console.log('Opening Stripe URL:', data.url);
-      console.log('URL type:', data.type);
+      logger.log('Opening Stripe URL:', data.url);
+      logger.log('URL type:', data.type);
       
       // Show appropriate message based on type
       if (data.type === 'onboarding') {
@@ -212,12 +239,12 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
                     toolbarColor: theme.colors.background,
                   });
                   
-                  console.log('WebBrowser result:', result);
+                  logger.log('WebBrowser result:', result);
                   
                   // After browser closes, refresh the earnings data
                   await loadEarningsData();
                 } catch (browserError) {
-                  console.error('Error opening browser:', browserError);
+                  logger.error('Error opening browser:', browserError);
                 }
               }
             }
@@ -231,11 +258,11 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
           toolbarColor: theme.colors.background,
         });
         
-        console.log('WebBrowser result:', result);
+        logger.log('WebBrowser result:', result);
       }
       
     } catch (error) {
-      console.error('Error opening Stripe dashboard:', error);
+      logger.error('Error opening Stripe dashboard:', error);
       Alert.alert(
         'Error', 
         error instanceof Error ? error.message : 'Failed to open Stripe dashboard. Please try again.'
@@ -245,8 +272,8 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
 
   const debugStripeAccount = async () => {
     try {
-      console.log('=== DEBUGGING STRIPE ACCOUNT ===');
-      console.log('Barber ID:', barberId);
+      logger.log('=== DEBUGGING STRIPE ACCOUNT ===');
+      logger.log('Barber ID:', barberId);
       
       // Get current barber data
       const { data: barber, error } = await supabase
@@ -256,12 +283,12 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
         .single();
 
       if (error) {
-        console.error('Error fetching barber:', error);
+        logger.error('Error fetching barber:', error);
         Alert.alert('Error', 'Could not fetch barber data.');
         return;
       }
 
-      console.log('Full barber data:', barber);
+      logger.log('Full barber data:', barber);
       
       // Check if user has a profile
       if (barber.user_id) {
@@ -272,14 +299,14 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
           .single();
         
         if (profileError) {
-          console.error('Error fetching profile:', profileError);
+          logger.error('Error fetching profile:', profileError);
         } else {
-          console.log('User email:', profile?.email);
+          logger.log('User email:', profile?.email);
         }
       }
 
       // Try to create a new Stripe account
-      console.log('Attempting to create Stripe account...');
+      logger.log('Attempting to create Stripe account...');
       
       const response = await fetch(`${API_BASE_URL}/api/connect/create-account`, {
         method: 'POST',
@@ -292,11 +319,11 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
         }),
       });
 
-      console.log('API Response status:', response.status);
+      logger.log('API Response status:', response.status);
       
       if (response.ok) {
         const data = await response.json();
-        console.log('API Response data:', data);
+        logger.log('API Response data:', data);
         
         if (data.accountId) {
           Alert.alert(
@@ -306,7 +333,7 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
           );
           
           // Test the update status API
-          console.log('Testing update status API...');
+          logger.log('Testing update status API...');
           const updateResponse = await fetch(`${API_BASE_URL}/api/connect/update-stripe-status`, {
             method: 'POST',
             headers: {
@@ -320,7 +347,7 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
           
           if (updateResponse.ok) {
             const updateData = await updateResponse.json();
-            console.log('Update status response:', updateData);
+            logger.log('Update status response:', updateData);
             Alert.alert(
               'Success!',
               `Stripe account ID has been saved to database!\n\nAccount ID: ${data.accountId}`,
@@ -328,7 +355,7 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
             );
           } else {
             const updateError = await updateResponse.text();
-            console.error('Update status error:', updateError);
+            logger.error('Update status error:', updateError);
             Alert.alert(
               'Partial Success',
               `Stripe account created but database update failed.\n\nAccount ID: ${data.accountId}\nError: ${updateError}`,
@@ -344,7 +371,7 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
         }
       } else {
         const errorText = await response.text();
-        console.error('API Error:', errorText);
+        logger.error('API Error:', errorText);
         Alert.alert(
           'Debug Info',
           `API call failed.\n\nStatus: ${response.status}\nError: ${errorText}`,
@@ -352,14 +379,14 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
         );
       }
     } catch (error) {
-      console.error('Debug error:', error);
+      logger.error('Debug error:', error);
       Alert.alert('Error', `Debug failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
   const checkStripeStatus = async () => {
     try {
-      console.log('Checking Stripe status for barber:', barberId);
+      logger.log('Checking Stripe status for barber:', barberId);
       
       // Get barber's Stripe account status directly from database
       const { data: barber, error } = await supabase
@@ -369,12 +396,12 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
         .single();
 
       if (error) {
-        console.error('Error fetching barber:', error);
+        logger.error('Error fetching barber:', error);
         Alert.alert('Error', 'Could not check Stripe status. Please try again.');
         return;
       }
 
-      console.log('Barber data:', barber);
+      logger.log('Barber data:', barber);
 
       if (!barber) {
         Alert.alert('Error', 'Barber not found.');
@@ -411,7 +438,7 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
         );
       }
     } catch (error) {
-      console.error('Error checking Stripe status:', error);
+      logger.error('Error checking Stripe status:', error);
       Alert.alert('Error', `Failed to check Stripe status: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
@@ -529,6 +556,9 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
           
           <Text style={[tw`text-3xl font-bold mb-4`, { color: theme.colors.foreground }]}>
             ${earnings.monthlyEarnings.toFixed(2)}
+          </Text>
+          <Text style={[tw`text-xs mb-2`, { color: theme.colors.mutedForeground }]}>
+            Includes: Service price + Add-ons (at appointment) + Platform fee share (via Stripe)
           </Text>
 
           <View style={tw`flex-row justify-between`}>

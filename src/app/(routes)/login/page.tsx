@@ -14,6 +14,7 @@ import { supabase } from '@/shared/lib/supabase'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip'
 import { getAndClearRedirectUrl } from '@/shared/lib/redirect-utils'
 import { getRedirectPath } from '@/shared/hooks/use-auth-zustand'
+import { logger } from '@/shared/lib/logger'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -31,25 +32,25 @@ export default function LoginPage() {
     setError(null)
     
     try {
-      console.log('🎯 Starting redirect process for user:', userId)
+      logger.debug('Starting redirect process for user', { userId })
       
       // Check for stored redirect URL first
       const redirectUrl = getAndClearRedirectUrl()
       if (redirectUrl) {
-        console.log('📍 Using stored redirect URL:', redirectUrl)
+        logger.debug('Using stored redirect URL', { redirectUrl })
         push(redirectUrl)
         return
       }
 
       // Determine redirect path based on user profile
       const redirectPath = await getRedirectPath(userId)
-      console.log('📍 Determined redirect path:', redirectPath)
+      logger.debug('Determined redirect path', { redirectPath })
       
       // Attempt to redirect
       push(redirectPath)
       
     } catch (error) {
-      console.error('❌ Redirect error:', error)
+      logger.error('Redirect error', error)
       setError('Failed to redirect. Please try again.')
       
       // Fallback to reload after 3 seconds
@@ -72,25 +73,25 @@ export default function LoginPage() {
     setError(null)
 
     try {
-      console.log('🔐 Attempting login for:', email)
+      logger.debug('Attempting login', { email })
       const success = await login(email, password)
       
       if (success) {
-        console.log('✅ Login successful, getting session...')
+        logger.debug('Login successful, getting session')
         // Use global auth state for redirect
         if (user) {
-          console.log('✅ Session confirmed, redirecting...')
+          logger.debug('Session confirmed, redirecting')
           await handleRedirect(user.id)
         } else {
-          console.error('❌ No user after successful login')
+          logger.error('No user after successful login')
           setError('Login successful but user not found. Please try again.')
         }
       } else {
-        console.log('❌ Login failed')
+        logger.debug('Login failed')
         setError('Invalid email or password')
       }
     } catch (error) {
-      console.error('❌ Login error:', error)
+      logger.error('Login error', error)
       setError('An unexpected error occurred. Please try again.')
     } finally {
       setIsLoading(false)
@@ -100,14 +101,14 @@ export default function LoginPage() {
   const handleGoogleLogin = async () => {
     setError(null)
     try {
-      console.log('🔐 Starting Google OAuth login...')
+      logger.debug('Starting Google OAuth login')
       
       // Use ngrok URL for development, production URL for production
       const redirectUrl = process.env.NODE_ENV === 'development' 
         ? 'https://3d6b1eb7b7c8.ngrok-free.app/auth/callback'
         : 'https://www.bocmstyle.com/auth/callback';
       
-      console.log('🔄 Using redirect URL:', redirectUrl);
+      logger.debug('Using redirect URL', { redirectUrl })
       
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -116,11 +117,11 @@ export default function LoginPage() {
         }
       })
       if (error) {
-        console.error('❌ Google login error:', error.message)
+        logger.error('Google login error', error)
         setError('Could not sign in with Google. Please try again.')
       }
     } catch (error) {
-      console.error('❌ Google login exception:', error)
+      logger.error('Google login exception', error)
       setError('An error occurred during Google sign-in.')
     }
   }

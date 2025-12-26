@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import * as Location from 'expo-location';
 import { supabase } from '../shared/lib/supabase';
+import { logger } from '../shared/lib/logger';
 import type { FeedItem, FeedOptions } from '../types/feed.types';
 
 export function useOptimizedFeed(opts: FeedOptions = {}) {
@@ -16,6 +17,13 @@ export function useOptimizedFeed(opts: FeedOptions = {}) {
   const [useLocation, setUseLocation] = useState(false);
   const pageRef = useRef(0);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  const getBarberFromCut = (cut: any) => {
+    const barbers = cut?.barbers;
+    // Supabase nested relations can come back as an object or an array depending on schema inference.
+    if (Array.isArray(barbers)) return barbers[0];
+    return barbers;
+  };
 
   const fetchPage = useCallback(async (selectedSpecialty?: string) => {
     // Use refs to avoid dependency issues
@@ -38,7 +46,7 @@ export function useOptimizedFeed(opts: FeedOptions = {}) {
       const from = page * pageSize;
       const to = from + pageSize - 1;
 
-      console.log(`📡 Fetching cuts page ${page} (${from}-${to})${selectedSpecialty ? ` for specialty: ${selectedSpecialty}` : ''}`);
+      logger.log(`📡 Fetching cuts page ${page} (${from}-${to})${selectedSpecialty ? ` for specialty: ${selectedSpecialty}` : ''}`);
 
       let query = supabase
         .from('cuts')
@@ -91,18 +99,20 @@ export function useOptimizedFeed(opts: FeedOptions = {}) {
 
       // Transform cuts to FeedItem format with distance calculation
       const feedItems: FeedItem[] = cuts.map((cut) => {
+        const barber = getBarberFromCut(cut);
+
         // Calculate distance if location is enabled and barber has coordinates
         let distance: number | undefined;
-        if (useLocation && userLocation && cut.barbers?.latitude && cut.barbers?.longitude) {
+        if (useLocation && userLocation && barber?.latitude && barber?.longitude) {
           distance = calculateDistance(
             userLocation.coords.latitude,
             userLocation.coords.longitude,
-            cut.barbers.latitude,
-            cut.barbers.longitude
+            barber.latitude,
+            barber.longitude
           );
-        } else if (useLocation && userLocation && cut.barbers?.city) {
+        } else if (useLocation && userLocation && barber?.city) {
           // If no coordinates, skip distance calculation to avoid false "closest" results
-          console.log(`📍 Cut from ${cut.barbers.city} has no coordinates - skipping distance calculation`);
+          logger.log(`📍 Cut from ${barber.city} has no coordinates - skipping distance calculation`);
           distance = undefined;
         }
 
@@ -110,10 +120,10 @@ export function useOptimizedFeed(opts: FeedOptions = {}) {
           id: cut.id,
           videoUrl: cut.url,
           caption: cut.description || cut.title,
-          username: cut.barbers?.profiles?.username || 'unknown',
+          username: barber?.profiles?.username || 'unknown',
           barber_id: cut.barber_id,
-          barber_name: cut.barbers?.profiles?.name,
-          barber_avatar: cut.barbers?.profiles?.avatar_url,
+          barber_name: barber?.profiles?.name,
+          barber_avatar: barber?.profiles?.avatar_url,
           created_at: cut.created_at,
           aspect_ratio: 9/16, // Default to 9:16 aspect ratio
           duration: cut.duration,
@@ -124,7 +134,7 @@ export function useOptimizedFeed(opts: FeedOptions = {}) {
           shares: cut.shares || 0,
           music: 'Original Sound', // TODO: Add music field to cuts table
           distance: distance,
-          barber_location: cut.barbers?.city || cut.barbers?.state || 'Unknown location',
+          barber_location: barber?.city || barber?.state || 'Unknown location',
         };
       });
 
@@ -136,12 +146,12 @@ export function useOptimizedFeed(opts: FeedOptions = {}) {
           if (b.distance === undefined) return -1;
           return a.distance - b.distance;
         });
-        console.log('📍 Cuts sorted by distance');
+        logger.log('📍 Cuts sorted by distance');
       } else {
         // Only randomize on initial load to maintain consistency
         if (page === 0) {
           feedItems.sort(() => Math.random() - 0.5);
-          console.log('🎲 Randomized initial feed order');
+          logger.log('🎲 Randomized initial feed order');
         }
       }
 
@@ -159,15 +169,15 @@ export function useOptimizedFeed(opts: FeedOptions = {}) {
         pageRef.current += 1;
       }
 
-      console.log(`✅ Loaded ${feedItems.length} cuts`);
+      logger.log(`✅ Loaded ${feedItems.length} cuts`);
 
     } catch (err: any) {
       if (err.name === 'AbortError') {
-        console.log('🛑 Feed fetch cancelled');
+        logger.log('🛑 Feed fetch cancelled');
         return;
       }
       
-      console.error('❌ Feed fetch error:', err);
+      logger.error('❌ Feed fetch error:', err);
       setError(err.message || 'Failed to load videos');
     } finally {
       setLoading(false);
@@ -177,7 +187,7 @@ export function useOptimizedFeed(opts: FeedOptions = {}) {
 
   // Location functions
   const calculateDistance = useCallback((lat1: number, lon1: number, lat2: number, lon2: number): number => {
-    const R = 6371; // Earth's radius in kilometers
+    const R = 3959; // Earth's radius in miles
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
     const a = 
@@ -185,7 +195,7 @@ export function useOptimizedFeed(opts: FeedOptions = {}) {
       Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
       Math.sin(dLon/2) * Math.sin(dLon/2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    const distance = R * c; // Distance in kilometers
+    const distance = R * c; // Distance in miles
     return distance;
   }, []);
 
@@ -196,7 +206,7 @@ export function useOptimizedFeed(opts: FeedOptions = {}) {
       // Check if location services are enabled
       const isEnabled = await Location.hasServicesEnabledAsync();
       if (!isEnabled) {
-        console.log('Location services disabled');
+        logger.log('Location services disabled');
         return false;
       }
       
@@ -205,18 +215,25 @@ export function useOptimizedFeed(opts: FeedOptions = {}) {
       setLocationPermission(status);
       
       if (status !== 'granted') {
-        console.log('Location permission denied');
+        logger.log('Location permission denied');
         return false;
       }
       
       return true;
     } catch (error) {
-      console.error('Error requesting location permission:', error);
+      logger.error('Error requesting location permission:', error);
       return false;
     } finally {
       setLocationLoading(false);
     }
   }, []);
+
+  const refresh = useCallback(() => {
+    setItems([]);
+    setEndReached(false);
+    pageRef.current = 0;
+    fetchPage();
+  }, [fetchPage]);
 
   const getUserLocation = useCallback(async () => {
     try {
@@ -234,7 +251,7 @@ export function useOptimizedFeed(opts: FeedOptions = {}) {
       
       setUserLocation(location);
       setUseLocation(true);
-      console.log('📍 User location obtained for cuts:', {
+      logger.log('📍 User location obtained for cuts:', {
         latitude: location.coords.latitude,
         longitude: location.coords.longitude
       });
@@ -243,7 +260,7 @@ export function useOptimizedFeed(opts: FeedOptions = {}) {
       refresh();
       
     } catch (error) {
-      console.error('Error getting user location for cuts:', error);
+      logger.error('Error getting user location for cuts:', error);
     } finally {
       setLocationLoading(false);
     }
@@ -266,7 +283,7 @@ export function useOptimizedFeed(opts: FeedOptions = {}) {
       }
       return null;
     } catch (error) {
-      console.error('Geocoding error:', error);
+      logger.error('Geocoding error:', error);
       return null;
     }
   }, []);
@@ -281,7 +298,7 @@ export function useOptimizedFeed(opts: FeedOptions = {}) {
         .neq('specialties', '{}');
 
       if (error) {
-        console.error('Error fetching specialties:', error);
+        logger.error('Error fetching specialties:', error);
         return;
       }
 
@@ -297,9 +314,9 @@ export function useOptimizedFeed(opts: FeedOptions = {}) {
 
       const specialtiesArray = Array.from(allSpecialties).sort();
       setAvailableSpecialties(specialtiesArray);
-      console.log(`📋 Found ${specialtiesArray.length} available specialties:`, specialtiesArray);
+      logger.log(`📋 Found ${specialtiesArray.length} available specialties:`, specialtiesArray);
     } catch (error) {
-      console.error('Error fetching available specialties:', error);
+      logger.error('Error fetching available specialties:', error);
     }
   }, []);
 
@@ -310,7 +327,7 @@ export function useOptimizedFeed(opts: FeedOptions = {}) {
       
       // If we're within 2 items of the end, prefetch
       if (lastItemIndex % pageSize >= pageSize - 2) {
-        console.log('🔄 Prefetching next page...');
+        logger.log('🔄 Prefetching next page...');
         fetchPage();
       }
     }
@@ -324,13 +341,6 @@ export function useOptimizedFeed(opts: FeedOptions = {}) {
         abortControllerRef.current.abort();
       }
     };
-  }, [fetchPage]);
-
-  const refresh = useCallback(() => {
-    setItems([]);
-    setEndReached(false);
-    pageRef.current = 0;
-    fetchPage();
   }, [fetchPage]);
 
   return {

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { logger } from '@/shared/lib/logger'
 
 // Developer contact info for error reporting
 const DEVELOPER_EMAIL = 'bocmtexter@gmail.com'
@@ -25,7 +26,7 @@ async function sendErrorEmail(to: string, subject: string, htmlContent: string, 
     
     return await response.json()
   } catch (error) {
-    console.error('Failed to send error email:', error)
+    logger.error('Failed to send error email', error)
     throw error
   }
 }
@@ -48,7 +49,7 @@ export async function POST(request: NextRequest) {
     const errorData: ErrorReport = await request.json()
     
     // Log the error
-    console.error('🚨 Error Report Received:', {
+    logger.error('Error Report Received', undefined, {
       ...errorData,
       ip: request.headers.get('x-forwarded-for') || 'unknown'
     })
@@ -63,7 +64,7 @@ export async function POST(request: NextRequest) {
       message: 'Error reported successfully' 
     })
   } catch (error) {
-    console.error('Failed to report error:', error)
+    logger.error('Failed to report error', error)
     return NextResponse.json(
       { error: 'Failed to report error' },
       { status: 500 }
@@ -189,9 +190,9 @@ User Agent: ${userAgent}
     const subject = `${severityInfo.emoji} BOCM ${errorData.severity.toUpperCase()} Error - ${errorData.errorType}`
     
     await sendErrorEmail(DEVELOPER_EMAIL, subject, htmlContent, textContent)
-    console.log('✅ Error email sent successfully to', DEVELOPER_EMAIL)
+    logger.info(`Error email sent successfully to ${DEVELOPER_EMAIL}`)
   } catch (emailError) {
-    console.error('❌ Failed to send error email:', emailError)
+    logger.error('Failed to send error email', emailError)
     // Don't throw - we don't want error reporting to fail the app
   }
 }

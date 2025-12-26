@@ -2,20 +2,24 @@ import React from 'react';
 import { ScrollView, View, Text, TouchableOpacity, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { ArrowLeft, FileText } from 'lucide-react-native';
 import { theme } from '../shared/lib/theme';
 import { AnimatedBackground } from '../shared/components/AnimatedBackground';
+import { RootStackParamList } from '../shared/types';
 
 const terms = `BOCM TERMS OF SERVICE
 
-Effective Date: July 7, 2025
+Effective Date: December 2025
 
 Welcome to BOCM. These Terms of Service ("Terms") govern your access to and use of the BOCM website, mobile application, and all associated services (collectively, the "Services"). The Services are provided by BOCM ("BOCM," "we," "us," or "our").
 
 By using our Services, you agree to be bound by these Terms, our Privacy Policy, and all applicable laws and regulations. If you do not agree, do not use the Services.
+
+You can view our Privacy Policy at any time within the app or by navigating to the Privacy Policy section from Settings.
 
 OVERVIEW OF SERVICES
 BOCM is a digital marketplace that connects clients seeking beauty and barbering services ("Clients") with independent cosmetologists and barbers ("Professionals"). BOCM provides the digital infrastructure for booking, service management, payment processing, and content discovery but does not directly offer any hair or beauty services.
@@ -27,7 +31,7 @@ CLIENT AND PROFESSIONAL REGISTRATION
 • Super admin panel for managing developer and staff accounts
 
 DISCOVERY & BOOKING
-• Location-based barber search with specialty filtering
+• Location-based barber search with specialty filtering (fade cuts, beard trims, styling, etc.)
 • Real-time availability checking and instant booking confirmations
 • Booking history, management, cancellation, and rescheduling
 • QR code-enabled booking links for marketing and sharing
@@ -36,7 +40,6 @@ PAYMENT PROCESSING
 • Seamless Stripe integration for secure payments
 • Instant payment processing with receipt generation
 • Full payment history tracking for clients and barbers
-• Developer mode for testing without fees
 
 SERVICE MANAGEMENT
 • Custom service creation with pricing, duration, and descriptions
@@ -53,7 +56,7 @@ SCHEDULING & CALENDAR
 VIDEO REELS PLATFORM
 • TikTok-style content platform for barber videos
 • Upload, categorize, and manage video content
-• Location-based video discovery and social engagement
+• Location-based video discovery and social engagement (likes, shares)
 • Analytics for video views, engagement, and performance tracking
 
 SEARCH & DISCOVERY
@@ -79,6 +82,22 @@ ANALYTICS & INSIGHTS
 • Client history and service performance metrics
 • Real-time revenue tracking
 • Video analytics (views, likes, shares, engagements)
+
+FUTURE FEATURES (PLANNED) PHASE 1: ADVANCED BOOKING & SCHEDULING
+• On-demand mobile barbers (Uber-style)
+• Real-time GPS matching and route tracking
+• Surge pricing and request management
+• Mobile dashboard for traveling barbers
+• Advanced scheduling features:
+  - Weekly templates, break time blocks, holiday scheduling
+  - AI-powered scheduling suggestions
+  - Capacity management for multi-client time slots
+
+BUSINESS MANAGEMENT TOOLS
+• Integrated financial tools and accounting support
+• Inventory tracking and reorder automation
+• Staff scheduling and CRM tools
+• Detailed reporting for services, clients, and revenues
 
 LIMITATION OF LIABILITY
 BOCM is not liable for any damages, losses, injuries, or claims arising out of:
@@ -133,8 +152,10 @@ These Terms are governed by the laws of the State of New Jersey, without regard 
 CONTACT US
 For questions or concerns regarding these Terms, contact primbocm@gmail.com.`;
 
+type TermsNavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
 export default function TermsPage() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<TermsNavigationProp>();
 
   const handleBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -242,9 +263,25 @@ export default function TermsPage() {
             fontSize: 12,
             color: 'rgba(255, 255, 255, 0.6)',
             textAlign: 'center',
+            marginBottom: 16,
           }}>
             By using BOCM, you agree to these terms and conditions
           </Text>
+          <TouchableOpacity
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              navigation.navigate('PrivacyPolicy');
+            }}
+          >
+            <Text style={{
+              fontSize: 14,
+              color: theme.colors.secondary,
+              textDecorationLine: 'underline',
+              fontWeight: '600',
+            }}>
+              View Privacy Policy
+            </Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>

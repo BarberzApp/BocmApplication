@@ -6,6 +6,7 @@ import { Button } from "@/shared/components/ui/button"
 import { format } from "date-fns"
 import { useSafeNavigation } from "@/shared/hooks/use-safe-navigation"
 import { Loader2 } from "lucide-react"
+import { logger } from "@/shared/lib/logger"
 
 const Calendar = dynamic(
   () => import("@/shared/components/ui/calendar").then((mod) => mod.Calendar),
@@ -90,7 +91,7 @@ export function CalendarView({ events = [] }: CalendarViewProps) {
                       onClick={(e) => {
                         e.stopPropagation()
                         // Handle delete booking
-                        console.log("Delete booking:", event.bookingId)
+                        logger.debug("Delete booking", { bookingId: event.bookingId })
                       }}
                     >
                       <span className="sr-only">Delete booking</span>

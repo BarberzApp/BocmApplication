@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
+import { logger } from '@/shared/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('Test auth endpoint called');
+    logger.debug('Test auth endpoint called');
     
     // Get current user using the auth helpers
     const supabase = createRouteHandlerClient({ cookies });
@@ -12,14 +13,14 @@ export async function GET(request: NextRequest) {
     // First, let's check what cookies are available
     const cookieStore = await cookies();
     const allCookies = cookieStore.getAll();
-    console.log('All cookies found:', allCookies.map(c => c.name));
+    logger.debug('All cookies found', { count: allCookies.length, names: allCookies.map(c => c.name) });
     
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     
-    console.log('Auth check result:', { user: user?.id, error: userError });
+    logger.debug('Auth check result', { userId: user?.id, hasError: !!userError });
     
     if (userError) {
-      console.error('User error:', userError);
+      logger.error('User error', userError);
       return NextResponse.json(
         { error: 'Authentication error', details: userError.message },
         { status: 401 }
@@ -27,7 +28,7 @@ export async function GET(request: NextRequest) {
     }
     
     if (!user) {
-      console.log('No user found');
+      logger.debug('No user found');
       return NextResponse.json(
         { error: 'User not authenticated' },
         { status: 401 }
@@ -43,7 +44,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Test auth error:', error);
+    logger.error('Test auth error', error);
     return NextResponse.json(
       { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

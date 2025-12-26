@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
     View,
     Text,
@@ -10,7 +10,6 @@ import {
     ActivityIndicator,
     KeyboardAvoidingView,
     Platform,
-    Modal,
     StatusBar,
     AppState,
 } from 'react-native';
@@ -22,33 +21,40 @@ import { RootStackParamList } from '../shared/types';
 import { supabase } from '../shared/lib/supabase';
 import { useAuth } from '../shared/hooks/useAuth';
 import { theme } from '../shared/lib/theme';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '../shared/components/ui';
+import { logger } from '../shared/lib/logger';
+import { 
+    Card, 
+    CardContent,
+    Button,
+    SectionHeader,
+    NumericInput,
+    ProgressIndicator,
+    OnboardingInputField
+} from '../shared/components/ui';
 import { 
     CheckCircle, 
-    AlertCircle, 
-    Loader2, 
     CreditCard, 
     Building, 
     Scissors, 
     X, 
     Instagram, 
-    Twitter, 
-    Music, 
-    Facebook,
-    ChevronLeft,
-    ChevronRight,
     Plus,
     Trash2,
-    User,
-    Mail,
     Phone,
     MapPin,
-    Sparkles
+    Sparkles,
+    Info
 } from 'lucide-react-native';
 import { SpecialtyAutocomplete } from '../shared/components/ui/SpecialtyAutocomplete';
 import { SocialMediaLinks } from '../shared/components/ui/SocialMediaLinks';
 import { LocationInput } from '../shared/components/ui/LocationInput';
 import { BARBER_SPECIALTIES } from '../shared/utils/settings.utils';
+import { runBarberPrefillOnce } from '../shared/helpers/barberPrefillHelper';
+import { handleStripeConnect, checkStripeStatusOnce } from '../shared/helpers/barberStripeHelper';
+import { addService as addServiceHelper, removeService as removeServiceHelper, updateService as updateServiceHelper, validateServices } from '../shared/helpers/barberServicesHelper';
+import { validateStep as validateStepHelper } from '../shared/helpers/barberValidationHelper';
+import { extractHandle } from '../shared/helpers/socialHandleHelper';
+import { formatPhoneNumber } from '../shared/helpers/phoneFormatHelper';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "https://www.bocmstyle.com";
 
@@ -98,27 +104,6 @@ interface ValidationErrors {
     [key: string]: string;
 }
 
-// Utility function to extract handle from URL or return as-is if already a handle
-function extractHandle(input: string): string {
-    if (!input) return '';
-    input = input.trim();
-    try {
-        const url = new URL(input);
-        const pathParts = url.pathname.split('/').filter(Boolean);
-        if (pathParts.length > 0) {
-            let handle = pathParts[pathParts.length - 1];
-            if (handle.startsWith('@')) handle = handle.slice(1);
-            return '@' + handle;
-        }
-    } catch {
-        // Not a URL
-    }
-    if (input.startsWith('@')) return input;
-    return '@' + input;
-}
-
-
-
 export default function BarberOnboardingPage() {
     const navigation = useNavigation<BarberOnboardingNavigationProp>();
     const { user, userProfile } = useAuth();
@@ -131,6 +116,8 @@ export default function BarberOnboardingPage() {
     const [showCompleteBanner, setShowCompleteBanner] = useState(true);
     const [showStripeWebView, setShowStripeWebView] = useState(false);
     const [stripeUrl, setStripeUrl] = useState('');
+    const prefillDoneRef = useRef(false);
+    const phoneDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const [formData, setFormData] = useState<FormData>({
         businessName: '',
@@ -151,140 +138,78 @@ export default function BarberOnboardingPage() {
         }
     });
 
-    // Prefill form with existing data
+    // Prefill form with existing data (single run via helper)
     useEffect(() => {
-        const fetchProfileData = async () => {
-            if (!user) return;
-            
-            try {
-                console.log('Fetching profile data for user:', user.id);
-                
-                // Fetch barber profile data
-                const { data: barberData, error: barberError } = await supabase
-                    .from('barbers')
-                    .select('*')
-                    .eq('user_id', user.id)
-                    .single();
-
-                console.log('Barber data fetched:', barberData, 'Error:', barberError);
-
-                if (barberData) {
-                    console.log('Setting barber data in form');
-                    setFormData(prev => ({
-                        ...prev,
-                        businessName: barberData.business_name || '',
-                        bio: barberData.bio || '',
-                        specialties: barberData.specialties || [],
-                        socialMedia: {
-                            instagram: barberData.instagram || '',
-                            twitter: barberData.twitter || '',
-                            tiktok: barberData.tiktok || '',
-                            facebook: barberData.facebook || '',
-                        }
-                    }));
-                }
-
-                // Fetch profile data
-                const { data: profile, error: profileError } = await supabase
-                    .from('profiles')
-                    .select('phone, location')
-                    .eq('id', user.id)
-                    .single();
-
-                if (profileError && profileError.code !== 'PGRST116') {
-                    console.error('Error fetching profile data:', profileError);
-                }
-
-                // Fetch services
-                let services: Array<{ name: string; price: number; duration: number }> = [];
-                if (barberData?.id) {
-                    const { data: existingServices, error: servicesError } = await supabase
-                        .from('services')
-                        .select('name, price, duration')
-                        .eq('barber_id', barberData.id);
-
-                    if (servicesError) {
-                        console.error('Error fetching services:', servicesError);
-                    } else if (Array.isArray(existingServices)) {
-                        services = existingServices.map(s => ({
-                            name: s.name || '',
-                            price: typeof s.price === 'number' ? s.price : 0,
-                            duration: typeof s.duration === 'number' ? s.duration : 30,
-                        }));
-                    }
-                }
-
-                setFormData(prev => ({
-                    ...prev,
-                    phone: profile?.phone || '',
-                    location: profile?.location || '',
-                    services,
-                    stripeConnected: barberData?.stripe_account_status === 'active'
-                }));
-
-                if (barberData?.stripe_account_id) {
-                    setStripeStatus(barberData?.stripe_account_status || null);
-                } else {
-                    setStripeStatus(null);
-                }
-            } catch (error) {
-                console.error('Error fetching profile data:', error);
-            }
+        // Reset prefill ref on mount to ensure it runs when navigating from settings
+        prefillDoneRef.current = false;
+        
+        const prefill = async () => {
+            if (!user || prefillDoneRef.current) return;
+            await runBarberPrefillOnce({
+                userId: user.id,
+                userProfile,
+                setFormData,
+                setStripeStatus,
+                prefillDoneRef,
+            });
         };
 
         if (user) {
-            fetchProfileData();
+            prefill();
         }
-    }, [user]);
+    }, [user, userProfile]);
 
-    // Check if onboarding is already complete
     useEffect(() => {
-        const checkOnboardingComplete = async () => {
-            if (!user) return;
-            
-            try {
-                console.log('Checking if onboarding is already complete...');
-                
-                // Fetch barber data to check completion
-                const { data: barberData, error: barberError } = await supabase
-                    .from('barbers')
-                    .select('onboarding_complete, business_name, bio, specialties')
-                    .eq('user_id', user.id)
-                    .single();
-
-                if (barberError) {
-                    console.error('Error checking onboarding status:', barberError);
-                    return;
-                }
-
-                console.log('Onboarding completion check:', {
-                    onboarding_complete: barberData?.onboarding_complete,
-                    businessName: barberData?.business_name,
-                    bio: barberData?.bio,
-                    specialties: barberData?.specialties
-                });
-
-                // If onboarding is marked as complete, skip to main app
-                if (barberData?.onboarding_complete) {
-                    console.log('Onboarding is already complete! Redirecting to main app...');
-                    setOnboardingComplete(true);
-                    navigation.navigate('MainTabs' as any);
-                    return;
-                }
-            } catch (error) {
-                console.error('Error checking onboarding completion:', error);
+        return () => {
+            if (phoneDebounceRef.current) {
+                clearTimeout(phoneDebounceRef.current);
             }
         };
+    }, []);
 
-        if (user) {
-            checkOnboardingComplete();
-        }
-    }, [user, navigation]);
+    // // Check if onboarding is already complete
+    // useEffect(() => {
+    //     const checkOnboardingComplete = async () => {
+    //         if (!user) return;
+            
+    //         try {
+    //             // Checking if onboarding is already complete
+                
+    //             // Fetch barber data to check completion
+    //             const { data: barberData, error: barberError } = await supabase
+    //                 .from('barbers')
+    //                 .select('onboarding_complete, business_name, bio, specialties')
+    //                 .eq('user_id', user.id)
+    //                 .single();
+
+    //             if (barberError) {
+    //                 logger.error('Error checking onboarding status:', barberError);
+    //                 return;
+    //             }
+
+    //             // Onboarding completion check
+
+    //             // If onboarding is marked as complete, skip to main app
+    //             if (barberData?.onboarding_complete) {
+    //                 logger.log('Onboarding is already complete - redirecting to main app');
+    //                 setOnboardingComplete(true);
+    //                 navigation.navigate('MainTabs' as any);
+    //                 return;
+    //             }
+    //         } catch (error) {
+    //             logger.error('Error checking onboarding completion:', error);
+    //         }
+    //     };
+
+    //     if (user) {
+    //         checkOnboardingComplete();
+    //     }
+    // }, [user, navigation]);
 
     // Check if user is a barber
     useEffect(() => {
         if (user && userProfile?.role !== 'barber') {
-            console.log('User is not a barber, redirecting to home');
+            logger.log('User is not a barber, redirecting to home');
             navigation.navigate('Home');
         }
     }, [user, userProfile, navigation]);
@@ -292,99 +217,21 @@ export default function BarberOnboardingPage() {
     // Check Stripe status when user returns to the app (e.g., from Stripe onboarding)
     useFocusEffect(
         useCallback(() => {
-            const checkStripeStatus = async () => {
+            const checkStatus = async () => {
                 if (!user) return;
-                
-                try {
-                    console.log('Checking Stripe status on app focus...');
-                    
-                    const { data: barber, error } = await supabase
-                        .from('barbers')
-                        .select('stripe_account_id, stripe_account_status, stripe_account_ready')
-                        .eq('user_id', user.id)
-                        .single();
-                    
-                    if (error) {
-                        console.error('Error checking Stripe status:', error);
-                        return;
-                    }
-                    
-                    console.log('Current Stripe status:', barber);
-                    
-                    if (barber?.stripe_account_id && (barber.stripe_account_ready || barber.stripe_account_status === 'active')) {
-                        console.log('Stripe account is ready!');
-                        
-                        // Update form data to reflect Stripe is connected
-                        setFormData(prev => ({ ...prev, stripeConnected: true }));
-                        setStripeStatus(barber.stripe_account_status);
-                        
-                        // Show success message
-                        Alert.alert(
-                            'Payment Setup Complete!',
-                            'Your Stripe account has been successfully connected. You can now receive payments.',
-                            [
-                                {
-                                    text: 'Continue',
-                                    onPress: () => {
-                                        // Navigate to main app or continue with onboarding
-                                        if (currentStep === steps.length - 1) {
-                                            // If we're on the last step, complete onboarding
-                                            setOnboardingComplete(true);
-                                            navigation.navigate('MainTabs' as any);
-                                        }
-                                    }
-                                }
-                            ]
-                        );
-                    }
-                } catch (error) {
-                    console.error('Error in checkStripeStatus:', error);
-                }
+                await checkStripeStatusOnce(user.id, setFormData, setStripeStatus);
             };
-            
-            // Check immediately when focus is gained
-            checkStripeStatus();
-            
-            // Also check after a short delay to catch any delayed updates
-            const delayedCheck = setTimeout(checkStripeStatus, 2000);
-            
+            checkStatus();
+            const delayedCheck = setTimeout(checkStatus, 2000);
             return () => clearTimeout(delayedCheck);
-        }, [user, currentStep, navigation])
+        }, [user])
     );
 
     // Also check Stripe status when app comes back to foreground
     useEffect(() => {
         const handleAppStateChange = (nextAppState: string) => {
             if (nextAppState === 'active' && user) {
-                // App came back to foreground, check Stripe status
-                const checkStripeStatus = async () => {
-                    try {
-                        console.log('App became active, checking Stripe status...');
-                        
-                        const { data: barber, error } = await supabase
-                            .from('barbers')
-                            .select('stripe_account_id, stripe_account_status, stripe_account_ready')
-                            .eq('user_id', user.id)
-                            .single();
-                        
-                        if (error) {
-                            console.error('Error checking Stripe status on app state change:', error);
-                            return;
-                        }
-                        
-                        if (barber?.stripe_account_id && (barber.stripe_account_ready || barber.stripe_account_status === 'active')) {
-                            console.log('Stripe account is ready (app state change)!');
-                            
-                            // Update form data to reflect Stripe is connected
-                            setFormData(prev => ({ ...prev, stripeConnected: true }));
-                            setStripeStatus(barber.stripe_account_status);
-                        }
-                    } catch (error) {
-                        console.error('Error in app state change Stripe check:', error);
-                    }
-                };
-                
-                checkStripeStatus();
+                checkStripeStatusOnce(user.id, setFormData, setStripeStatus);
             }
         };
 
@@ -393,57 +240,14 @@ export default function BarberOnboardingPage() {
     }, [user]);
 
     const validateStep = async (stepIndex: number): Promise<boolean> => {
-        const errors: ValidationErrors = {};
         const step = steps[stepIndex];
-
-        if (step.id === 'business') {
-            if (!formData.businessName.trim()) {
-                errors.businessName = 'Business name is required';
-            }
-            if (!formData.phone.trim()) {
-                errors.phone = 'Phone number is required';
-            }
-            if (!formData.location.trim()) {
-                errors.location = 'Location is required';
-            }
-            if (!formData.bio.trim()) {
-                errors.bio = 'Bio is required';
-            }
-            if (formData.specialties.length === 0) {
-                errors.specialties = 'At least one specialty is required';
-            }
-
-            // Phone validation (basic US format)
-            if (formData.phone) {
-                const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
-                const cleanedPhone = formData.phone.replace(/[\s\-\(\)]/g, '');
-                if (!phoneRegex.test(cleanedPhone)) {
-                    errors.phone = 'Please enter a valid phone number';
-                }
-            }
-        } else if (step.id === 'services') {
-            if (formData.services.length === 0) {
-                errors.services = 'At least one service is required';
-            } else {
-                formData.services.forEach((service, index) => {
-                    if (!service.name.trim()) {
-                        errors[`services.${index}.name`] = 'Service name is required';
-                    }
-                    if (!service.price || service.price <= 0) {
-                        errors[`services.${index}.price`] = 'Valid price is required';
-                    }
-                    if (!service.duration || service.duration < 1) {
-                        errors[`services.${index}.duration`] = 'Duration must be at least 1 minute';
-                    }
-                });
-            }
-        } else if (step.id === 'stripe') {
-            // Stripe step is optional - no validation required
-            // Users can skip payment setup and complete it later
+        const { errors, isValid } = validateStepHelper(step.id, formData);
+        // Ensure specialty requirement message is preserved
+        if (step.id === 'business' && !formData.specialties.length) {
+            errors.specialties = errors.specialties || 'At least one specialty is required';
         }
-
         setValidationErrors(errors);
-        return Object.keys(errors).length === 0;
+        return isValid;
     };
 
     const handleChange = (field: string, value: string | string[] | number) => {
@@ -465,28 +269,12 @@ export default function BarberOnboardingPage() {
         handleChange('specialties', specialties);
     };
 
-    const handleServiceChange = (index: number, field: string, value: string | number) => {
-        setFormData(prev => ({
-            ...prev,
-            services: prev.services.map((service, i) => 
-                i === index ? { ...service, [field]: value } : service
-            )
-        }));
-    };
+    const handleServiceChange = (index: number, field: string, value: string | number) =>
+        updateServiceHelper(index, field, value, setFormData);
 
-    const addService = () => {
-        setFormData(prev => ({
-            ...prev,
-            services: [...prev.services, { name: '', price: 0, duration: 30 }]
-        }));
-    };
+    const addService = () => addServiceHelper(setFormData);
 
-    const removeService = (index: number) => {
-        setFormData(prev => ({
-            ...prev,
-            services: prev.services.filter((_, i) => i !== index)
-        }));
-    };
+    const removeService = (index: number) => removeServiceHelper(index, setFormData);
 
     const handleSocialMediaUpdate = (socialData: {
         instagram: string;
@@ -517,48 +305,72 @@ export default function BarberOnboardingPage() {
         // Final submission
         setLoading(true);
         try {
-            console.log('Submitting onboarding data:', formData);
-
-            // Single upsert operation for barber profile
-            if (user?.role === 'barber') {
-                console.log('Current session user id:', user.id);
-                console.log('user_id to upsert:', user.id);
-                
-                // Check if barber row exists
-                const { data: existingBarber, error: checkError } = await supabase
-                    .from('barbers')
-                    .select('id')
-                    .eq('user_id', user.id)
-                    .single();
-
-                if (existingBarber) {
-                    console.log('Barber row already exists for user_id:', user.id, '- updating.');
-                } else {
-                    console.log('Creating new barber row for user_id:', user.id);
-                }
-
-                const { error: upsertError } = await supabase
-                    .from('barbers')
-                    .upsert({
-                        user_id: user.id,
-                        business_name: formData.businessName,
-                        bio: formData.bio,
-                        specialties: formData.specialties,
-                        instagram: extractHandle(formData.socialMedia.instagram),
-                        twitter: extractHandle(formData.socialMedia.twitter),
-                        tiktok: extractHandle(formData.socialMedia.tiktok),
-                        facebook: extractHandle(formData.socialMedia.facebook),
-                        onboarding_complete: true,
-                        updated_at: new Date().toISOString(),
-                    }, { onConflict: 'user_id' });
-
-                if (upsertError) {
-                    console.error('Failed to upsert barber profile during onboarding:', upsertError);
-                    throw upsertError;
-                }
+            // Verify user is authenticated
+            if (!user?.id) {
+                throw new Error('User not authenticated. Please log in again.');
             }
 
+            // Verify user session is active
+            const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+            if (sessionError || !sessionData?.session) {
+                logger.error('Session check failed:', sessionError);
+                throw new Error('Session expired. Please log in again.');
+            }
+
+            logger.log('Submitting onboarding data', {
+                userId: user.id,
+                userRole: userProfile?.role,
+                businessName: formData.businessName,
+                servicesCount: formData.services.length
+            });
+
+            // Verify user is a barber
+            if (userProfile?.role !== 'barber') {
+                logger.error('User is not a barber:', { role: userProfile?.role });
+                throw new Error('Only barbers can complete this onboarding process.');
+            }
+
+            // Upsert barber profile
+            logger.log('Upserting barber profile...');
+            const { data: upsertData, error: upsertError } = await supabase
+                .from('barbers')
+                .upsert({
+                    user_id: user.id,
+                    business_name: formData.businessName,
+                    bio: formData.bio,
+                    specialties: formData.specialties,
+                    instagram: extractHandle(formData.socialMedia.instagram),
+                    twitter: extractHandle(formData.socialMedia.twitter),
+                    tiktok: extractHandle(formData.socialMedia.tiktok),
+                    facebook: extractHandle(formData.socialMedia.facebook),
+                    onboarding_complete: true,
+                    updated_at: new Date().toISOString(),
+                }, { 
+                    onConflict: 'user_id',
+                    ignoreDuplicates: false 
+                })
+                .select();
+
+            if (upsertError) {
+                logger.error('Failed to upsert barber profile during onboarding:', {
+                    error: upsertError,
+                    code: upsertError.code,
+                    message: upsertError.message,
+                    details: upsertError.details,
+                    hint: upsertError.hint
+                });
+                throw new Error(`Failed to save barber profile: ${upsertError.message || 'Unknown error'}`);
+            }
+
+            if (!upsertData || upsertData.length === 0) {
+                logger.error('Upsert returned no data');
+                throw new Error('Failed to save barber profile: No data returned');
+            }
+
+            logger.log('Barber profile upserted successfully:', upsertData[0]?.id);
+
             // Update phone and location in profiles table
+            logger.log('Updating profile information...');
             const { error: profileError } = await supabase
                 .from('profiles')
                 .update({
@@ -566,32 +378,50 @@ export default function BarberOnboardingPage() {
                     location: formData.location,
                     updated_at: new Date().toISOString()
                 })
-                .eq('id', user?.id);
+                .eq('id', user.id);
 
             if (profileError) {
-                console.error('Profile update error:', profileError);
-                throw new Error('Failed to update profile');
+                logger.error('Profile update error:', {
+                    error: profileError,
+                    code: profileError.code,
+                    message: profileError.message
+                });
+                throw new Error(`Failed to update profile: ${profileError.message || 'Unknown error'}`);
             }
+
+            logger.log('Profile updated successfully');
 
             // Handle services
             if (formData.services.length > 0) {
+                logger.log('Updating services...', { count: formData.services.length });
+                
                 // Get barber ID for services
                 const { data: barberData, error: barberError } = await supabase
                     .from('barbers')
                     .select('id')
-                    .eq('user_id', user?.id)
+                    .eq('user_id', user.id)
                     .single();
 
-                if (barberError) {
-                    console.error('Error getting barber ID for services:', barberError);
-                    throw new Error('Failed to get barber ID');
+                if (barberError || !barberData) {
+                    logger.error('Error getting barber ID for services:', barberError);
+                    throw new Error(`Failed to get barber ID: ${barberError?.message || 'Unknown error'}`);
                 }
 
+                logger.log('Barber ID retrieved:', barberData.id);
+
                 // Delete existing services
-                await supabase
+                const { error: deleteError } = await supabase
                     .from('services')
                     .delete()
                     .eq('barber_id', barberData.id);
+
+                if (deleteError) {
+                    logger.error('Error deleting existing services:', deleteError);
+                    // Don't throw here - we can still insert new services
+                    logger.warn('Continuing despite delete error');
+                } else {
+                    logger.log('Existing services deleted successfully');
+                }
 
                 // Insert new services
                 const servicesToInsert = formData.services.map(service => ({
@@ -601,17 +431,27 @@ export default function BarberOnboardingPage() {
                     duration: service.duration
                 }));
 
-                const { error: servicesError } = await supabase
+                const { data: insertedServices, error: servicesError } = await supabase
                     .from('services')
-                    .insert(servicesToInsert);
+                    .insert(servicesToInsert)
+                    .select();
 
                 if (servicesError) {
-                    console.error('Error updating services:', servicesError);
-                    throw new Error('Failed to update services');
+                    logger.error('Error inserting services:', {
+                        error: servicesError,
+                        code: servicesError.code,
+                        message: servicesError.message,
+                        services: servicesToInsert
+                    });
+                    throw new Error(`Failed to save services: ${servicesError.message || 'Unknown error'}`);
                 }
+
+                logger.log('Services inserted successfully:', insertedServices?.length || 0);
+            } else {
+                logger.warn('No services to save');
             }
 
-            console.log('Onboarding completed successfully');
+            logger.log('Onboarding completed successfully');
             setOnboardingComplete(true);
             
             // Check if Stripe is connected to determine navigation
@@ -634,9 +474,28 @@ export default function BarberOnboardingPage() {
                 navigation.navigate('MainTabs' as any);
             }
             
-        } catch (error) {
-            console.error('Error during onboarding submission:', error);
-            Alert.alert('Error', 'Failed to save your information. Please try again.');
+        } catch (error: any) {
+            logger.error('Error during onboarding submission:', {
+                error,
+                message: error?.message,
+                code: error?.code,
+                details: error?.details,
+                hint: error?.hint,
+                stack: error?.stack
+            });
+            
+            // Show detailed error message to user
+            const errorMessage = error?.message || 'Failed to save your information. Please try again.';
+            Alert.alert(
+                'Error', 
+                errorMessage,
+                [
+                    {
+                        text: 'OK',
+                        style: 'default'
+                    }
+                ]
+            );
         } finally {
             setLoading(false);
         }
@@ -649,13 +508,12 @@ export default function BarberOnboardingPage() {
         
         // Add a timeout to prevent infinite loading
         const timeoutId = setTimeout(() => {
-            console.log('Stripe Connect timeout - resetting loading state');
+            logger.log('Stripe Connect timeout - resetting loading state');
             setStripeLoading(false);
         }, 30000); // 30 second timeout
         
         try {
-            console.log('Starting Stripe Connect process for user:', user?.id);
-            console.log('API_BASE_URL:', API_BASE_URL);
+            logger.log('Starting Stripe Connect process');
             
             // First, get the barber ID for this user
             const { data: barber, error: barberError } = await supabase
@@ -668,15 +526,10 @@ export default function BarberOnboardingPage() {
                 throw new Error('Barber profile not found. Please complete your profile first.');
             }
             
-            console.log('Found barber ID:', barber.id);
-            
             const requestBody = { 
                 barberId: barber.id,
                 email: user?.email
             };
-            console.log('Sending request body:', requestBody);
-            
-            console.log('Calling Supabase Edge Function for Stripe Connect...');
             
             // Call the Supabase Edge Function directly with user session
             const { data: stripeResponse, error } = await supabase.functions.invoke('stripe-connect', {
@@ -687,26 +540,20 @@ export default function BarberOnboardingPage() {
             });
             
             if (error) {
-                console.error('Supabase function error:', error);
+                logger.error('Supabase function error:', error);
                 throw new Error(error.message || 'Failed to connect Stripe account');
             }
             
-            console.log('Supabase function response:', stripeResponse);
-            
             // Use the response data directly
             const data = stripeResponse;
-            console.log('Stripe Connect response:', data);
 
             if (data.url) {
                 // Open Stripe onboarding in browser
                 const result = await WebBrowser.openBrowserAsync(data.url);
                 
                 // After browser closes, check if Stripe account is now active
-                console.log('Browser result:', result);
-                
                 // Check the Stripe account status directly from database
                 try {
-                    console.log('Checking Stripe account status in database...');
                     
                     const { data: updatedBarber, error: statusError } = await supabase
                         .from('barbers')
@@ -715,19 +562,15 @@ export default function BarberOnboardingPage() {
                         .single();
                     
                     if (statusError) {
-                        console.error('Error checking barber status:', statusError);
+                        logger.error('Error checking barber status:', statusError);
                         throw new Error('Could not check Stripe account status');
                     }
                     
-                    console.log('Updated barber data:', updatedBarber);
-                    
                     if (updatedBarber?.stripe_account_id) {
                         // Stripe account ID exists in database
-                        console.log('Stripe account ID found in database:', updatedBarber.stripe_account_id);
-                        
                         // Check if account is ready (you can add more sophisticated checks here)
                         if (updatedBarber.stripe_account_ready || updatedBarber.stripe_account_status === 'active') {
-                            console.log('Stripe account is ready and active');
+                            logger.log('Stripe account is ready and active');
                             
                             // Mark onboarding as complete
                             setFormData(prev => ({ ...prev, stripeConnected: true }));
@@ -749,7 +592,7 @@ export default function BarberOnboardingPage() {
                             );
                         } else {
                             // Stripe account exists but not fully set up
-                            console.log('Stripe account exists but not fully set up');
+                            logger.log('Stripe account exists but not fully set up');
                             Alert.alert(
                                 'Setup In Progress',
                                 'Your Stripe account has been created but setup is still in progress. You can complete it later in your settings.',
@@ -765,7 +608,7 @@ export default function BarberOnboardingPage() {
                         }
                     } else {
                         // No Stripe account ID found
-                        console.log('No Stripe account ID found in database');
+                        logger.log('No Stripe account ID found in database');
                         Alert.alert(
                             'Setup In Progress',
                             'Your Stripe account setup is in progress. You can complete it later in your settings.',
@@ -780,7 +623,7 @@ export default function BarberOnboardingPage() {
                         );
                     }
                 } catch (statusError) {
-                    console.error('Error checking Stripe status:', statusError);
+                    logger.error('Error checking Stripe status:', statusError);
                     Alert.alert(
                         'Setup In Progress',
                         'Your Stripe account setup is in progress. You can complete it later in your settings.',
@@ -798,7 +641,7 @@ export default function BarberOnboardingPage() {
                 throw new Error('No redirect URL received from Stripe');
             }
         } catch (error) {
-            console.error('Error creating Stripe account:', error);
+            logger.error('Error creating Stripe account:', error);
             Alert.alert('Error', error instanceof Error ? error.message : 'Failed to connect Stripe account. Please try again.');
         } finally {
             clearTimeout(timeoutId);
@@ -833,50 +676,6 @@ export default function BarberOnboardingPage() {
         return ((currentStep + 1) / steps.length) * 100;
     };
 
-    const InputField = ({ 
-        label, 
-        value, 
-        onChangeText, 
-        placeholder, 
-        keyboardType = 'default' as any,
-        icon: Icon,
-        error,
-        multiline = false,
-        description
-    }: any) => (
-        <View style={tw`mb-4`}>
-            <View style={tw`flex-row items-center mb-2`}>
-                {Icon && <Icon size={16} color={theme.colors.secondary} style={tw`mr-2`} />}
-                <Text style={[tw`text-sm font-medium`, { color: theme.colors.foreground }]}>{label}</Text>
-            </View>
-            <TextInput
-                value={value}
-                onChangeText={onChangeText}
-                placeholder={placeholder}
-                placeholderTextColor={theme.colors.mutedForeground}
-                keyboardType={keyboardType}
-                multiline={multiline}
-                style={[
-                    tw`px-4 py-3 rounded-xl text-base`,
-                    multiline && tw`h-24`,
-                    { 
-                        backgroundColor: 'rgba(255,255,255,0.05)', 
-                        color: theme.colors.foreground,
-                        borderWidth: 1,
-                        borderColor: error ? theme.colors.destructive : 'rgba(255,255,255,0.1)',
-                        textAlignVertical: multiline ? 'top' : 'center'
-                    }
-                ]}
-            />
-            {description && (
-                <Text style={[tw`text-xs mt-1`, { color: theme.colors.mutedForeground }]}>{description}</Text>
-            )}
-            {error && (
-                <Text style={[tw`text-xs mt-1`, { color: theme.colors.destructive }]}>{error}</Text>
-            )}
-        </View>
-    );
-
     const renderStep = () => {
         const step = steps[currentStep];
         const Icon = step.icon;
@@ -884,18 +683,16 @@ export default function BarberOnboardingPage() {
         switch (step.id) {
             case 'business':
                 return (
-                    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={tw`pb-24`}>
+                    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={tw`pb-32`}>
                         {/* Business Information */}
                         <Card style={[tw`mb-6`, { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
                             <CardContent style={tw`p-4`}>
-                                <View style={tw`flex-row items-center mb-4`}>
-                                    <Building size={20} color={theme.colors.secondary} style={tw`mr-2`} />
-                                    <Text style={[tw`text-lg font-semibold`, { color: theme.colors.foreground }]}>
-                                        Business Information
-                                    </Text>
-                                </View>
+                                <SectionHeader
+                                    title="Business Information"
+                                    icon={Info}
+                                />
 
-                                <InputField
+                                <OnboardingInputField
                                     label="Business Name *"
                                     value={formData.businessName}
                                     onChangeText={(text: string) => handleChange('businessName', text)}
@@ -904,10 +701,17 @@ export default function BarberOnboardingPage() {
                                     error={validationErrors.businessName}
                                 />
 
-                                <InputField
+                                <OnboardingInputField
                                     label="Phone Number *"
                                     value={formData.phone}
-                                    onChangeText={(text: string) => handleChange('phone', text)}
+                                    onChangeText={(text: string) => {
+                                        if (phoneDebounceRef.current) clearTimeout(phoneDebounceRef.current);
+                                        handleChange('phone', text);
+                                        phoneDebounceRef.current = setTimeout(() => {
+                                            const formatted = formatPhoneNumber(text);
+                                            handleChange('phone', formatted);
+                                        }, 300);
+                                    }}
                                     placeholder="(555) 123-4567"
                                     keyboardType="phone-pad"
                                     icon={Phone}
@@ -929,7 +733,7 @@ export default function BarberOnboardingPage() {
                                     />
                                 </View>
 
-                                <InputField
+                                <OnboardingInputField
                                     label="Bio *"
                                     value={formData.bio}
                                     onChangeText={(text: string) => handleChange('bio', text)}
@@ -944,12 +748,10 @@ export default function BarberOnboardingPage() {
                         {/* Specialties */}
                         <Card style={[tw`mb-6`, { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
                             <CardContent style={tw`p-4`}>
-                                <View style={tw`flex-row items-center mb-4`}>
-                                    <Sparkles size={20} color={theme.colors.secondary} style={tw`mr-2`} />
-                                    <Text style={[tw`text-lg font-semibold`, { color: theme.colors.foreground }]}>
-                                        Specialties
-                                    </Text>
-                                </View>
+                                <SectionHeader
+                                    title="Specialties"
+                                    icon={Sparkles}
+                                />
 
                                 <View style={tw`mb-4`}>
                                     <Text style={[tw`text-sm font-medium mb-2`, { color: theme.colors.foreground }]}>
@@ -976,18 +778,14 @@ export default function BarberOnboardingPage() {
                         {/* Social Media */}
                         <Card style={[tw`mb-6`, { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
                             <CardContent style={tw`p-4`}>
-                                <View style={tw`flex-row items-center mb-4`}>
-                                    <Instagram size={20} color={theme.colors.secondary} style={tw`mr-2`} />
-                                    <Text style={[tw`text-lg font-semibold`, { color: theme.colors.foreground }]}>
-                                        Social Media (Optional)
-                                    </Text>
-                                </View>
-                                <Text style={[tw`text-sm mb-4`, { color: theme.colors.mutedForeground }]}>
-                                    Add your social media handles to help clients connect with you
-                                </Text>
+                                <SectionHeader
+                                    title="Social Media (Optional)"
+                                    icon={Instagram}
+                                    description="Add your social media handles to help clients connect with you"
+                                />
 
                                 <View style={tw`space-y-4`}>
-                                    <InputField
+                                    <OnboardingInputField
                                         label="Instagram"
                                         value={formData.socialMedia.instagram}
                                         onChangeText={(text: string) => handleSocialMediaUpdate({
@@ -998,7 +796,7 @@ export default function BarberOnboardingPage() {
                                         description="Only your handle (e.g., @yourusername)"
                                     />
 
-                                    <InputField
+                                    <OnboardingInputField
                                         label="Twitter/X"
                                         value={formData.socialMedia.twitter}
                                         onChangeText={(text: string) => handleSocialMediaUpdate({
@@ -1009,7 +807,7 @@ export default function BarberOnboardingPage() {
                                         description="Only your handle (e.g., @yourusername)"
                                     />
 
-                                    <InputField
+                                    <OnboardingInputField
                                         label="TikTok"
                                         value={formData.socialMedia.tiktok}
                                         onChangeText={(text: string) => handleSocialMediaUpdate({
@@ -1020,7 +818,7 @@ export default function BarberOnboardingPage() {
                                         description="Only your handle (e.g., @yourusername)"
                                     />
 
-                                    <InputField
+                                    <OnboardingInputField
                                         label="Facebook"
                                         value={formData.socialMedia.facebook}
                                         onChangeText={(text: string) => handleSocialMediaUpdate({
@@ -1038,18 +836,14 @@ export default function BarberOnboardingPage() {
 
             case 'services':
                 return (
-                    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={tw`pb-24`}>
+                    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={tw`pb-32`}>
                         <Card style={[tw`mb-6`, { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
                             <CardContent style={tw`p-4`}>
-                                <View style={tw`flex-row items-center mb-4`}>
-                                    <Scissors size={20} color={theme.colors.secondary} style={tw`mr-2`} />
-                                    <Text style={[tw`text-lg font-semibold`, { color: theme.colors.foreground }]}>
-                                        Services & Pricing
-                                    </Text>
-                                </View>
-                                <Text style={[tw`text-sm mb-4`, { color: theme.colors.mutedForeground }]}>
-                                    Set up your services and pricing to start accepting bookings
-                                </Text>
+                                <SectionHeader
+                                    title="Services & Pricing"
+                                    icon={Scissors}
+                                    description="Set up your services and pricing to start accepting bookings"
+                                />
 
                                 <View style={tw`space-y-6`}>
                                     {formData.services.map((service, index) => (
@@ -1084,7 +878,7 @@ export default function BarberOnboardingPage() {
                                                 )}
                                             </View>
 
-                                            <InputField
+                                            <OnboardingInputField
                                                 label="Service Name *"
                                                 value={service.name}
                                                 onChangeText={(text: string) => handleServiceChange(index, 'name', text)}
@@ -1092,67 +886,23 @@ export default function BarberOnboardingPage() {
                                                 error={validationErrors[`services.${index}.name`]}
                                             />
 
-                                            <View style={tw`flex-row space-x-4`}>
-                                                <View style={tw`flex-1`}>
-                                                    <Text style={[tw`text-sm font-medium mb-2`, { color: theme.colors.foreground }]}>
-                                                        Price ($) *
-                                                    </Text>
-                                                    <View style={tw`relative`}>
-                                                        <Text style={[
-                                                            tw`absolute left-4 top-3 text-base`,
-                                                            { color: theme.colors.mutedForeground }
-                                                        ]}>
-                                                            $
-                                                        </Text>
-                                                        <TextInput
-                                                            style={[
-                                                                tw`px-4 py-3 rounded-xl text-base pl-8`,
-                                                                { 
-                                                                    backgroundColor: 'rgba(255,255,255,0.05)', 
-                                                                    color: theme.colors.foreground,
-                                                                    borderWidth: 1,
-                                                                    borderColor: validationErrors[`services.${index}.price`] ? theme.colors.destructive : 'rgba(255,255,255,0.1)'
-                                                                }
-                                                            ]}
-                                                            placeholder="30"
-                                                            placeholderTextColor={theme.colors.mutedForeground}
-                                                            value={service.price.toString()}
-                                                            onChangeText={(text) => handleServiceChange(index, 'price', parseFloat(text) || 0)}
-                                                            keyboardType="numeric"
-                                                        />
-                                                    </View>
-                                                    {validationErrors[`services.${index}.price`] && (
-                                                        <Text style={[tw`text-xs mt-1`, { color: theme.colors.destructive }]}>
-                                                            {validationErrors[`services.${index}.price`]}
-                                                        </Text>
-                                                    )}
-                                                </View>
-                                                <View style={tw`flex-1`}>
-                                                    <Text style={[tw`text-sm font-medium mb-2`, { color: theme.colors.foreground }]}>
-                                                        Duration (min) *
-                                                    </Text>
-                                                    <TextInput
-                                                        style={[
-                                                            tw`px-4 py-3 rounded-xl text-base`,
-                                                            { 
-                                                                backgroundColor: 'rgba(255,255,255,0.05)', 
-                                                                color: theme.colors.foreground,
-                                                                borderWidth: 1,
-                                                                borderColor: validationErrors[`services.${index}.duration`] ? theme.colors.destructive : 'rgba(255,255,255,0.1)'
-                                                            }
-                                                        ]}
-                                                        placeholder="30"
-                                                        placeholderTextColor={theme.colors.mutedForeground}
-                                                        value={service.duration.toString()}
-                                                        onChangeText={(text) => handleServiceChange(index, 'duration', parseInt(text) || 0)}
-                                                        keyboardType="numeric"
-                                                    />
-                                                    {validationErrors[`services.${index}.duration`] && (
-                                                        <Text style={[tw`text-xs mt-1`, { color: theme.colors.destructive }]}>
-                                                            {validationErrors[`services.${index}.duration`]}
-                                                        </Text>
-                                                    )}
-                                                </View>
+                                            <View style={tw`flex-row gap-4`}>
+                                                <NumericInput
+                                                    label="Price ($) *"
+                                                    value={service.price}
+                                                    onChangeText={(value) => handleServiceChange(index, 'price', value)}
+                                                    prefix="$"
+                                                    placeholder="30"
+                                                    error={validationErrors[`services.${index}.price`]}
+                                                />
+                                                <NumericInput
+                                                    label="Duration (min) *"
+                                                    value={service.duration}
+                                                    onChangeText={(value) => handleServiceChange(index, 'duration', value)}
+                                                    suffix="min"
+                                                    placeholder="30"
+                                                    error={validationErrors[`services.${index}.duration`]}
+                                                />
                                             </View>
                                         </View>
                                     ))}
@@ -1161,7 +911,7 @@ export default function BarberOnboardingPage() {
                                         onPress={addService}
                                         style={[
                                             tw`flex-row items-center justify-center p-4 rounded-xl border-2 border-dashed`,
-                                            { borderColor: 'rgba(255,255,255,0.3)' }
+                                            { borderColor: 'rgba(255,255,255,0.3)', backgroundColor: 'transparent' }
                                         ]}
                                     >
                                         <View style={[
@@ -1182,18 +932,14 @@ export default function BarberOnboardingPage() {
 
             case 'stripe':
                 return (
-                    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={tw`pb-24`}>
+                    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={tw`pb-32`}>
                         <Card style={[tw`mb-6`, { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
                             <CardContent style={tw`p-4`}>
-                                <View style={tw`flex-row items-center mb-4`}>
-                                    <CreditCard size={20} color={theme.colors.secondary} style={tw`mr-2`} />
-                                    <Text style={[tw`text-lg font-semibold`, { color: theme.colors.foreground }]}>
-                                        Payment Setup
-                                    </Text>
-                                </View>
-                                <Text style={[tw`text-sm mb-4`, { color: theme.colors.mutedForeground }]}>
-                                    Connect your Stripe account to start accepting payments
-                                </Text>
+                                <SectionHeader
+                                    title="Payment Setup"
+                                    icon={CreditCard}
+                                    description="Connect your Stripe account to start accepting payments"
+                                />
 
                                 <View style={[
                                     tw`p-4 rounded-xl`,
@@ -1259,15 +1005,16 @@ export default function BarberOnboardingPage() {
                                         disabled={stripeLoading}
                                         style={[
                                             tw`flex-row items-center justify-center py-3 px-6 rounded-xl`,
-                                            { backgroundColor: theme.colors.secondary }
+                                            { backgroundColor: theme.colors.secondary },
+                                            stripeLoading && { opacity: 0.6 }
                                         ]}
                                     >
                                         {stripeLoading ? (
-                                            <ActivityIndicator color={theme.colors.primaryForeground} />
+                                            <ActivityIndicator color={theme.colors.secondaryForeground} />
                                         ) : (
                                             <>
-                                                <CreditCard size={20} color={theme.colors.primaryForeground} style={tw`mr-3`} />
-                                                <Text style={[tw`font-semibold text-base`, { color: theme.colors.primaryForeground }]}>
+                                                <CreditCard size={20} color={theme.colors.secondaryForeground} style={tw`mr-3`} />
+                                                <Text style={[tw`font-semibold text-base`, { color: theme.colors.secondaryForeground }]}>
                                                     Connect Stripe Account
                                                 </Text>
                                             </>
@@ -1298,95 +1045,38 @@ export default function BarberOnboardingPage() {
         <SafeAreaView style={[tw`flex-1`, { backgroundColor: theme.colors.background }]}>
             <StatusBar barStyle="light-content" />
             
-            {/* Header - Reduced spacing */}
-            <View style={tw`px-6 pt-4 pb-2`}>
-                <View style={tw`items-center mb-3`}>
-                    <View style={[tw`p-3 rounded-full mb-2`, { backgroundColor: theme.colors.secondary + '20' }]}>
+            {/* Header */}
+            <View style={tw`px-6 pt-6 pb-4`}>
+                <View style={tw`items-center mb-6`}>
+                    <View style={[tw`p-4 rounded-full mb-3`, { backgroundColor: theme.colors.secondary + '20' }]}>
                         {React.createElement(steps[currentStep].icon, { 
-                            size: 24, 
+                            size: 32, 
                             color: theme.colors.secondary 
                         })}
                     </View>
-                    <Text style={[tw`text-xl font-bold`, { color: theme.colors.foreground }]}>
+                    <Text style={[tw`text-2xl font-bold`, { color: theme.colors.foreground }]}>
                         {steps[currentStep].title}
                     </Text>
-                    <Text style={[tw`text-xs mt-1`, { color: theme.colors.mutedForeground }]}>
+                    <Text style={[tw`text-sm mt-1`, { color: theme.colors.mutedForeground }]}>
                         {steps[currentStep].description}
                     </Text>
                 </View>
             </View>
 
-            {/* Progress Section - More compact */}
-            <View style={tw`mx-6 mb-3`}>
-                <Card style={[{ backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
-                    <CardContent style={tw`p-3`}>
-                        <View style={tw`flex-row items-center justify-between mb-2`}>
-                            <View style={tw`flex-row items-center`}>
-                                <Sparkles size={14} color={theme.colors.secondary} style={tw`mr-2`} />
-                                <Text style={[tw`text-xs font-medium`, { color: theme.colors.foreground }]}>
-                                    Progress
-                                </Text>
-                            </View>
-                            <View style={[tw`px-2 py-1 rounded-full`, { backgroundColor: theme.colors.secondary + '20' }]}>
-                                <Text style={[tw`text-xs font-bold`, { color: theme.colors.secondary }]}>
-                                    {Math.round(getProgressPercentage())}%
-                                </Text>
-                            </View>
-                        </View>
-                        
-                        <View style={[tw`h-2 rounded-full overflow-hidden`, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
-                            <View 
-                                style={[
-                                    tw`h-full rounded-full`,
-                                    { width: `${getProgressPercentage()}%`, backgroundColor: theme.colors.secondary }
-                                ]} 
-                            />
-                        </View>
-                        
-                        <View style={tw`flex-row items-center justify-between mt-2`}>
-                            {steps.map((step, idx) => {
-                                const Icon = step.icon;
-                                const isActive = currentStep === idx;
-                                const isCompleted = currentStep > idx;
-                                
-                                return (
-                                    <View key={step.id} style={tw`flex-1 flex-col items-center`}>
-                                        <View style={[
-                                            tw`rounded-full border-2 w-6 h-6 items-center justify-center mb-1`,
-                                            isActive ? 
-                                                { borderColor: theme.colors.secondary, backgroundColor: 'rgba(255,255,255,0.2)' } :
-                                            isCompleted ?
-                                                { borderColor: theme.colors.secondary, backgroundColor: theme.colors.secondary } :
-                                                { borderColor: 'rgba(255,255,255,0.2)', backgroundColor: 'rgba(255,255,255,0.1)' }
-                                        ]}>
-                                            {isCompleted ? (
-                                                <CheckCircle size={12} color={theme.colors.primaryForeground} />
-                                            ) : (
-                                                <Icon 
-                                                    size={12} 
-                                                    color={isActive ? theme.colors.secondary : 'rgba(255,255,255,0.6)'} 
-                                                />
-                                            )}
-                                        </View>
-                                        <Text style={[
-                                            tw`text-xs text-center`,
-                                            { color: isActive || isCompleted ? theme.colors.secondary : 'rgba(255,255,255,0.6)' }
-                                        ]}>
-                                            {step.title}
-                                        </Text>
-                                    </View>
-                                );
-                            })}
-                        </View>
-                    </CardContent>
-                </Card>
+            {/* Progress Section */}
+            <View style={tw`px-6 mb-6`}>
+                <ProgressIndicator
+                    steps={steps}
+                    currentStep={currentStep}
+                    progressPercentage={getProgressPercentage()}
+                />
             </View>
 
-            {/* Onboarding Complete Banner - More compact */}
+            {/* Onboarding Complete Banner */}
             {onboardingComplete && showCompleteBanner && (
-                <View style={tw`mx-6 mb-3`}>
+                <View style={tw`px-6 mb-6`}>
                     <Card style={[{ backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
-                        <CardContent style={tw`p-3`}>
+                        <CardContent style={tw`p-4`}>
                             <View style={tw`flex-row items-center justify-between mb-2`}>
                                 <View style={tw`flex-row items-center`}>
                                     <CheckCircle size={16} color={theme.colors.secondary} style={tw`mr-2`} />
@@ -1403,17 +1093,14 @@ export default function BarberOnboardingPage() {
                             <Text style={[tw`text-xs`, { color: theme.colors.mutedForeground }]}>
                                 Your profile is ready. You can now receive bookings and payments. Welcome to the platform!
                             </Text>
-                            <TouchableOpacity
-                                style={[
-                                    tw`mt-3 py-2 rounded-xl`,
-                                    { backgroundColor: theme.colors.secondary }
-                                ]}
+                            <Button
+                                variant="secondary"
                                 onPress={() => navigation.navigate('MainTabs' as any)}
+                                style={tw`mt-3 rounded-xl`}
+                                size="sm"
                             >
-                                <Text style={[tw`text-center font-medium text-sm`, { color: theme.colors.primaryForeground }]}>
-                                    Go to Profile
-                                </Text>
-                            </TouchableOpacity>
+                                Go to Profile
+                            </Button>
                         </CardContent>
                     </Card>
                 </View>
@@ -1429,26 +1116,27 @@ export default function BarberOnboardingPage() {
                 </View>
             </KeyboardAvoidingView>
 
-            {/* Navigation Buttons - More compact */}
+            {/* Navigation Buttons */}
             <View style={tw`px-6 py-3 border-t border-white/10`}>
                 <View style={tw`flex-row justify-between items-center gap-3`}>
-                    <TouchableOpacity
-                        style={[
-                            tw`border border-secondary rounded-xl px-4 py-2.5 flex-1`,
-                            { opacity: currentStep === 0 ? 0.5 : 1 }
-                        ]}
+                    <Button
+                        variant="outline"
                         onPress={() => setCurrentStep((prev) => Math.max(0, prev - 1))}
                         disabled={currentStep === 0}
+                        style={[
+                            tw`flex-1 rounded-xl`,
+                            { borderColor: theme.colors.secondary, opacity: currentStep === 0 ? 0.5 : 1 }
+                        ]}
+                        textStyle={{ color: theme.colors.secondary }}
                     >
-                        <Text style={[tw`font-bold text-center text-sm`, { color: theme.colors.secondary }]}>
-                            Back
-                        </Text>
-                    </TouchableOpacity>
+                        Back
+                    </Button>
                     
                     <TouchableOpacity
                         style={[
-                            tw`bg-secondary rounded-xl px-6 py-2.5 flex-1`,
-                            { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4 }
+                            tw`bg-secondary rounded-xl px-6 py-2.5 flex-1 flex-row items-center justify-center`,
+                            { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4 },
+                            loading && { opacity: 0.6 }
                         ]}
                         onPress={async () => {
                             if (await validateStep(currentStep)) {
@@ -1464,9 +1152,9 @@ export default function BarberOnboardingPage() {
                         disabled={loading}
                     >
                         {loading ? (
-                            <ActivityIndicator color={theme.colors.primaryForeground} />
+                            <ActivityIndicator color={theme.colors.secondaryForeground} />
                         ) : (
-                            <Text style={[tw`text-base font-bold text-center`, { color: theme.colors.primaryForeground }]}>
+                            <Text style={[tw`text-base font-bold text-center`, { color: theme.colors.secondaryForeground }]}>
                                 {currentStep < steps.length - 1 ? 'Next' : 'Finish'}
                             </Text>
                         )}

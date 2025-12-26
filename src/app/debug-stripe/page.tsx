@@ -6,6 +6,7 @@ import { Button } from '@/shared/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Alert, AlertDescription } from '@/shared/components/ui/alert'
 import { Loader2, AlertCircle, CheckCircle, Clock, Search, Database } from 'lucide-react'
+import { logger } from '@/shared/lib/logger'
 
 export default function DebugStripePage() {
   const { user } = useAuth()
@@ -100,7 +101,7 @@ export default function DebugStripePage() {
     setSuccessMessage(null)
 
     try {
-      console.log('Updating database with Stripe account ID:', stripeAccountId)
+      logger.debug('Updating database with Stripe account ID', { stripeAccountId })
       
       const response = await fetch('/api/connect/update-account-id', {
         method: 'POST',
@@ -114,7 +115,7 @@ export default function DebugStripePage() {
       })
 
       const data = await response.json()
-      console.log('Update response:', data)
+      logger.debug('Update response', { success: data.success })
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to update database')
@@ -128,7 +129,7 @@ export default function DebugStripePage() {
       }, 1000)
       
     } catch (err) {
-      console.error('Error updating database:', err)
+      logger.error('Error updating database', err)
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
       setUpdating(false)
@@ -146,7 +147,7 @@ export default function DebugStripePage() {
     setSuccessMessage(null)
 
     try {
-      console.log('Refreshing Stripe account status for user:', user.id)
+      logger.debug('Refreshing Stripe account status for user', { userId: user.id })
       
       const response = await fetch('/api/connect/refresh-account-status', {
         method: 'POST',
@@ -159,7 +160,7 @@ export default function DebugStripePage() {
       })
 
       const data = await response.json()
-      console.log('Refresh response:', data)
+      logger.debug('Refresh response', { success: data.success })
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to refresh status')
@@ -177,7 +178,7 @@ export default function DebugStripePage() {
       }
       
     } catch (err) {
-      console.error('Error refreshing Stripe status:', err)
+      logger.error('Error refreshing Stripe status', err)
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
       setRefreshing(false)
@@ -199,16 +200,16 @@ export default function DebugStripePage() {
       })
 
       const data = await response.json()
-      console.log('All barbers in database:', data)
+      logger.debug('All barbers in database', { count: data.barbers?.length })
       
       if (data.barbers) {
-        setSuccessMessage(`Found ${data.barbers.length} barber records. Check console for details.`)
+        setSuccessMessage(`Found ${data.barbers.length} barber records.`)
       } else {
         setError('Failed to fetch barber records')
       }
       
     } catch (err) {
-      console.error('Error fetching all barbers:', err)
+      logger.error('Error fetching all barbers', err)
       setError(err instanceof Error ? err.message : 'An error occurred')
     }
   }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { logger } from '@/shared/lib/logger'
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
         throw new Error('Unknown test error type')
     }
   } catch (error) {
-    console.error('Test error triggered:', error)
+    logger.error('Test error triggered', error)
     
     // Re-throw to trigger error reporting
     if (error instanceof Error) {

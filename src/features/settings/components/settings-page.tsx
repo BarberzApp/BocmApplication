@@ -22,6 +22,7 @@ import { useRouter } from 'next/navigation'
 import { Badge } from '@/shared/components/ui/badge'
 import { Switch } from '@/shared/components/ui/switch'
 import { useSafeNavigation } from '@/shared/hooks/use-safe-navigation'
+import { logger } from '@/shared/lib/logger'
 
 
 type Tab = 'profile' | 'services' | 'addons' | 'availability' | 'earnings'
@@ -94,10 +95,10 @@ export function SettingsPage() {
         .single()
 
       if (profileError && profileError.code !== 'PGRST116') {
-        console.error('Error fetching profile:', profileError)
+        logger.error('Error fetching profile', profileError)
       }
 
-      console.log('Profile data loaded:', profile)
+      logger.debug('Profile data loaded', { userId: user.id })
 
       // Check if user is a barber
       if (user.role === 'barber') {
@@ -108,14 +109,14 @@ export function SettingsPage() {
           .single()
 
         if (barberError && barberError.code !== 'PGRST116') {
-          console.error('Error fetching barber data:', barberError)
+          logger.error('Error fetching barber data', barberError)
         }
 
-        console.log('Barber data loaded:', barber)
+        logger.debug('Barber data loaded', { barberId: barber?.id })
 
         if (barber) {
           setBarberId(barber.id)
-          console.log('Settings: Barber ID set to:', barber.id)
+          logger.debug('Settings: Barber ID set', { barberId: barber.id })
           
           // Check services
           const { data: services, error: servicesError } = await supabase
@@ -124,10 +125,10 @@ export function SettingsPage() {
             .eq('barber_id', barber.id)
 
           if (servicesError) {
-            console.error('Error fetching services:', servicesError)
+            logger.error('Error fetching services', servicesError)
           }
 
-          console.log('Services data loaded:', services)
+          logger.debug('Services data loaded', { count: services?.length })
 
           // Check availability
           const { data: availability, error: availabilityError } = await supabase
@@ -136,10 +137,10 @@ export function SettingsPage() {
             .eq('barber_id', barber.id)
 
           if (availabilityError && availabilityError.code !== 'PGRST116') {
-            console.error('Error fetching availability:', availabilityError)
+            logger.error('Error fetching availability', availabilityError)
           }
 
-          console.log('Availability data loaded:', availability)
+          logger.debug('Availability data loaded', { hasData: !!availability })
 
           // More realistic completion logic
           const profileComplete = !!(profile?.name && profile?.email)
@@ -148,7 +149,7 @@ export function SettingsPage() {
           const stripeConnected = barber?.stripe_account_status === 'active'
           const notificationsConfigured = true // Default to true since these are optional
 
-          console.log('Completion status:', {
+          logger.debug('Completion status', {
             profileComplete,
             servicesComplete,
             availabilityComplete,
@@ -178,7 +179,7 @@ export function SettingsPage() {
         const profileComplete = !!(profile?.name && profile?.email)
         const notificationsConfigured = true // Default to true for non-barbers
 
-        console.log('Non-barber completion status:', {
+        logger.debug('Non-barber completion status', {
           profileComplete,
           notificationsConfigured
         })
@@ -192,7 +193,7 @@ export function SettingsPage() {
         })
       }
     } catch (error) {
-      console.error('Error loading settings data:', error)
+      logger.error('Error loading settings data', error)
       toast({
         title: 'Error',
         description: 'Failed to load settings data. Please refresh the page.',

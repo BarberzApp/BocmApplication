@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState, memo, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableWithoutFeedback, Dimensions, Animated, TouchableOpacity, Alert, Linking } from 'react-native';
 import { Video, ResizeMode, AVPlaybackStatusSuccess } from 'expo-av';
-import { Heart, MessageCircle, Share2, User, Play, Pause, Calendar } from 'lucide-react-native';
+import { User, Calendar, Flag } from 'lucide-react-native';
 import type { FeedItem, VideoState } from '../types/feed.types';
 import { useNavigation } from '@react-navigation/native';
+import { logger } from '../shared/lib/logger';
+import { ReportContentModal } from '../shared/components/ReportContentModal';
 
 const { height, width } = Dimensions.get('window');
 
@@ -24,8 +26,8 @@ function OptimizedVideoCardImpl({ item, isActive, navBottomInset, onVideoStateCh
   const [isBuffering, setIsBuffering] = useState(true);
   const [videoState, setVideoState] = useState<VideoState>('loading');
   const [isHolding, setIsHolding] = useState(false);
-  const [isLiked, setIsLiked] = useState(false);
   const [showProfileInfo, setShowProfileInfo] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -43,11 +45,11 @@ function OptimizedVideoCardImpl({ item, isActive, navBottomInset, onVideoStateCh
     
     if (isActive) {
       // Simple play like web: video.play()
-      inst.playAsync().catch(console.error);
+      inst.playAsync().catch((err) => logger.error('Video play error:', err));
       setVideoState('playing');
     } else {
       // Simple pause like web: video.pause()
-      inst.pauseAsync().catch(console.error);
+      inst.pauseAsync().catch((err) => logger.error('Video pause error:', err));
       setVideoState('paused');
     }
     
@@ -71,7 +73,7 @@ function OptimizedVideoCardImpl({ item, isActive, navBottomInset, onVideoStateCh
         setIsHolding(true);
         onHoldToPause?.(item.id, true);
         // Simple pause like web: video.pause()
-        videoRef.current?.pauseAsync().catch(console.error);
+        videoRef.current?.pauseAsync().catch((err) => logger.error('Video pause error:', err));
       }
     }, 1000);
   }, [isActive, onHoldToPause]);
@@ -86,34 +88,10 @@ function OptimizedVideoCardImpl({ item, isActive, navBottomInset, onVideoStateCh
       setIsHolding(false);
       onHoldToPause?.(item.id, false);
       // Resume playback when releasing hold, regardless of active state
-      videoRef.current?.playAsync().catch(console.error);
+      videoRef.current?.playAsync().catch((err) => logger.error('Video play error:', err));
     }
   }, [isHolding, onHoldToPause]);
 
-  // Interactive functions
-  const handleLike = useCallback(() => {
-    setIsLiked(!isLiked);
-    // TODO: Implement like functionality with backend
-  }, [isLiked]);
-
-  const handleComment = useCallback(() => {
-    Alert.alert('Comments', 'Comment functionality coming soon!');
-    // TODO: Implement comment functionality
-  }, []);
-
-  const handleShare = useCallback(() => {
-    Alert.alert(
-      'Share',
-      'Share this video?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Share', onPress: () => {
-          // TODO: Implement share functionality
-          console.log('Sharing video:', item.id);
-        }}
-      ]
-    );
-  }, [item.id]);
 
   const handleProfilePress = useCallback(() => {
     setShowProfileInfo(!showProfileInfo);
@@ -141,6 +119,10 @@ function OptimizedVideoCardImpl({ item, isActive, navBottomInset, onVideoStateCh
     }
   }, [item.barber_id, item.username, navigation]);
 
+  const handleReportPress = useCallback(() => {
+    setShowReportModal(true);
+  }, []);
+
 
 
   const onStatusUpdate = useCallback((status: any) => {
@@ -158,7 +140,7 @@ function OptimizedVideoCardImpl({ item, isActive, navBottomInset, onVideoStateCh
       }
     } else if ('error' in status) {
       setVideoState('error');
-      console.error('Video error:', status.error);
+      logger.error('Video error:', status.error);
     }
   }, []);
 
@@ -266,31 +248,24 @@ function OptimizedVideoCardImpl({ item, isActive, navBottomInset, onVideoStateCh
         
         {/* Right side - Action buttons */}
         <View style={styles.actions}>
-          <TouchableOpacity onPress={handleLike} style={styles.actionButton}>
-            <Heart 
-              size={28} 
-              color={isLiked ? '#ff4757' : 'white'} 
-              fill={isLiked ? '#ff4757' : 'none'}
-            />
-            <Text style={styles.actionText}>{(item.likes ?? 0) + (isLiked ? 1 : 0)}</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity onPress={handleComment} style={styles.actionButton}>
-            <MessageCircle size={28} color="white" />
-            <Text style={styles.actionText}>{item.comments ?? 0}</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity onPress={handleShare} style={styles.actionButton}>
-            <Share2 size={28} color="white" />
-            <Text style={styles.actionText}>{item.shares ?? 0}</Text>
-          </TouchableOpacity>
-          
           <TouchableOpacity onPress={handleBookAppointment} style={styles.bookActionButton}>
             <Calendar size={28} color="white" />
             <Text style={styles.bookActionText}>Book Now</Text>
           </TouchableOpacity>
+          <TouchableOpacity onPress={handleReportPress} style={styles.reportActionButton}>
+            <Flag size={22} color="white" />
+            <Text style={styles.reportActionText}>Report</Text>
+          </TouchableOpacity>
         </View>
       </View>
+
+      <ReportContentModal
+        visible={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        contentType="video"
+        contentId={item.id}
+        contentDescription={item.username ? `Video by @${item.username}` : 'Video content'}
+      />
 
       {/* Profile info overlay */}
       {showProfileInfo && (
@@ -481,6 +456,24 @@ const styles = StyleSheet.create({
     textShadowRadius: 2,
     textAlign: 'center',
     flexShrink: 0,
+  },
+  reportActionButton: {
+    alignItems: 'center',
+    marginBottom: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    minWidth: 80,
+  },
+  reportActionText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 4,
+    textAlign: 'center',
   },
   profileOverlay: {
     position: 'absolute',

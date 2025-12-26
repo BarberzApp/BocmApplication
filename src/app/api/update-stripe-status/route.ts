@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/shared/lib/supabase'
+import { logger } from '@/shared/lib/logger'
 
 export async function POST(request: Request) {
   try {
@@ -39,7 +40,7 @@ export async function POST(request: Request) {
       .eq('user_id', userId)
 
     if (updateError) {
-      console.error('Error updating barber:', updateError)
+      logger.error('Error updating barber', updateError)
       return NextResponse.json(
         { error: 'Failed to update barber record' },
         { status: 500 }
@@ -51,7 +52,7 @@ export async function POST(request: Request) {
       message: 'Stripe status updated successfully' 
     })
   } catch (error) {
-    console.error('Error updating Stripe status:', error)
+    logger.error('Error updating Stripe status', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to update Stripe status' },
       { status: 500 }

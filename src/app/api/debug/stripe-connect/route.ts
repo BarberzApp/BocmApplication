@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
+import { logger } from '@/shared/lib/logger'
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('STRIPE_SECRET_KEY is not set')
@@ -20,7 +21,7 @@ interface TestResult {
 
 export async function GET() {
   try {
-    console.log('🔍 Debugging Stripe Connect...')
+    logger.debug('Debugging Stripe Connect')
     
     const results: {
       timestamp: string
@@ -32,7 +33,7 @@ export async function GET() {
     
     // Test 1: Check Stripe API connection
     try {
-      console.log('Testing Stripe API connection...')
+      logger.debug('Testing Stripe API connection')
       const account = await stripe.accounts.create({
         type: 'express',
         email: 'debug-test@example.com',
@@ -54,7 +55,7 @@ export async function GET() {
       
       // Test 2: Create account link
       try {
-        console.log('Testing account link creation...')
+        logger.debug('Testing account link creation')
         const accountLink = await stripe.accountLinks.create({
           account: account.id,
           refresh_url: 'https://bocmstyle.com/barber/connect/refresh',
@@ -89,7 +90,7 @@ export async function GET() {
         try {
           await stripe.accounts.del(account.id)
         } catch (cleanupError) {
-          console.error('Failed to cleanup test account:', cleanupError)
+          logger.error('Failed to cleanup test account', cleanupError)
         }
       }
       
@@ -102,12 +103,12 @@ export async function GET() {
       })
     }
     
-    console.log('Debug results:', results)
+    logger.debug('Debug results', { results })
     
     return NextResponse.json(results)
     
   } catch (error) {
-    console.error('Debug endpoint error:', error)
+    logger.error('Debug endpoint error', error)
     return NextResponse.json(
       { 
         error: 'Debug failed',

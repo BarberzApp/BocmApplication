@@ -25,6 +25,7 @@ import {
   AlertCircle
 } from 'lucide-react'
 import { SchedulingSlot } from '@/shared/types/booking-restrictions'
+import { logger } from '@/shared/lib/logger'
 
 const schedulingSlotSchema = z.object({
   day_of_week: z.number().min(0).max(6),
@@ -90,7 +91,7 @@ export function AdvancedSchedulingSlots({ barberId, onUpdate }: AdvancedScheduli
 
       setSchedulingSlots(data || [])
     } catch (error) {
-      console.error('Error loading scheduling slots:', error)
+      logger.error('Error loading scheduling slots', error)
       toast({
         title: 'Error',
         description: 'Failed to load scheduling slots',
@@ -145,7 +146,7 @@ export function AdvancedSchedulingSlots({ barberId, onUpdate }: AdvancedScheduli
       await loadSchedulingSlots()
       onUpdate?.()
     } catch (error) {
-      console.error('Error saving scheduling slot:', error)
+      logger.error('Error saving scheduling slot', error)
       toast({
         title: 'Error',
         description: 'Failed to save scheduling slot',
@@ -188,7 +189,7 @@ export function AdvancedSchedulingSlots({ barberId, onUpdate }: AdvancedScheduli
       await loadSchedulingSlots()
       onUpdate?.()
     } catch (error) {
-      console.error('Error deleting scheduling slot:', error)
+      logger.error('Error deleting scheduling slot', error)
       toast({
         title: 'Error',
         description: 'Failed to delete scheduling slot',

@@ -1,5 +1,9 @@
 const nodemailer = require('nodemailer');
 
+// Import logger from TypeScript module
+// Next.js supports importing TS modules in JS files
+const { logger } = require('../lib/logger');
+
 const CARRIER_GATEWAYS = {
   verizon: 'vtext.com',
   att: 'txt.att.net',
@@ -37,12 +41,12 @@ async function sendSMS({ phoneNumber, carrier, message }) {
       text: message,
     };
     
-    console.log('Attempting to send SMS:', { to, from: process.env.GMAIL_USER });
+    logger.debug('Attempting to send SMS', { to, from: process.env.GMAIL_USER });
     await transporter.sendMail(mailOptions);
-    console.log(`SMS sent successfully to ${phoneNumber} (${carrier})`);
+    logger.debug('SMS sent successfully', { phoneNumber, carrier });
     return { success: true, message: 'SMS sent successfully' };
   } catch (error) {
-    console.error('SMS sending failed:', error);
+    logger.error('SMS sending failed', error);
     throw new Error(`Failed to send SMS: ${error.message}`);
   }
 }
@@ -51,32 +55,20 @@ async function sendSMS({ phoneNumber, carrier, message }) {
 async function sendBookingConfirmationSMS(bookingData) {
   const { booking, barber, service, client } = bookingData;
   
-  console.log('🔍 Starting SMS confirmation for booking:', booking.id);
-  console.log('📋 Booking data received:', {
+  logger.debug('Starting SMS confirmation for booking', { bookingId: booking.id });
+  logger.debug('Booking data received', {
     bookingId: booking.id,
-    barber: {
-      id: barber?.id,
-      phone: barber?.phone,
-      carrier: barber?.carrier,
-      sms_notifications: barber?.sms_notifications
-    },
-    client: {
-      id: client?.id,
-      phone: client?.phone,
-      carrier: client?.carrier,
-      sms_notifications: client?.sms_notifications
-    },
-    service: {
-      id: service?.id,
-      name: service?.name
-    }
+    barberId: barber?.id,
+    clientId: client?.id,
+    serviceId: service?.id,
+    serviceName: service?.name
   });
 
   // Get barber's profile data (SMS data and name) from profiles table
   let barberSmsData = null;
   let barberName = null;
   if (barber && barber.user_id) {
-    console.log('🔍 Fetching barber profile data from profiles table...');
+    logger.debug('Fetching barber profile data from profiles table');
     try {
       const { supabaseAdmin } = require('../lib/supabase');
       const { data: barberProfile, error } = await supabaseAdmin
@@ -92,12 +84,12 @@ async function sendBookingConfirmationSMS(bookingData) {
           sms_notifications: barberProfile.sms_notifications
         };
         barberName = `${barberProfile.first_name} ${barberProfile.last_name}`.trim();
-        console.log('✅ Retrieved barber profile data:', { smsData: barberSmsData, name: barberName });
+        logger.debug('Retrieved barber profile data', { hasSmsData: !!barberSmsData, hasName: !!barberName });
       } else {
-        console.log('❌ Failed to fetch barber profile data from profiles:', error);
+        logger.debug('Failed to fetch barber profile data from profiles', { error: error?.message });
       }
     } catch (error) {
-      console.error('❌ Error fetching barber profile data:', error);
+      logger.error('Error fetching barber profile data', error);
     }
   }
   
@@ -118,7 +110,7 @@ async function sendBookingConfirmationSMS(bookingData) {
     const results = [];
 
     // Send SMS to client if they have SMS notifications enabled
-    console.log('👤 Checking client SMS prerequisites:', {
+    logger.debug('Checking client SMS prerequisites', {
       hasClient: !!client,
       hasPhone: !!client?.phone,
       hasCarrier: !!client?.carrier,
@@ -126,25 +118,25 @@ async function sendBookingConfirmationSMS(bookingData) {
     });
     
     if (client && client.phone && client.carrier && client.sms_notifications) {
-      console.log('✅ Client SMS prerequisites met - sending SMS');
+      logger.debug('Client SMS prerequisites met - sending SMS');
       const barberDisplayName = barberName || 'Your Barber';
       const clientMessage = `🎉 Booking Confirmed!\n\nService: ${service.name}\nDate: ${formattedDate}\nTime: ${formattedTime}\nBarber: ${barberDisplayName}\n\nSee you there!`;
       
       try {
-        console.log('📤 Attempting to send client SMS to:', client.phone, 'via', client.carrier);
+        logger.debug('Attempting to send client SMS', { phone: client.phone, carrier: client.carrier });
         await sendSMS({
           phoneNumber: client.phone,
           carrier: client.carrier,
           message: clientMessage
         });
         results.push({ recipient: 'client', success: true });
-        console.log('✅ Client SMS sent successfully');
+        logger.debug('Client SMS sent successfully');
       } catch (error) {
-        console.error('❌ Failed to send client SMS:', error);
+        logger.error('Failed to send client SMS', error);
         results.push({ recipient: 'client', success: false, error: error.message });
       }
     } else {
-      console.log('❌ Client SMS prerequisites NOT met:', {
+      logger.debug('Client SMS prerequisites NOT met', {
         hasClient: !!client,
         hasPhone: !!client?.phone,
         hasCarrier: !!client?.carrier,
@@ -157,7 +149,7 @@ async function sendBookingConfirmationSMS(bookingData) {
     const barberCarrier = barberSmsData?.carrier || barber?.carrier;
     const barberSmsEnabled = barberSmsData?.sms_notifications || barber?.sms_notifications;
     
-    console.log('💇 Checking barber SMS prerequisites:', {
+    logger.debug('Checking barber SMS prerequisites', {
       hasPhone: !!barberPhone,
       hasCarrier: !!barberCarrier,
       smsEnabled: barberSmsEnabled,
@@ -169,24 +161,24 @@ async function sendBookingConfirmationSMS(bookingData) {
       const barberMessage = `📅 New Booking!\n\nClient: ${clientName}\nService: ${service.name}\nDate: ${formattedDate}\nTime: ${formattedTime}\n\nBooking ID: ${booking.id}`;
       
       try {
-        console.log('📤 Attempting to send barber SMS to:', barberPhone, 'via', barberCarrier);
+        logger.debug('Attempting to send barber SMS', { phone: barberPhone, carrier: barberCarrier });
         await sendSMS({
           phoneNumber: barberPhone,
           carrier: barberCarrier,
           message: barberMessage
         });
         results.push({ recipient: 'barber', success: true });
-        console.log('✅ Barber SMS sent successfully');
+        logger.debug('Barber SMS sent successfully');
       } catch (error) {
-        console.error('❌ Failed to send barber SMS:', error);
+        logger.error('Failed to send barber SMS', error);
         results.push({ recipient: 'barber', success: false, error: error.message });
       }
     }
 
-    console.log('✅ SMS confirmation completed. Results:', results);
+    logger.debug('SMS confirmation completed', { results });
     return results;
   } catch (error) {
-    console.error('❌ Error in sendBookingConfirmationSMS:', error);
+    logger.error('Error in sendBookingConfirmationSMS', error);
     throw error;
   }
 }
@@ -210,7 +202,7 @@ async function sendBookingReminderSMS(bookingData) {
         barberName = `${barberProfile.first_name} ${barberProfile.last_name}`.trim();
       }
     } catch (error) {
-      console.error('Error fetching barber name for reminder:', error);
+      logger.error('Error fetching barber name for reminder', error);
     }
   }
   
@@ -243,7 +235,7 @@ async function sendBookingReminderSMS(bookingData) {
         });
         results.push({ recipient: 'client', success: true });
       } catch (error) {
-        console.error('Failed to send client reminder SMS:', error);
+        logger.error('Failed to send client reminder SMS', error);
         results.push({ recipient: 'client', success: false, error: error.message });
       }
     }
@@ -261,14 +253,14 @@ async function sendBookingReminderSMS(bookingData) {
         });
         results.push({ recipient: 'barber', success: true });
       } catch (error) {
-        console.error('Failed to send barber reminder SMS:', error);
+        logger.error('Failed to send barber reminder SMS', error);
         results.push({ recipient: 'barber', success: false, error: error.message });
       }
     }
 
     return results;
   } catch (error) {
-    console.error('Error in sendBookingReminderSMS:', error);
+    logger.error('Error in sendBookingReminderSMS', error);
     throw error;
   }
 }

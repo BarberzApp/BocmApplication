@@ -12,6 +12,7 @@ import tw from 'twrnc';
 import { theme } from '../../lib/theme';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
+import { logger } from '../../lib/logger';
 import { Card, CardContent, LoadingSpinner } from '../ui';
 import { 
   Calendar,
@@ -48,6 +49,28 @@ const DAYS_OF_WEEK = [
   'Saturday',
   'Sunday'
 ];
+
+// Map day names to JavaScript day numbers (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
+const DAY_TO_NUMBER: Record<string, number> = {
+  'Sunday': 0,
+  'Monday': 1,
+  'Tuesday': 2,
+  'Wednesday': 3,
+  'Thursday': 4,
+  'Friday': 5,
+  'Saturday': 6
+};
+
+// Map JavaScript day numbers to day names
+const NUMBER_TO_DAY: Record<number, string> = {
+  0: 'Sunday',
+  1: 'Monday',
+  2: 'Tuesday',
+  3: 'Wednesday',
+  4: 'Thursday',
+  5: 'Friday',
+  6: 'Saturday'
+};
 
 const generateTimeOptions = () => {
   const options = [];
@@ -96,7 +119,8 @@ export function AvailabilityManager({ barberId, onUpdate }: AvailabilityManagerP
 
       if (data && data.length > 0) {
         const loadedSchedule = DAYS_OF_WEEK.map(day => {
-          const dayData = data.find(d => d.day_of_week === day.toLowerCase());
+          const dayNumber = DAY_TO_NUMBER[day];
+          const dayData = data.find(d => d.day_of_week === dayNumber);
           if (dayData) {
             return {
               day,
@@ -116,7 +140,7 @@ export function AvailabilityManager({ barberId, onUpdate }: AvailabilityManagerP
         setSchedule(loadedSchedule);
       }
     } catch (error) {
-      console.error('Error loading availability:', error);
+      logger.error('Error loading availability:', error);
       Alert.alert('Error', 'Failed to load availability');
     } finally {
       setIsLoading(false);
@@ -140,10 +164,9 @@ export function AvailabilityManager({ barberId, onUpdate }: AvailabilityManagerP
         .filter(day => day.enabled)
         .map(day => ({
           barber_id: barberId,
-          day_of_week: day.day.toLowerCase(),
+          day_of_week: DAY_TO_NUMBER[day.day],
           start_time: day.slots[0].start + ':00',
-          end_time: day.slots[0].end + ':00',
-          is_available: true
+          end_time: day.slots[0].end + ':00'
         }));
 
       if (availabilityData.length > 0) {
@@ -157,7 +180,7 @@ export function AvailabilityManager({ barberId, onUpdate }: AvailabilityManagerP
       Alert.alert('Success', 'Availability updated successfully');
       onUpdate?.();
     } catch (error) {
-      console.error('Error saving availability:', error);
+      logger.error('Error saving availability:', error);
       Alert.alert('Error', 'Failed to save availability');
     } finally {
       setIsSaving(false);
@@ -300,11 +323,11 @@ export function AvailabilityManager({ barberId, onUpdate }: AvailabilityManagerP
 
       {/* Status Alert */}
       {getAvailableDaysCount() === 0 && (
-        <View style={[tw`mt-6 p-4 rounded-xl flex-row items-start`, { backgroundColor: theme.colors.saffron + '10', borderWidth: 1, borderColor: theme.colors.saffron + '20' }]}>
-          <AlertCircle size={16} color={theme.colors.saffron} style={tw`mr-2 mt-0.5`} />
+        <View style={[tw`mt-6 p-4 rounded-xl flex-row items-start`, { backgroundColor: theme.colors.accent + '10', borderWidth: 1, borderColor: theme.colors.accent + '20' }]}>
+          <AlertCircle size={16} color={theme.colors.accent} style={tw`mr-2 mt-0.5`} />
           <View style={tw`flex-1`}>
-            <Text style={[tw`text-sm`, { color: theme.colors.saffron }]}>
-              You haven't set any available days. Clients won't be able to book appointments until you set your schedule.
+            <Text style={[tw`text-sm`, { color: theme.colors.accent }]}>
+              You haven&apos;t set any available days. Clients won&apos;t be able to book appointments until you set your schedule.
             </Text>
           </View>
         </View>

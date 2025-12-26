@@ -14,6 +14,7 @@ import { Alert, AlertDescription } from '@/shared/components/ui/alert'
 import { useToast } from '@/shared/components/ui/use-toast'
 import { supabase } from '@/shared/lib/supabase'
 import { useAuth } from '@/shared/hooks/use-auth-zustand'
+import { logger } from '@/shared/lib/logger'
 import { 
   Phone, 
   MapPin, 
@@ -89,7 +90,7 @@ export function OnDemandSettings({ barberId, onUpdate }: OnDemandSettingsProps) 
         })
       }
     } catch (error) {
-      console.error('Error loading on-demand settings:', error)
+      logger.error('Error loading on-demand settings', error)
       toast({
         title: 'Error',
         description: 'Failed to load on-demand settings',
@@ -128,7 +129,7 @@ export function OnDemandSettings({ barberId, onUpdate }: OnDemandSettingsProps) 
 
       onUpdate?.()
     } catch (error) {
-      console.error('Error updating on-demand settings:', error)
+      logger.error('Error updating on-demand settings', error)
       toast({
         title: 'Error',
         description: 'Failed to update on-demand settings',

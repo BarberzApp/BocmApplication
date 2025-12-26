@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { logger } from '@/shared/lib/logger'
 
 // Rate limiting store (in production, use Redis or database)
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>()
@@ -102,7 +103,7 @@ export async function POST(request: NextRequest) {
     const slackWebhookUrl = process.env.SLACK_WEBHOOK_URL
     
     if (!slackWebhookUrl) {
-      console.error('SLACK_WEBHOOK_URL environment variable is not set')
+      logger.error('SLACK_WEBHOOK_URL environment variable is not set')
       return NextResponse.json(
         { error: 'Slack integration not configured' },
         { status: 500 }
@@ -179,7 +180,7 @@ export async function POST(request: NextRequest) {
     )
 
   } catch (error) {
-    console.error('Error sending support email:', error)
+    logger.error('Error sending support email', error)
     return NextResponse.json(
       { error: 'Failed to send support request' },
       { status: 500 }

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '@/shared/hooks/use-auth-zustand'
 import { useData } from '@/shared/hooks/use-data'
 import { useToast } from '@/shared/components/ui/use-toast'
+import { logger } from '@/shared/lib/logger'
 import { Button } from '@/shared/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar'
 import { Card, CardContent } from '@/shared/components/ui/card'
@@ -104,8 +105,7 @@ export default function ClientPortfolio() {
   }).filter(Boolean)
 
   // Debug logging for past barbers
-  console.log('👥 Past barbers calculated:', pastBarbers);
-  console.log('📋 Client bookings count:', clientBookings.length);
+  logger.debug('Past barbers calculated', { pastBarbers, count: clientBookings.length });
 
   // Fetch user profile
   useEffect(() => {
@@ -121,13 +121,13 @@ export default function ClientPortfolio() {
           .single()
 
         if (profileError) {
-          console.error('Error fetching profile:', profileError)
+          logger.error('Error fetching profile', profileError)
           return
         }
 
         setProfile(profileData)
       } catch (error) {
-        console.error('Error fetching profile:', error)
+        logger.error('Error fetching profile', error)
       } finally {
         setProfileLoading(false)
       }
@@ -141,17 +141,17 @@ export default function ClientPortfolio() {
     const fetchClientBookings = async () => {
       if (!user) return;
       try {
-        console.log('🔍 Fetching client bookings for user:', user.id);
+        logger.debug('Fetching client bookings for user', { userId: user.id });
         const { data, error } = await supabase
           .from('bookings')
           .select(`*, barbers:barber_id(user_id, profiles:user_id(name, avatar_url, username)), services:service_id(name, price)`) // join barber and service info
           .eq('client_id', user.id)
           .order('created_at', { ascending: false });
         if (error) throw error;
-        console.log('📊 Client bookings data:', data);
+        logger.debug('Client bookings data', { count: data?.length });
         setClientBookings(data || []);
       } catch (error) {
-        console.error('Error fetching client bookings:', error);
+        logger.error('Error fetching client bookings', error);
       }
     };
     fetchClientBookings();
@@ -163,7 +163,7 @@ export default function ClientPortfolio() {
       if (!user) return;
       try {
         setReviewsLoading(true);
-        console.log('🔍 Fetching user reviews for:', user.id);
+        logger.debug('Fetching user reviews for', { userId: user.id });
         const { data, error } = await supabase
           .from('reviews')
           .select(`
@@ -193,10 +193,10 @@ export default function ClientPortfolio() {
           .order('created_at', { ascending: false });
         
         if (error) throw error;
-        console.log('📊 User reviews data:', data);
+        logger.debug('User reviews data', { count: data?.length });
         setUserReviews(data || []);
       } catch (error) {
-        console.error('Error fetching user reviews:', error);
+        logger.error('Error fetching user reviews', error);
       } finally {
         setReviewsLoading(false);
       }
@@ -240,7 +240,7 @@ export default function ClientPortfolio() {
           .eq('action_type', 'like')
 
         if (likedError) {
-          console.error('Error fetching liked videos:', likedError)
+          logger.error('Error fetching liked videos', likedError)
           return
         }
 
@@ -262,7 +262,7 @@ export default function ClientPortfolio() {
             likeCounts[item.cut_id] = (likeCounts[item.cut_id] || 0) + 1
           })
           
-          console.log('📊 Like counts for liked videos:', likeCounts)
+          logger.debug('Like counts for liked videos', { likeCounts })
         }
         
         likedData?.forEach(item => {
@@ -289,7 +289,7 @@ export default function ClientPortfolio() {
 
         setLikedVideos(videos)
       } catch (error) {
-        console.error('Error fetching liked videos:', error)
+        logger.error('Error fetching liked videos', error)
       } finally {
         setVideosLoading(false)
       }
@@ -335,7 +335,7 @@ export default function ClientPortfolio() {
         description: 'Profile picture updated successfully!',
       })
     } catch (error) {
-      console.error('Error uploading avatar:', error)
+      logger.error('Error uploading avatar', error)
       toast({
         title: 'Error',
         description: 'Failed to update profile picture.',
@@ -375,7 +375,7 @@ export default function ClientPortfolio() {
         description: 'Cover photo updated successfully!',
       })
     } catch (error) {
-      console.error('Error uploading cover photo:', error)
+      logger.error('Error uploading cover photo', error)
       toast({
         title: 'Error',
         description: 'Failed to update cover photo.',
@@ -447,7 +447,7 @@ export default function ClientPortfolio() {
         description: "Review updated successfully!",
       })
     } catch (error) {
-      console.error('Error updating review:', error)
+      logger.error('Error updating review', error)
       toast({
         title: "Error",
         description: "Failed to update review. Please try again.",

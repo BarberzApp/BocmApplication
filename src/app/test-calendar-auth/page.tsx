@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/shared/lib/supabase'
 import { useAuth } from '@/shared/hooks/use-auth-zustand'
+import { logger } from '@/shared/lib/logger'
 
 export default function TestCalendarAuthPage() {
   const { user, status } = useAuth()
@@ -15,7 +16,7 @@ export default function TestCalendarAuthPage() {
       setLoading(true)
       setError(null)
       
-      console.log('🧪 Testing calendar OAuth with authentication...')
+      logger.debug('Testing calendar OAuth with authentication')
       
       // Get the current session
       const { data: { session } } = await supabase.auth.getSession()
@@ -24,7 +25,7 @@ export default function TestCalendarAuthPage() {
         throw new Error('No access token available - please log in first')
       }
       
-      console.log('✅ Session found, testing calendar OAuth endpoint...')
+      logger.debug('Session found, testing calendar OAuth endpoint', { userId: session.user?.id })
       
       // Test the calendar OAuth endpoint with proper authentication
       const response = await fetch('/api/auth/google-calendar', {
@@ -33,10 +34,10 @@ export default function TestCalendarAuthPage() {
         }
       })
       
-      console.log('📡 Calendar OAuth response status:', response.status)
+      logger.debug('Calendar OAuth response', { status: response.status })
       
       const data = await response.json()
-      console.log('📄 Calendar OAuth response data:', data)
+      logger.debug('Calendar OAuth response data', { success: data.success })
       
       setTestResults({
         session: {
@@ -52,7 +53,7 @@ export default function TestCalendarAuthPage() {
       })
       
     } catch (err) {
-      console.error('❌ Calendar auth test error:', err)
+      logger.error('Calendar auth test error', err)
       setError(err instanceof Error ? err.message : 'Unknown error')
     } finally {
       setLoading(false)

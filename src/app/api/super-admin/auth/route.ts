@@ -1,11 +1,21 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/shared/lib/supabase'
+import { logger } from '@/shared/lib/logger'
 
-const SUPER_ADMIN_EMAIL = 'primbocm@gmail.com'
-const SUPER_ADMIN_PASSWORD = 'Yasaddybocm123!'
+const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL || 'primbocm@gmail.com'
+const SUPER_ADMIN_PASSWORD = process.env.SUPER_ADMIN_PASSWORD
 
 export async function POST(request: Request) {
   try {
+    // Validate environment variable
+    if (!SUPER_ADMIN_PASSWORD) {
+      logger.error('SUPER_ADMIN_PASSWORD environment variable is not set');
+      return NextResponse.json(
+        { error: 'Server configuration error' },
+        { status: 500 }
+      );
+    }
+
     const body = await request.json()
     const { email, password } = body
 
@@ -24,7 +34,7 @@ export async function POST(request: Request) {
     })
 
     if (error) {
-      console.error('Auth error:', error)
+      logger.error('Super admin auth error', error)
       return NextResponse.json(
         { error: error.message || 'Authentication failed' },
         { status: 401 }
@@ -44,7 +54,7 @@ export async function POST(request: Request) {
       }
     })
   } catch (error) {
-    console.error('Super admin auth error:', error)
+    logger.error('Super admin auth error', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

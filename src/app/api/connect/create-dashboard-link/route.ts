@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { supabase } from '@/shared/lib/supabase'
+import { logger } from '@/shared/lib/logger'
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('STRIPE_SECRET_KEY is not set in environment variables')
@@ -43,7 +44,7 @@ export async function POST(request: Request) {
       .single()
 
     if (barberError) {
-      console.error('Error fetching barber:', barberError)
+      logger.error('Error fetching barber', barberError)
       return NextResponse.json(
         { error: 'Failed to fetch barber details' },
         { status: 500 }
@@ -66,7 +67,7 @@ export async function POST(request: Request) {
 
     // Validate environment variable
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://bocmstyle.com';
-    console.log('Using app URL for dashboard link:', appUrl);
+    logger.debug('Using app URL for dashboard link', { appUrl });
 
     // Create login link for dashboard access
     const loginLink = await stripe.accounts.createLoginLink(barber.stripe_account_id)
@@ -80,7 +81,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ url: loginLink.url })
   } catch (error) {
-    console.error('Error creating dashboard link:', error)
+    logger.error('Error creating dashboard link', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to create dashboard link' },
       { status: 500 }

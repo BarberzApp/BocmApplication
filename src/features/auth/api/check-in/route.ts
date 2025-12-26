@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/features/auth/lib/auth"
+import { logger } from "@/shared/lib/logger"
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions)
@@ -17,7 +18,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("Error in check-in route:", error)
+    logger.error("Error in check-in route", error)
     return NextResponse.json(
       { error: "Failed to process check-in" },
       { status: 500 }

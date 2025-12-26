@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './use-auth-zustand';
 import { supabase } from '@/shared/lib/supabase';
 import { toast } from 'sonner';
+import { logger } from '@/shared/lib/logger';
 
 interface CalendarConnection {
   id: string;
@@ -45,26 +46,26 @@ export const useCalendarSync = () => {
   // Fetch connection status
   const fetchStatus = useCallback(async () => {
     if (!user) {
-      console.log('Calendar sync: No user, skipping fetch');
+      logger.debug('Calendar sync: No user, skipping fetch');
       setStatus(prev => ({ ...prev, loading: false, connected: false }));
       return;
     }
 
     // Prevent multiple simultaneous calls
     if (status.loading) {
-      console.log('Calendar sync: Already loading, skipping fetch');
+      logger.debug('Calendar sync: Already loading, skipping fetch');
       return;
     }
 
     try {
-      console.log('Calendar sync: Fetching status for user:', user.id);
+      logger.debug('Calendar sync: Fetching status for user', { userId: user.id });
       setStatus(prev => ({ ...prev, loading: true }));
 
       // Get the current session
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.access_token) {
-        console.error('Calendar sync: No access token available');
+        logger.error('Calendar sync: No access token available');
         setStatus(prev => ({ ...prev, loading: false, connected: false }));
         return;
       }
@@ -75,12 +76,12 @@ export const useCalendarSync = () => {
         }
       });
       
-      console.log('Calendar sync: Response status:', response.status);
+      logger.debug('Calendar sync: Response status', { status: response.status });
       
       if (!response.ok) {
         if (response.status === 404) {
           // No connection found
-          console.log('Calendar sync: No connection found (404)');
+          logger.debug('Calendar sync: No connection found (404)');
           setStatus(prev => ({
             ...prev,
             loading: false,
@@ -91,19 +92,19 @@ export const useCalendarSync = () => {
         }
         
         if (response.status === 401) {
-          console.error('Calendar sync: Authentication error (401)');
+          logger.error('Calendar sync: Authentication error (401)');
           setStatus(prev => ({ ...prev, loading: false, connected: false }));
           toast.error('Authentication required. Please log in again.');
           return;
         }
         
         const errorText = await response.text();
-        console.error('Calendar sync: API error:', response.status, errorText);
+        logger.error('Calendar sync: API error', { status: response.status, errorText });
         throw new Error(`Failed to fetch calendar status: ${response.status}`);
       }
 
       const data = await response.json();
-      console.log('Calendar sync: Success, data:', data);
+      logger.debug('Calendar sync: Success', { data });
       
       setStatus(prev => ({
         ...prev,
@@ -115,7 +116,7 @@ export const useCalendarSync = () => {
       }));
 
     } catch (error) {
-      console.error('Error fetching calendar status:', error);
+      logger.error('Error fetching calendar status', error);
       setStatus(prev => ({ ...prev, loading: false }));
       toast.error('Failed to load calendar status');
     }
@@ -124,10 +125,10 @@ export const useCalendarSync = () => {
   // Only fetch status when user is authenticated
   useEffect(() => {
     if (authStatus === 'authenticated' && user) {
-      console.log('Calendar sync: User authenticated, fetching status');
+      logger.debug('Calendar sync: User authenticated, fetching status');
       fetchStatus();
     } else if (authStatus === 'unauthenticated') {
-      console.log('Calendar sync: User not authenticated, clearing status');
+      logger.debug('Calendar sync: User not authenticated, clearing status');
       setStatus(prev => ({ 
         ...prev, 
         loading: false, 
@@ -149,7 +150,7 @@ export const useCalendarSync = () => {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.access_token) {
-        console.error('Calendar connect: No access token available');
+        logger.error('Calendar connect: No access token available');
         toast.error('Authentication required. Please log in again.');
         return;
       }
@@ -175,7 +176,7 @@ export const useCalendarSync = () => {
       window.location.href = url;
 
     } catch (error) {
-      console.error('Error connecting to Google Calendar:', error);
+      logger.error('Error connecting to Google Calendar', error);
       toast.error('Failed to connect to Google Calendar');
     }
   }, [user]);
@@ -194,7 +195,7 @@ export const useCalendarSync = () => {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.access_token) {
-        console.error('Calendar disconnect: No access token available');
+        logger.error('Calendar disconnect: No access token available');
         toast.error('Authentication required. Please log in again.');
         setStatus(prev => ({ ...prev, loading: false }));
         return;
@@ -228,7 +229,7 @@ export const useCalendarSync = () => {
       toast.success('Calendar disconnected successfully');
 
     } catch (error) {
-      console.error('Error disconnecting calendar:', error);
+      logger.error('Error disconnecting calendar', error);
       setStatus(prev => ({ ...prev, loading: false }));
       toast.error('Failed to disconnect calendar');
     }
@@ -248,7 +249,7 @@ export const useCalendarSync = () => {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.access_token) {
-        console.error('Calendar sync: No access token available');
+        logger.error('Calendar sync: No access token available');
         toast.error('Authentication required. Please log in again.');
         setStatus(prev => ({ ...prev, syncing: false }));
         return null;
@@ -288,7 +289,7 @@ export const useCalendarSync = () => {
       return results;
 
     } catch (error) {
-      console.error('Error syncing calendar:', error);
+      logger.error('Error syncing calendar', error);
       toast.error('Failed to sync calendar');
       return null;
     } finally {
@@ -329,7 +330,7 @@ export const useCalendarSync = () => {
       toast.success('Calendar settings updated successfully');
 
     } catch (error) {
-      console.error('Error updating calendar settings:', error);
+      logger.error('Error updating calendar settings', error);
       setStatus(prev => ({ ...prev, loading: false }));
       toast.error('Failed to update calendar settings');
     }

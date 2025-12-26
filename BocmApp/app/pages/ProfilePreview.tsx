@@ -11,11 +11,17 @@ import {
   Dimensions,
   SafeAreaView,
 } from 'react-native';
-import { useRoute, useNavigation } from '@react-navigation/native';
-import { ArrowLeft, Calendar, MapPin, Star, Video as VideoIcon, Heart, Users, History, Camera, Loader2, Eye, Clock, Share2 } from 'lucide-react-native';
+import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../shared/types';
+import { ArrowLeft, Calendar, MapPin, Star, Video as VideoIcon, Heart, Users, History, Camera, Loader2, Eye, Clock, Share2, Flag, Ban, MoreVertical } from 'lucide-react-native';
 import tw from 'twrnc';
 import { theme } from '../shared/lib/theme';
 import { supabase } from '../shared/lib/supabase';
+import { logger } from '../shared/lib/logger';
+import { useAuth } from '../shared/hooks/useAuth';
+import { useReporting } from '../shared/hooks/useReporting';
+import { ReportContentModal } from '../shared/components/ReportContentModal';
 import VideoPreview from '../shared/components/VideoPreview';
 import {
   Button,
@@ -108,12 +114,21 @@ interface Cut {
   };
 }
 
+type ProfilePreviewNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ProfilePreview'>;
+type ProfilePreviewRouteProp = RouteProp<RootStackParamList, 'ProfilePreview'>;
+
 export default function ProfilePreview() {
-  const navigation = useNavigation();
-  const route = useRoute();
-  const { barberId } = route.params as { barberId: string };
+  const navigation = useNavigation<ProfilePreviewNavigationProp>();
+  const route = useRoute<ProfilePreviewRouteProp>();
+  const { barberId } = route.params;
+  const { user } = useAuth();
+  const { blockUser } = useReporting();
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [showBlockConfirm, setShowBlockConfirm] = useState(false);
+  const isOwnProfile = user?.id === profile?.id;
   const [barberProfile, setBarberProfile] = useState<BarberProfile | null>(null);
+  const [allCuts, setAllCuts] = useState<Cut[]>([]);
   const [cuts, setCuts] = useState<Cut[]>([]);
   const [services, setServices] = useState<any[]>([]);
   const [posts, setPosts] = useState<any[]>([]);
@@ -122,6 +137,9 @@ export default function ProfilePreview() {
   const [openDialog, setOpenDialog] = useState<null | 'video'>(null);
   const [activeTab, setActiveTab] = useState('cuts');
   const [selectedVideo, setSelectedVideo] = useState<Cut | null>(null);
+  const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
+  const [cutsPage, setCutsPage] = useState(0);
+  const CUTS_PER_PAGE = 12;
 
   useEffect(() => {
     fetchProfileData();
@@ -131,36 +149,94 @@ export default function ProfilePreview() {
     try {
       setLoading(true);
       
-      // Fetch profile data
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', barberId)
-        .single();
-
-      if (profileError) {
-        console.error('Error fetching profile:', profileError);
-        return;
-      }
-
-      if (profileData) {
-        setProfile(profileData);
-      }
-
-      // Fetch barber data
-      const { data: barberData, error: barberError } = await supabase
+      // barberId could be:
+      // 1. barbers.id (most common - passed from BrowsePage)
+      // 2. barbers.user_id (which is profiles.id)
+      // 3. profiles.id (direct profile ID)
+      
+      // First, try to fetch barber by ID (most common case - barberId is barbers.id)
+      let { data: barberData, error: barberError } = await supabase
         .from('barbers')
         .select('*')
-        .eq('user_id', barberId)
-        .single();
+        .eq('id', barberId)
+        .maybeSingle();
 
-      if (barberError) {
-        console.error('Error fetching barber data:', barberError);
-        // Continue without barber data - might be a client profile
-        setCuts([]);
-        setServices([]);
-        setPosts([]);
+      // If not found by ID, try by user_id (in case barberId is a profile ID)
+      if (!barberData && !barberError) {
+        const { data: barberByUserId, error: errorByUserId } = await supabase
+          .from('barbers')
+          .select('*')
+          .eq('user_id', barberId)
+          .maybeSingle();
+        if (barberByUserId) {
+          logger.log('Found barber by user_id:', barberId);
+        }
+        barberData = barberByUserId;
+        barberError = errorByUserId;
+      } else if (barberData) {
+        logger.log('Found barber by id:', barberId);
+      }
+
+      // Fetch profile data
+      let profileData = null;
+      let profileError = null;
+
+      if (barberData) {
+        // We have barber data, fetch profile using barber's user_id
+        const { data: profile, error: error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', barberData.user_id)
+          .maybeSingle();
+        profileData = profile;
+        profileError = error;
+      } else {
+        // No barber found, try to fetch profile directly (might be a client profile or barberId is a profile ID)
+        const { data: profile, error: error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', barberId)
+          .maybeSingle();
+        profileData = profile;
+        profileError = error;
+      }
+
+      // Handle profile fetch errors
+      if (profileError) {
+        // Check if it's a "no rows" error (PGRST116)
+        if (profileError.code === 'PGRST116') {
+          logger.error('Profile not found:', barberId);
+          Alert.alert(
+            'Profile Not Found',
+            'The profile you are looking for does not exist or has been removed.',
+            [{ text: 'OK', onPress: () => navigation.goBack() }]
+          );
+          return;
+        }
+        logger.error('Error fetching profile:', profileError);
+        Alert.alert(
+          'Error',
+          'Failed to load profile. Please try again.',
+          [{ text: 'OK' }]
+        );
         return;
+      }
+
+      if (!profileData) {
+        logger.error('Profile data is null');
+        Alert.alert(
+          'Profile Not Found',
+          'The profile you are looking for does not exist.',
+          [{ text: 'OK', onPress: () => navigation.goBack() }]
+        );
+        return;
+      }
+
+      setProfile(profileData);
+
+      // Handle barber data (might not exist if it's a client profile)
+      if (barberError && barberError.code !== 'PGRST116') {
+        logger.error('Error fetching barber data:', barberError);
       }
 
       if (barberData) {
@@ -182,7 +258,7 @@ export default function ProfilePreview() {
           .order('created_at', { ascending: false });
 
         if (cutsError) {
-          console.error('Error fetching cuts:', cutsError);
+          logger.error('Error fetching cuts:', cutsError);
         } else if (cutsData) {
           const formattedCuts = (cutsData || []).map((cut: any) => ({
             ...cut,
@@ -192,7 +268,10 @@ export default function ProfilePreview() {
               image: cut.barbers?.profiles?.avatar_url
             }
           }));
-          setCuts(formattedCuts);
+          setAllCuts(formattedCuts);
+          // Load first page
+          setCutsPage(0);
+          setCuts(formattedCuts.slice(0, CUTS_PER_PAGE));
         }
 
         // Fetch services
@@ -203,17 +282,39 @@ export default function ProfilePreview() {
           .order('name');
 
         if (servicesError) {
-          console.error('Error fetching services:', servicesError);
+          logger.error('Error fetching services:', servicesError);
         } else if (servicesData) {
           setServices(servicesData);
         }
       }
 
-      // For now, posts will be empty (could be portfolio images in the future)
-      setPosts([]);
+      // Convert portfolio array to posts format for display
+      if (barberData?.portfolio && Array.isArray(barberData.portfolio) && barberData.portfolio.length > 0) {
+        const portfolioPosts = barberData.portfolio.map((url: string, index: number) => ({
+          id: `portfolio-${index}`,
+          url: url,
+          title: `Portfolio Image ${index + 1}`,
+        }));
+        setPosts(portfolioPosts);
+      } else {
+        setPosts([]);
+      }
+
+      // If no barber data, set empty arrays for barber-specific content
+      if (!barberData) {
+        setAllCuts([]);
+        setCuts([]);
+        setServices([]);
+        setPosts([]);
+      }
 
     } catch (error) {
-      console.error('Error fetching profile data:', error);
+      logger.error('Error fetching profile data:', error);
+      Alert.alert(
+        'Error',
+        'An unexpected error occurred while loading the profile. Please try again.',
+        [{ text: 'OK' }]
+      );
     } finally {
       setLoading(false);
     }
@@ -221,8 +322,22 @@ export default function ProfilePreview() {
 
   const onRefresh = async () => {
     setRefreshing(true);
+    setCutsPage(0);
     await fetchProfileData();
     setRefreshing(false);
+  };
+
+  // Load more cuts when scrolling
+  const loadMoreCuts = () => {
+    const nextPage = cutsPage + 1;
+    const startIndex = nextPage * CUTS_PER_PAGE;
+    const endIndex = startIndex + CUTS_PER_PAGE;
+    
+    if (startIndex < allCuts.length) {
+      const newCuts = allCuts.slice(startIndex, endIndex);
+      setCuts(prev => [...prev, ...newCuts]);
+      setCutsPage(nextPage);
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -257,7 +372,17 @@ export default function ProfilePreview() {
                 </Text>
               </View>
             ) : (
-              <View style={tw`py-4`}>
+              <ScrollView
+                style={tw`py-4`}
+                onScroll={(event) => {
+                  const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+                  const paddingToBottom = 20;
+                  if (layoutMeasurement.height + contentOffset.y >= contentSize.height - paddingToBottom) {
+                    loadMoreCuts();
+                  }
+                }}
+                scrollEventThrottle={400}
+              >
                 {/* Grid Layout for Cuts */}
                 <View style={tw`flex-row flex-wrap justify-between`}>
                   {cuts.map((cut) => (
@@ -265,19 +390,25 @@ export default function ProfilePreview() {
                       key={cut.id}
                       videoUrl={cut.url}
                       title={cut.title}
-                      barberName={cut.barber.name}
-                      barberAvatar={cut.barber.image}
+                      barberName={cut.barber?.name || 'Unknown'}
+                      barberAvatar={cut.barber?.image || undefined}
                       views={cut.views}
                       likes={cut.likes}
                       onPress={() => {
-                        // Navigate to cuts page for this specific video
-                        (global as any).selectedCutId = cut.id;
-                        navigation.navigate('Cuts' as never);
+                        // Navigate to cuts page for this specific video from this barber
+                        if (barberProfile?.id) {
+                          navigation.navigate('Cuts', { cutId: cut.id, barberId: barberProfile.id });
+                        }
                       }}
                     />
                   ))}
                 </View>
-              </View>
+                {cuts.length < allCuts.length && (
+                  <View style={tw`py-4 items-center`}>
+                    <ActivityIndicator size="small" color={theme.colors.secondary} />
+                  </View>
+                )}
+              </ScrollView>
             )}
           </View>
         );
@@ -299,23 +430,78 @@ export default function ProfilePreview() {
               <View style={tw`py-4`}>
                 {/* Grid Layout for Portfolio Pictures */}
                 <View style={tw`flex-row flex-wrap justify-between`}>
-                  {posts.map((post) => (
-                    <TouchableOpacity
-                      key={post.id}
-                      style={tw`w-[${(width - 48) / 3}px] h-[${(width - 48) / 3}px] mb-2`}
-                      onPress={() => {
-                        // Handle portfolio picture press
-                        setSelectedVideo(post);
-                        setOpenDialog('video');
-                      }}
-                    >
-                      <Image
-                        source={{ uri: post.url }}
-                        style={tw`w-full h-full rounded-lg`}
-                        resizeMode="cover"
-                      />
-                    </TouchableOpacity>
-                  ))}
+                  {posts.map((post) => {
+                    const itemWidth = (width - 48) / 3;
+                    const hasFailed = failedImages.has(post.id);
+                    return (
+                      <TouchableOpacity
+                        key={post.id}
+                        style={[
+                          tw`mb-2 rounded-lg overflow-hidden`,
+                          { width: itemWidth, height: itemWidth }
+                        ]}
+                        onPress={() => {
+                          // Handle portfolio picture press
+                          setSelectedVideo(post);
+                          setOpenDialog('video');
+                        }}
+                      >
+                        {hasFailed ? (
+                          <View
+                            style={[
+                              tw`w-full h-full items-center justify-center`,
+                              {
+                                backgroundColor: 'rgba(255,255,255,0.1)',
+                                borderWidth: 1,
+                                borderColor: 'rgba(255,255,255,0.2)',
+                              }
+                            ]}
+                          >
+                            <Heart size={24} color={theme.colors.mutedForeground} />
+                            <Text style={[tw`text-xs mt-1`, { color: theme.colors.mutedForeground }]}>
+                              Failed to load
+                            </Text>
+                          </View>
+                        ) : (
+                          <Image
+                            source={{ 
+                              uri: post.url,
+                              cache: 'force-cache',
+                            }}
+                            style={tw`w-full h-full`}
+                            resizeMode="cover"
+                            onError={(error) => {
+                              const nativeEvent = error?.nativeEvent as any;
+                              const nativeError = nativeEvent?.error || 'Unknown error';
+                              const responseCode = nativeEvent?.responseCode;
+                              const httpHeaders = nativeEvent?.httpResponseHeaders;
+                              logger.error('Portfolio image load error:', { 
+                                url: post.url, 
+                                postId: post.id, 
+                                nativeError,
+                                responseCode,
+                                httpHeaders,
+                                fullError: nativeEvent 
+                              });
+                              setFailedImages(prev => new Set(prev).add(post.id));
+                            }}
+                            onLoad={() => {
+                              logger.log('Portfolio image loaded successfully:', { url: post.url, postId: post.id });
+                              // Remove from failed set if it loads successfully
+                              setFailedImages(prev => {
+                                const newSet = new Set(prev);
+                                newSet.delete(post.id);
+                                return newSet;
+                              });
+                            }}
+                            onLoadStart={() => {
+                              logger.log('Portfolio image load started:', { url: post.url, postId: post.id });
+                            }}
+                          />
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
               </View>
             )}
@@ -332,7 +518,7 @@ export default function ProfilePreview() {
                   No services available
                 </Text>
                 <Text style={[tw`text-sm text-center`, { color: theme.colors.mutedForeground }]}>
-                  This barber hasn't added any services yet
+                  This barber hasn&apos;t added any services yet
                 </Text>
               </View>
             ) : (
@@ -398,11 +584,12 @@ export default function ProfilePreview() {
                          ]}
                          onPress={() => {
                            // Navigate to booking calendar for this specific service
-                           navigation.navigate('BookingCalendar' as never, {
+                           if (!profile) return;
+                           navigation.navigate('BookingCalendar', {
                              barberId: route.params.barberId,
                              barberName: profile.name,
                              preSelectedService: service,
-                           } as never);
+                           });
                          }}
                        >
                          <View
@@ -523,7 +710,8 @@ export default function ProfilePreview() {
             </Text>
           )}
           
-          {/* Book Button */}
+          {/* Action Buttons */}
+          <View style={tw`flex-row items-center gap-3`}>
           <TouchableOpacity
             style={[
               tw`px-6 py-2 rounded-full`,
@@ -531,16 +719,52 @@ export default function ProfilePreview() {
             ]}
             onPress={() => {
               // Navigate to booking calendar
-              navigation.navigate('BookingCalendar' as never, {
+              if (!profile) return;
+              navigation.navigate('BookingCalendar', {
                 barberId: route.params.barberId,
                 barberName: profile.name,
-              } as never);
+              });
             }}
           >
             <Text style={[tw`font-semibold text-sm`, { color: theme.colors.background }]}>
               Book Appointment
             </Text>
           </TouchableOpacity>
+            
+            {/* Report/Block Menu - Only show if not own profile */}
+            {!isOwnProfile && (
+              <TouchableOpacity
+                style={[
+                  tw`p-2 rounded-full`,
+                  { backgroundColor: 'rgba(255, 255, 255, 0.1)' }
+                ]}
+                onPress={() => {
+                  Alert.alert(
+                    'Profile Actions',
+                    'What would you like to do?',
+                    [
+                      {
+                        text: 'Report Profile',
+                        style: 'default',
+                        onPress: () => setShowReportModal(true),
+                      },
+                      {
+                        text: 'Block User',
+                        style: 'destructive',
+                        onPress: () => setShowBlockConfirm(true),
+                      },
+                      {
+                        text: 'Cancel',
+                        style: 'cancel',
+                      },
+                    ]
+                  );
+                }}
+              >
+                <MoreVertical size={20} color={theme.colors.foreground} />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
         {/* Tabs Under Avatar */}
@@ -605,55 +829,68 @@ export default function ProfilePreview() {
         {renderTabContent()}
       </ScrollView>
 
-      {/* Video Dialog */}
+      {/* Portfolio Image Dialog */}
       <Dialog visible={openDialog === 'video'} onClose={() => setOpenDialog(null)}>
-        <DialogContent>
-          {selectedVideo && (
-            <>
-              <View style={tw`aspect-video`}>
-                <Image
-                  source={{ uri: selectedVideo.url }}
-                  style={tw`w-full h-full`}
-                  resizeMode="cover"
-                />
-              </View>
-              <View style={tw`p-4`}>
-                <View style={tw`flex-row items-center gap-3 mb-3`}>
-                  <Avatar size="md" src={selectedVideo.barber.image} fallback={getInitials(selectedVideo.barber.name || '')} />
-                  <View style={tw`flex-1`}>
-                    <Text style={[tw`font-bold text-lg`, { color: theme.colors.foreground }]}>
-                      {selectedVideo.title}
-                    </Text>
-                    <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>
-                      {selectedVideo.barber.name}
-                    </Text>
-                  </View>
-                </View>
-                <View style={tw`flex-row items-center justify-around`}>
-                  <View style={tw`flex-row items-center gap-1`}>
-                    <Eye size={16} color={theme.colors.mutedForeground} />
-                    <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>
-                      {selectedVideo.views} views
-                    </Text>
-                  </View>
-                  <View style={tw`flex-row items-center gap-1`}>
-                    <Heart size={16} color={theme.colors.mutedForeground} />
-                    <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>
-                      {selectedVideo.likes} likes
-                    </Text>
-                  </View>
-                  <View style={tw`flex-row items-center gap-1`}>
-                    <Share2 size={16} color={theme.colors.mutedForeground} />
-                    <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>
-                      {selectedVideo.shares} shares
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            </>
-          )}
-        </DialogContent>
+        {selectedVideo && (
+          <View style={tw`items-center justify-center`}>
+            <Image
+              source={{ uri: selectedVideo.url }}
+              style={[tw`rounded-xl`, { 
+                width: Math.min(width - 80, 400),
+                height: Math.min(width - 80, 400),
+              }]}
+              resizeMode="contain"
+            />
+          </View>
+        )}
       </Dialog>
+
+      {/* Report Modal */}
+      {profile && (
+        <ReportContentModal
+          visible={showReportModal}
+          onClose={() => setShowReportModal(false)}
+          contentType="profile"
+          contentId={profile.id}
+          reportedUserId={profile.id}
+          contentDescription={`Profile: ${profile.name}${profile.username ? ` (@${profile.username})` : ''}`}
+        />
+      )}
+
+      {/* Block Confirmation Dialog */}
+      {profile && (
+        <Dialog visible={showBlockConfirm} onClose={() => setShowBlockConfirm(false)}>
+          <DialogContent>
+            <Text style={[tw`text-lg font-bold mb-2`, { color: theme.colors.foreground }]}>
+              Block {profile.name}?
+            </Text>
+            <Text style={[tw`text-sm mb-4`, { color: theme.colors.mutedForeground }]}>
+              You will no longer see this user&apos;s content, and they won&apos;t be able to contact you. This action can be undone from your settings.
+            </Text>
+            <View style={tw`flex-row gap-3`}>
+              <TouchableOpacity
+                style={[tw`flex-1 py-3 rounded-xl`, { backgroundColor: 'rgba(255,255,255,0.1)' }]}
+                onPress={() => setShowBlockConfirm(false)}
+              >
+                <Text style={[tw`text-center font-semibold`, { color: theme.colors.foreground }]}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[tw`flex-1 py-3 rounded-xl`, { backgroundColor: theme.colors.destructive }]}
+                onPress={async () => {
+                  setShowBlockConfirm(false);
+                  await blockUser(profile.id, profile.name);
+                }}
+              >
+                <Text style={[tw`text-center font-semibold`, { color: theme.colors.destructiveForeground }]}>
+                  Block
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </DialogContent>
+        </Dialog>
+      )}
     </SafeAreaView>
   );
 } 

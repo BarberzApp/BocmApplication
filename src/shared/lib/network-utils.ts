@@ -1,5 +1,6 @@
 import React from 'react'
 import { supabase } from './supabase'
+import { logger } from './logger'
 
 // Network timeout configuration
 const DEFAULT_TIMEOUT = 10000 // 10 seconds
@@ -203,7 +204,7 @@ export async function authenticatedApiCall<T>(
       retries
     )
   } catch (error) {
-    console.error('Authenticated API call failed:', error)
+    logger.error('Authenticated API call failed', error)
     throw error
   }
 }

@@ -2,6 +2,7 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import { supabase } from './supabase';
+import { logger } from './logger';
 
 // Configure notification behavior
 Notifications.setNotificationHandler({
@@ -52,22 +53,22 @@ export class NotificationService {
       }
 
       if (finalStatus !== 'granted') {
-        console.log('❌ Notification permissions not granted');
+        logger.log('Notification permissions not granted');
         return;
       }
 
       // Get push token
       if (Device.isDevice) {
         const token = await Notifications.getExpoPushTokenAsync({
-          projectId: process.env.EXPO_PROJECT_ID, // You'll need to set this
+          projectId: process.env.EXPO_PROJECT_ID,
         });
         this.expoPushToken = token.data;
-        console.log('✅ Push token obtained:', this.expoPushToken);
+        logger.log('Push token obtained:', this.expoPushToken);
         
         // Save token to user's profile
         await this.savePushToken();
       } else {
-        console.log('⚠️ Must use physical device for push notifications');
+        logger.log('Must use physical device for push notifications');
       }
 
       // Configure notification channels for Android
@@ -76,7 +77,7 @@ export class NotificationService {
       }
 
     } catch (error) {
-      console.error('❌ Error initializing notifications:', error);
+      logger.error('Error initializing notifications:', error);
     }
   }
 
@@ -95,12 +96,12 @@ export class NotificationService {
         .eq('id', user.id);
 
       if (error) {
-        console.error('❌ Error saving push token:', error);
+        logger.error('Error saving push token:', error);
       } else {
-        console.log('✅ Push token saved to profile');
+        logger.log('Push token saved to profile');
       }
     } catch (error) {
-      console.error('❌ Error saving push token:', error);
+      logger.error('Error saving push token:', error);
     }
   }
 
@@ -149,9 +150,9 @@ export class NotificationService {
         trigger: null, // Send immediately
         ...(channelId && { channelId }),
       });
-      console.log('✅ Local notification sent:', title);
+      logger.log('Local notification sent:', title);
     } catch (error) {
-      console.error('❌ Error sending local notification:', error);
+      logger.error('Error sending local notification:', error);
     }
   }
 
@@ -200,15 +201,16 @@ export class NotificationService {
           },
           sound: 'default',
         },
-        trigger: secondsFromNow > 0 ? { 
-          type: 'timeInterval',
-          seconds: secondsFromNow 
+        trigger: secondsFromNow > 0 ? {
+          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+          seconds: secondsFromNow,
+          repeats: false,
+          channelId: 'reminders',
         } : null,
-        channelId: 'reminders',
       });
-      console.log('✅ Booking reminder scheduled for:', new Date(Date.now() + secondsFromNow * 1000));
+      logger.log('Booking reminder scheduled for:', new Date(Date.now() + secondsFromNow * 1000));
     } catch (error) {
-      console.error('❌ Error scheduling booking reminder:', error);
+      logger.error('Error scheduling booking reminder:', error);
     }
   }
 

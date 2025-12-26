@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/shared/lib/supabase'
 import Stripe from 'stripe'
+import { logger } from '@/shared/lib/logger'
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing STRIPE_SECRET_KEY')
@@ -22,7 +23,7 @@ export async function POST(request: Request) {
       )
     }
 
-    console.log('Debugging status for user:', userId)
+    logger.debug('Debugging status for user', { userId })
 
     // Get barber data from database
     const { data: barber, error: barberError } = await supabase
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
       .single()
 
     if (barberError) {
-      console.error('Error fetching barber:', barberError)
+      logger.error('Error fetching barber', barberError)
       return NextResponse.json(
         { 
           error: 'Failed to fetch barber data',
@@ -52,16 +53,16 @@ export async function POST(request: Request) {
       )
     }
 
-    console.log('Barber data:', barber)
+    logger.debug('Barber data', { barberId: barber.id, hasStripeAccount: !!barber.stripe_account_id })
 
     // If they have a Stripe account ID, check with Stripe
     let stripeAccount = null
     if (barber.stripe_account_id) {
       try {
         stripeAccount = await stripe.accounts.retrieve(barber.stripe_account_id)
-        console.log('Stripe account data:', stripeAccount)
+        logger.debug('Stripe account data', { accountId: stripeAccount.id, chargesEnabled: stripeAccount.charges_enabled })
       } catch (stripeError) {
-        console.error('Error fetching Stripe account:', stripeError)
+        logger.error('Error fetching Stripe account', stripeError)
       }
     }
 
@@ -94,7 +95,7 @@ export async function POST(request: Request) {
     })
 
   } catch (error) {
-    console.error('Debug status error:', error)
+    logger.error('Debug status error', error)
     return NextResponse.json(
       { 
         error: 'Internal server error',

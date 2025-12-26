@@ -18,6 +18,7 @@ import EmailConfirmationScreen from '../pages/EmailConfirmationScreen';
 import BookingSuccessPage from '../pages/BookingSuccessPage';
 import SettingsPage from '../pages/SettingsPage';
 import TermsPage from '../pages/TermsPage';
+import PrivacyPolicyPage from '../pages/PrivacyPolicyPage';
 import ProfilePortfolio from '../pages/ProfilePortfolio';
 import ProfilePreview from '../pages/ProfilePreview';
 import tw from 'twrnc';
@@ -37,10 +38,13 @@ function GlassyTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const isSmallScreen = screenWidth < 375;
   
   // Get the center item (Cuts) and other items
-  const centerIndex = 2; // Cuts is the center item
-  const leftItems = state.routes.slice(0, centerIndex);
-  const centerItem = state.routes[centerIndex];
-  const rightItems = state.routes.slice(centerIndex + 1);
+  // const centerIndex = 2; // Cuts is the center item - commented out since Cuts tab is disabled
+  // const leftItems = state.routes.slice(0, centerIndex);
+  // const centerItem = state.routes[centerIndex];
+  // const rightItems = state.routes.slice(centerIndex + 1);
+  
+  // All items are now regular items (no center highlight)
+  const allItems = state.routes;
 
   // Responsive sizing
   const navHeight = isSmallScreen ? 45 : 45;
@@ -69,8 +73,8 @@ function GlassyTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
         }
       ]}
     >
-      {/* Left navigation items */}
-      {leftItems.map((route, index) => {
+      {/* Navigation items */}
+      {allItems.map((route, index) => {
         const { options } = descriptors[route.key];
         const label = typeof options.tabBarLabel === 'string' ? options.tabBarLabel : route.name;
         const isFocused = state.index === index;
@@ -88,6 +92,8 @@ function GlassyTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
         let IconComponent = Search;
         if (route.name === 'Browse') IconComponent = Search;
         if (route.name === 'Calendar') IconComponent = Calendar;
+        if (route.name === 'Profile') IconComponent = User;
+        if (route.name === 'Settings') IconComponent = SettingsIcon;
 
         return (
           <TouchableOpacity
@@ -125,8 +131,8 @@ function GlassyTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
         );
       })}
 
-      {/* Center item (Cuts) - highlighted */}
-      {centerItem && (() => {
+      {/* Center item (Cuts) - commented out since Cuts tab is disabled */}
+      {/* {centerItem && (() => {
         const { options } = descriptors[centerItem.key];
         const label = typeof options.tabBarLabel === 'string' ? options.tabBarLabel : centerItem.name;
         const isFocused = state.index === centerIndex;
@@ -163,7 +169,6 @@ function GlassyTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
               }
             ]}
           >
-            {/* Enhanced glow effect */}
             <View style={[
               tw`absolute inset-0 rounded-3xl`,
               { backgroundColor: 'rgba(180, 138, 60, 0.3)', opacity: 0.6 }
@@ -187,10 +192,10 @@ function GlassyTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             </Text>
           </TouchableOpacity>
         );
-      })()}
+      })()} */}
 
-      {/* Right navigation items */}
-      {rightItems.map((route, index) => {
+      {/* Right navigation items - commented out since we're using allItems now */}
+      {/* {rightItems.map((route, index) => {
         const { options } = descriptors[route.key];
         const label = typeof options.tabBarLabel === 'string' ? options.tabBarLabel : route.name;
         const actualIndex = centerIndex + 1 + index;
@@ -244,7 +249,7 @@ function GlassyTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             </Text>
           </TouchableOpacity>
         );
-      })}
+      })} */}
     </BlurView>
   );
 }
@@ -286,14 +291,15 @@ function MainTabs() {
             tabBarIcon: ({ color, size }) => <Calendar color={color} size={size} />, 
           }}
         />
-        <Tab.Screen
+        {/* TikTok-style feed page commented out */}
+        {/* <Tab.Screen
           name="Cuts"
           component={CutsPage}
           options={{
             tabBarLabel: 'Cuts',
             tabBarIcon: ({ color, size }) => <Video color={color} size={size + 2} />, 
           }}
-        />
+        /> */}
         <Tab.Screen
           name="Profile"
           component={ProfilePortfolio}
@@ -349,11 +355,13 @@ export const AppNavigator = () => {
         <Stack.Screen name="SignUp" component={SignUpPage} />
         <Stack.Screen name="EmailConfirmation" component={EmailConfirmationScreen} />
         <Stack.Screen name="Terms" component={TermsPage} />
+        <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyPage} />
         
         {/* Protected screens - auth required */}
         <Stack.Screen name="MainTabs" component={MainTabs} />
         <Stack.Screen name="ProfilePortfolio" component={ProfilePortfolio} />
         <Stack.Screen name="ProfilePreview" component={ProfilePreview} />
+        <Stack.Screen name="Cuts" component={CutsPage} />
         <Stack.Screen name="Settings" component={SettingsPage} />
         <Stack.Screen name="BookingCalendar" component={BookingCalendarPage} />
         <Stack.Screen name="BookingSuccess" component={BookingSuccessPage} />
@@ -374,8 +382,8 @@ export const AppNavigator = () => {
             <RoleBasedRoute 
               component={() => (
                 <View style={tw`flex-1 justify-center items-center`}>
-                  <Text style={tw`text-white text-xl`}>Super Admin Page</Text>
-                  <Text style={tw`text-gray-400 mt-2`}>Coming soon...</Text>
+                  <Text style={tw`text-white text-xl`}>Admin Dashboard</Text>
+                  <Text style={tw`text-gray-400 mt-2`}>Admin features coming soon</Text>
                 </View>
               )} 
               requiredRole="admin"

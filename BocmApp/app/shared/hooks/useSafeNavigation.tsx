@@ -1,5 +1,6 @@
 import { useNavigation } from '@react-navigation/native';
 import { useCallback, useRef } from 'react';
+import { logger } from '../lib/logger';
 
 export const useSafeNavigation = () => {
   const navigation = useNavigation();
@@ -8,12 +9,12 @@ export const useSafeNavigation = () => {
   const safePush = useCallback(
     (routeName: string, params?: any) => {
       if (isNavigatingRef.current) {
-        console.log('⚠️ Navigation already in progress, skipping:', routeName);
+        logger.log('⚠️ Navigation already in progress, skipping:', routeName);
         return;
       }
 
       isNavigatingRef.current = true;
-      console.log('🔄 Navigating to:', routeName);
+      logger.log('🔄 Navigating to:', routeName);
 
       try {
         (navigation as any).navigate(routeName, params);
@@ -23,7 +24,7 @@ export const useSafeNavigation = () => {
           isNavigatingRef.current = false;
         }, 1000);
       } catch (error) {
-        console.error('❌ Navigation error:', error);
+        logger.error('❌ Navigation error:', error);
         isNavigatingRef.current = false;
       }
     },
@@ -33,12 +34,12 @@ export const useSafeNavigation = () => {
   const safeReplace = useCallback(
     (routeName: string, params?: any) => {
       if (isNavigatingRef.current) {
-        console.log('⚠️ Navigation already in progress, skipping:', routeName);
+        logger.log('⚠️ Navigation already in progress, skipping:', routeName);
         return;
       }
 
       isNavigatingRef.current = true;
-      console.log('🔄 Replacing with:', routeName);
+      logger.log('🔄 Replacing with:', routeName);
 
       try {
         (navigation as any).replace(routeName, params);
@@ -48,7 +49,7 @@ export const useSafeNavigation = () => {
           isNavigatingRef.current = false;
         }, 1000);
       } catch (error) {
-        console.error('❌ Navigation error:', error);
+        logger.error('❌ Navigation error:', error);
         isNavigatingRef.current = false;
       }
     },
@@ -57,12 +58,12 @@ export const useSafeNavigation = () => {
 
   const safeGoBack = useCallback(() => {
     if (isNavigatingRef.current) {
-      console.log('⚠️ Navigation already in progress, skipping go back');
+      logger.log('⚠️ Navigation already in progress, skipping go back');
       return;
     }
 
     isNavigatingRef.current = true;
-    console.log('🔄 Going back');
+    logger.log('🔄 Going back');
 
     try {
       navigation.goBack();
@@ -72,7 +73,7 @@ export const useSafeNavigation = () => {
         isNavigatingRef.current = false;
       }, 1000);
     } catch (error) {
-      console.error('❌ Navigation error:', error);
+      logger.error('❌ Navigation error:', error);
       isNavigatingRef.current = false;
     }
   }, [navigation]);
@@ -80,12 +81,12 @@ export const useSafeNavigation = () => {
   const safeReset = useCallback(
     (routes: Array<{ name: string; params?: any }>) => {
       if (isNavigatingRef.current) {
-        console.log('⚠️ Navigation already in progress, skipping reset');
+        logger.log('⚠️ Navigation already in progress, skipping reset');
         return;
       }
 
       isNavigatingRef.current = true;
-      console.log('🔄 Resetting navigation');
+      logger.log('🔄 Resetting navigation');
 
       try {
         (navigation as any).reset({
@@ -98,7 +99,7 @@ export const useSafeNavigation = () => {
           isNavigatingRef.current = false;
         }, 1000);
       } catch (error) {
-        console.error('❌ Navigation error:', error);
+        logger.error('❌ Navigation error:', error);
         isNavigatingRef.current = false;
       }
     },

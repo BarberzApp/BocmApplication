@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { logger } from '@/shared/lib/logger';
 
 export async function GET() {
   try {
@@ -8,7 +9,7 @@ export async function GET() {
       { status: 200 }
     );
   } catch (error) {
-    console.error('Health check failed:', error);
+    logger.error('Health check failed', error);
     return NextResponse.json(
       { status: 'unhealthy', error: 'Service check failed' },
       { status: 503 }

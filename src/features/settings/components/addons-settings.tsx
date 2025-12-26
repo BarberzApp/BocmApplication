@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/sha
 import { Loader2, Plus, Edit, Trash2, Package, AlertCircle, CheckCircle, DollarSign } from 'lucide-react'
 import { Badge } from '@/shared/components/ui/badge'
 import { ServiceAddon, CreateServiceAddonInput, UpdateServiceAddonInput } from '@/shared/types/addon'
+import { logger } from '@/shared/lib/logger'
 
 interface AddonsSettingsProps {
   onUpdate?: () => void
@@ -67,7 +68,7 @@ export function AddonsSettings({ onUpdate }: AddonsSettingsProps) {
       if (error) throw error
       setBarberId(data.id)
     } catch (error) {
-      console.error('Error loading barber ID:', error)
+      logger.error('Error loading barber ID', error)
       toast({
         title: 'Error',
         description: 'Failed to load barber information.',
@@ -87,7 +88,7 @@ export function AddonsSettings({ onUpdate }: AddonsSettingsProps) {
       if (error) throw error
       setAddons(data || [])
     } catch (error) {
-      console.error('Error loading add-ons:', error)
+      logger.error('Error loading add-ons', error)
       toast({
         title: 'Error',
         description: 'Failed to load add-ons. Please try again.',
@@ -122,7 +123,7 @@ export function AddonsSettings({ onUpdate }: AddonsSettingsProps) {
           .eq('id', editingAddon.id)
 
         if (updateError) {
-          console.error('Error updating add-on:', updateError)
+          logger.error('Error updating add-on', updateError)
           toast({
             title: 'Error',
             description: 'Failed to update add-on. Please try again.',
@@ -147,7 +148,7 @@ export function AddonsSettings({ onUpdate }: AddonsSettingsProps) {
           })
 
         if (insertError) {
-          console.error('Error creating add-on:', insertError)
+          logger.error('Error creating add-on', insertError)
           toast({
             title: 'Error',
             description: 'Failed to create add-on. Please try again.',
@@ -168,7 +169,7 @@ export function AddonsSettings({ onUpdate }: AddonsSettingsProps) {
       // Call onUpdate to refresh settings data
       onUpdate?.()
     } catch (error) {
-      console.error('Error saving add-on:', error)
+      logger.error('Error saving add-on', error)
       toast({
         title: 'Error',
         description: 'Failed to save add-on. Please try again.',
@@ -205,7 +206,7 @@ export function AddonsSettings({ onUpdate }: AddonsSettingsProps) {
       
       await loadAddons(barberId!)
     } catch (error) {
-      console.error('Error deleting add-on:', error)
+      logger.error('Error deleting add-on', error)
       toast({
         title: 'Error',
         description: 'Failed to delete add-on. Please try again.',

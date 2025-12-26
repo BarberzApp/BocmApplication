@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import { supabase } from '@/shared/lib/supabase'
 import type { Booking } from '@/shared/types'
+import { logger } from '@/shared/lib/logger'
 
 export function useSync() {
   const getBooking = useCallback(async (bookingId: string): Promise<Booking | null> => {
@@ -11,7 +12,7 @@ export function useSync() {
       .single()
 
     if (error) {
-      console.error('Error fetching booking:', error)
+      logger.error('Error fetching booking', error)
       return null
     }
 
@@ -26,7 +27,7 @@ export function useSync() {
       .single()
 
     if (error) {
-      console.error('Error creating booking:', error)
+      logger.error('Error creating booking', error)
       throw error
     }
 

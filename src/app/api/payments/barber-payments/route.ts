@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/shared/lib/supabase'
+import { logger } from '@/shared/lib/logger'
 
 export async function GET(request: Request) {
   try {
@@ -12,7 +13,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Barber ID is required' }, { status: 400 })
     }
 
-    console.log('Fetching payments for barber:', barberId)
+    logger.debug('Fetching payments for barber', { barberId })
 
     // Fetch bookings with payment information
     const { data: bookings, error: bookingsError } = await supabaseAdmin
@@ -54,7 +55,7 @@ export async function GET(request: Request) {
       .range(offset, offset + limit - 1)
 
     if (bookingsError) {
-      console.error('Error fetching bookings:', bookingsError)
+      logger.error('Error fetching bookings', bookingsError)
       return NextResponse.json({ error: 'Failed to fetch bookings' }, { status: 500 })
     }
 
@@ -66,7 +67,7 @@ export async function GET(request: Request) {
       .order('created_at', { ascending: false })
 
     if (paymentsError) {
-      console.error('Error fetching payments:', paymentsError)
+      logger.error('Error fetching payments', paymentsError)
       // Don't fail the request, just log the error
     }
 
@@ -111,7 +112,7 @@ export async function GET(request: Request) {
       }
     })
   } catch (error) {
-    console.error('Error in barber payments API:', error)
+    logger.error('Error in barber payments API', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 } 

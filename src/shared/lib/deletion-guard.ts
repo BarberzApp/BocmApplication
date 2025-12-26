@@ -5,6 +5,8 @@
  * to prevent unwanted booking deletions and track all deletion operations.
  */
 
+import { logger } from './logger'
+
 export interface DeletionAttempt {
   id: string;
   timestamp: string;
@@ -62,11 +64,11 @@ class DeletionGuard {
       this.deletionAttempts = this.deletionAttempts.slice(-this.MAX_LOG_SIZE);
     }
 
-    // Log to console for debugging
+    // Log using logger
     if (prevented) {
-      console.warn(`🚫 Deletion prevented:`, attempt);
+      logger.warn('Deletion prevented', attempt);
     } else {
-      console.log(`✅ Deletion allowed:`, attempt);
+      logger.debug('Deletion allowed', attempt);
     }
   }
 

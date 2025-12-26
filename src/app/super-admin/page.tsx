@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/shared/hooks/use-auth-zustand'
+import { logger } from '@/shared/lib/logger'
 import { useToast } from '@/shared/components/ui/use-toast'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
@@ -55,9 +56,11 @@ import {
   Archive,
   AlertCircle,
   Info,
-  HelpCircle
+  HelpCircle,
+  User
 } from 'lucide-react'
 import { supabase } from '@/shared/lib/supabase'
+import { UserProfileManager } from '@/shared/components/admin/UserProfileManager'
 
 interface Barber {
   id: string
@@ -102,6 +105,10 @@ interface UserStats {
   pendingReviews: number
   newUsersToday: number
   revenueToday: number
+  developerRevenue?: number
+  regularRevenue?: number
+  developerBookings?: number
+  regularBookings?: number
 }
 
 export default function SuperAdminPage() {
@@ -110,6 +117,7 @@ export default function SuperAdminPage() {
   const [password, setPassword] = useState('')
   const [barbers, setBarbers] = useState<Barber[]>([])
   const [searchTerm, setSearchTerm] = useState('')
+  const [userFilter, setUserFilter] = useState<'all' | 'developers' | 'regular'>('all')
   const [updatingBarber, setUpdatingBarber] = useState<string | null>(null)
   const [selectedBarber, setSelectedBarber] = useState<Barber | null>(null)
   const [stats, setStats] = useState<UserStats>({
@@ -146,7 +154,7 @@ export default function SuperAdminPage() {
           checkSystemStatus()
         }
       } catch (error) {
-        console.error('Error checking super admin:', error)
+        logger.error('Error checking super admin', error)
       } finally {
         setIsLoading(false)
       }
@@ -222,7 +230,7 @@ export default function SuperAdminPage() {
         throw new Error(data.error || 'Failed to fetch barbers')
       }
     } catch (error) {
-      console.error('Error fetching barbers:', error)
+      logger.error('Error fetching barbers', error)
       toast({
         title: 'Error',
         description: 'Failed to fetch barbers',
@@ -250,7 +258,7 @@ export default function SuperAdminPage() {
         setStats(data.stats)
       }
     } catch (error) {
-      console.error('Error fetching stats:', error)
+      logger.error('Error fetching stats', error)
     }
   }
 
@@ -288,21 +296,25 @@ export default function SuperAdminPage() {
       const data = await response.json()
 
       if (response.ok && data.success) {
+        // Update local state
         setBarbers(prev => prev.map(barber => 
           barber.id === barberId 
             ? { ...barber, is_developer: !currentStatus }
             : barber
         ))
 
+        // Refresh stats to reflect changes
+        fetchStats()
+
         toast({
           title: 'Developer Status Updated',
-          description: data.message,
+          description: data.message || `Developer mode ${!currentStatus ? 'enabled' : 'disabled'}`,
         })
       } else {
         throw new Error(data.error || 'Failed to update developer status')
       }
     } catch (error) {
-      console.error('Error updating developer status:', error)
+      logger.error('Error updating developer status', error)
       toast({
         title: 'Error',
         description: 'Failed to update developer status',
@@ -357,7 +369,7 @@ export default function SuperAdminPage() {
         throw new Error(data.error || 'Failed to update account status')
       }
     } catch (error) {
-      console.error('Error updating account status:', error)
+      logger.error('Error updating account status', error)
       toast({
         title: 'Error',
         description: 'Failed to update account status',
@@ -378,7 +390,7 @@ export default function SuperAdminPage() {
       }
 
       const newStatus = !currentStatus
-      console.log(`🔄 Toggling public status for user ${userId}: ${currentStatus} → ${newStatus}`)
+      logger.debug(`Toggling public status for user ${userId}`, { currentStatus, newStatus })
 
       const response = await fetch('/api/super-admin/public-status', {
         method: 'POST',
@@ -408,17 +420,17 @@ export default function SuperAdminPage() {
             : barber
         ))
 
-        console.log(`✅ Successfully updated public status to: ${newStatus}`)
+        logger.debug(`Successfully updated public status to: ${newStatus}`)
         toast({
           title: 'Profile Visibility Updated',
-          description: `Profile is now ${newStatus ? 'public' : 'private'}`,
+          description: data.message || `Profile is now ${newStatus ? 'public' : 'private'}`,
         })
       } else {
-        console.error('❌ API Error:', data.error)
+        logger.error('API Error updating public status', { error: data.error, response: data })
         throw new Error(data.error || 'Failed to update public status')
       }
     } catch (error) {
-      console.error('Error updating public status:', error)
+      logger.error('Error updating public status', error)
       toast({
         title: 'Error',
         description: 'Failed to update profile visibility. Please try again.',
@@ -473,7 +485,7 @@ export default function SuperAdminPage() {
         throw new Error(data.error || 'Failed to update role')
       }
     } catch (error) {
-      console.error('Error updating role:', error)
+      logger.error('Error updating role', error)
       toast({
         title: 'Error',
         description: 'Failed to update role',
@@ -501,11 +513,17 @@ export default function SuperAdminPage() {
     }).format(amount);
   };
 
-  const filteredBarbers = barbers.filter(barber =>
-    barber.business_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    barber.profiles?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    barber.profiles?.email?.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredBarbers = barbers.filter(barber => {
+    const matchesSearch = barber.business_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      barber.profiles?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      barber.profiles?.email?.toLowerCase().includes(searchTerm.toLowerCase())
+    
+    if (!matchesSearch) return false
+    
+    if (userFilter === 'developers') return barber.is_developer
+    if (userFilter === 'regular') return !barber.is_developer
+    return true
+  })
 
   if (isLoading) {
     return (
@@ -622,11 +640,11 @@ export default function SuperAdminPage() {
             </TabsTrigger>
             <TabsTrigger value="users" className="text-white data-[state=active]:bg-white/20 rounded-lg">
               <Users className="h-4 w-4 mr-2" />
-              Users
+              Users & Developers
             </TabsTrigger>
-            <TabsTrigger value="developers" className="text-white data-[state=active]:bg-white/20 rounded-lg">
-              <Zap className="h-4 w-4 mr-2" />
-              Developers
+            <TabsTrigger value="profiles" className="text-white data-[state=active]:bg-white/20 rounded-lg">
+              <User className="h-4 w-4 mr-2" />
+              Profile Manager
             </TabsTrigger>
             <TabsTrigger value="reviews" className="text-white data-[state=active]:bg-white/20 rounded-lg">
               <MessageSquare className="h-4 w-4 mr-2" />
@@ -703,6 +721,21 @@ export default function SuperAdminPage() {
                 </CardContent>
               </Card>
               
+              {stats.developerRevenue !== undefined && (
+                <Card className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 border-purple-400/50">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-purple-200">Developer Revenue</p>
+                        <p className="text-2xl font-bold text-white">{formatCurrency(stats.developerRevenue)}</p>
+                        <p className="text-xs text-purple-300">{stats.developerBookings || 0} bookings (no fees)</p>
+                      </div>
+                      <Zap className="h-8 w-8 text-purple-300" />
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+              
               <Card className="bg-gradient-to-br from-purple-500/20 to-purple-600/20 border-purple-400/50">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
@@ -710,6 +743,11 @@ export default function SuperAdminPage() {
                       <p className="text-sm text-purple-200">Total Revenue</p>
                       <p className="text-2xl font-bold text-white">{formatCurrency(stats.totalRevenue)}</p>
                       <p className="text-xs text-purple-300">+{formatCurrency(stats.revenueToday)} today</p>
+                      {stats.regularRevenue !== undefined && (
+                        <p className="text-xs text-purple-300/80 mt-1">
+                          Regular: {formatCurrency(stats.regularRevenue)} ({stats.regularBookings || 0} bookings)
+                        </p>
+                      )}
                     </div>
                     <DollarSign className="h-8 w-8 text-purple-300" />
                   </div>
@@ -744,13 +782,13 @@ export default function SuperAdminPage() {
               </Button>
               
               <Button 
-                onClick={() => setActiveTab('developers')}
+                onClick={() => setActiveTab('users')}
                 className="h-20 bg-white/10 border border-white/20 hover:bg-white/20 text-white"
               >
                 <div className="text-center">
                   <Zap className="h-6 w-6 mx-auto mb-2" />
-                  <p className="font-semibold">Developer Mode</p>
-                  <p className="text-xs text-white/60">Toggle developer status</p>
+                  <p className="font-semibold">Manage Developers</p>
+                  <p className="text-xs text-white/60">Users & developer mode</p>
                 </div>
               </Button>
               
@@ -769,25 +807,85 @@ export default function SuperAdminPage() {
 
           {/* Users Tab */}
           <TabsContent value="users" className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-bold text-white">User Management</h2>
-                <p className="text-white/60">Manage all user accounts and permissions</p>
+            <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-400/50 rounded-xl p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                    <Users className="h-6 w-6" />
+                    User & Developer Management
+                  </h2>
+                  <p className="text-white/80 mt-1">Manage all user accounts, permissions, and developer mode</p>
+                </div>
               </div>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/60" />
-                <Input
-                  type="text"
-                  placeholder="Search users..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/60 w-80"
-                />
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className="relative flex-1 min-w-[200px]">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/60" />
+                  <Input
+                    type="text"
+                    placeholder="Search users..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/60"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant={userFilter === 'all' ? 'default' : 'outline'}
+                    onClick={() => setUserFilter('all')}
+                    className={userFilter === 'all' ? 'bg-white/20 text-white' : 'bg-white/10 border-white/20 text-white/80'}
+                  >
+                    All ({barbers.length})
+                  </Button>
+                  <Button
+                    variant={userFilter === 'developers' ? 'default' : 'outline'}
+                    onClick={() => setUserFilter('developers')}
+                    className={userFilter === 'developers' ? 'bg-green-500/20 text-green-300 border-green-400/50' : 'bg-white/10 border-white/20 text-white/80'}
+                  >
+                    <Zap className="h-4 w-4 mr-2" />
+                    Developers ({barbers.filter(b => b.is_developer).length})
+                  </Button>
+                  <Button
+                    variant={userFilter === 'regular' ? 'default' : 'outline'}
+                    onClick={() => setUserFilter('regular')}
+                    className={userFilter === 'regular' ? 'bg-blue-500/20 text-blue-300 border-blue-400/50' : 'bg-white/10 border-white/20 text-white/80'}
+                  >
+                    Regular ({barbers.filter(b => !b.is_developer).length})
+                  </Button>
+                </div>
               </div>
             </div>
 
+            {/* Developer Mode Info */}
+            {userFilter === 'developers' || userFilter === 'all' ? (
+              <div className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-400/50 rounded-xl p-4 mb-4">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-green-500/20 rounded-lg">
+                    <Zap className="h-5 w-5 text-green-400" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-white mb-1">Developer Mode</h4>
+                    <p className="text-sm text-white/80">
+                      Developer accounts bypass Stripe platform fees. Clients booking with developer barbers pay $0 in platform fees, 
+                      and the barber receives 100% of the service revenue. This is useful for internal testing, partnerships, or special accounts.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
             <div className="space-y-4">
-              {filteredBarbers.map((barber) => (
+              {filteredBarbers.length === 0 ? (
+                <Card className="bg-white/10 border-white/20">
+                  <CardContent className="p-8 text-center">
+                    <Users className="h-12 w-12 text-white/40 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-white mb-2">No users found</h3>
+                    <p className="text-white/60">
+                      {searchTerm ? 'Try adjusting your search terms' : `No ${userFilter === 'developers' ? 'developers' : userFilter === 'regular' ? 'regular barbers' : 'users'} found`}
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                filteredBarbers.map((barber) => (
                 <Card key={barber.id} className={`transition-all duration-300 ${
                   barber.profiles?.is_disabled 
                     ? 'bg-gradient-to-r from-red-500/20 to-pink-500/20 border-red-400/50' 
@@ -814,20 +912,28 @@ export default function SuperAdminPage() {
                             }`}>
                               {barber.profiles?.role?.toUpperCase() || 'UNKNOWN'}
                             </Badge>
-                                                         {barber.profiles?.is_disabled && (
-                               <Badge className="bg-red-500 text-white font-bold px-2 py-1 text-xs">
-                                 DISABLED
-                               </Badge>
-                             )}
-                             {barber.profiles?.is_public ? (
-                               <Badge className="bg-green-500 text-white font-bold px-2 py-1 text-xs">
-                                 PUBLIC
-                               </Badge>
-                             ) : (
-                               <Badge className="bg-gray-500 text-white font-bold px-2 py-1 text-xs">
-                                 PRIVATE
-                               </Badge>
-                             )}
+                            {barber.is_developer && (
+                              <Badge className="bg-green-500 text-white font-bold px-2 py-1 text-xs shadow-lg shadow-green-500/50">
+                                <Zap className="h-3 w-3 inline mr-1" />
+                                DEVELOPER
+                              </Badge>
+                            )}
+                            {barber.profiles?.is_disabled && (
+                              <Badge className="bg-red-500 text-white font-bold px-2 py-1 text-xs">
+                                DISABLED
+                              </Badge>
+                            )}
+                            {barber.profiles?.is_public !== undefined && (
+                              barber.profiles.is_public ? (
+                                <Badge className="bg-green-500 text-white font-bold px-2 py-1 text-xs">
+                                  PUBLIC
+                                </Badge>
+                              ) : (
+                                <Badge className="bg-gray-500 text-white font-bold px-2 py-1 text-xs">
+                                  PRIVATE
+                                </Badge>
+                              )
+                            )}
                           </div>
                           <p className="text-white/80 text-sm">{barber.profiles?.email}</p>
                           <p className="text-white/60 text-xs">
@@ -872,16 +978,35 @@ export default function SuperAdminPage() {
                           <div className="text-center">
                             <p className="text-sm font-semibold text-white mb-2">Visibility</p>
                             <Switch
-                              checked={barber.profiles?.is_public}
-                              onCheckedChange={() => togglePublicStatus(barber.user_id, barber.profiles?.is_public || false)}
-                              disabled={updatingBarber === barber.user_id}
+                              checked={barber.profiles?.is_public ?? false}
+                              onCheckedChange={() => togglePublicStatus(barber.user_id, barber.profiles?.is_public ?? false)}
+                              disabled={updatingBarber === barber.user_id || !barber.profiles}
                               className={`scale-125 transition-all duration-200 ${
-                                barber.profiles?.is_public
+                                (barber.profiles?.is_public ?? false)
                                   ? 'bg-green-500 border-green-400 shadow-lg shadow-green-500/50' 
                                   : 'bg-red-500 border-red-400 shadow-lg shadow-red-500/50'
                               }`}
                             />
                           </div>
+
+                          {barber.profiles?.role === 'barber' && (
+                            <div className="text-center">
+                              <p className="text-sm font-semibold text-white mb-2">Developer Mode</p>
+                              <Switch
+                                checked={barber.is_developer}
+                                onCheckedChange={() => toggleDeveloperStatus(barber.id, barber.is_developer)}
+                                disabled={updatingBarber === barber.id || barber.profiles?.is_disabled}
+                                className={`scale-125 transition-all duration-200 ${
+                                  barber.is_developer 
+                                    ? 'bg-green-500 border-green-400 shadow-lg shadow-green-500/50' 
+                                    : 'bg-red-500 border-red-400 shadow-lg shadow-red-500/50'
+                                }`}
+                              />
+                              {updatingBarber === barber.id && (
+                                <Loader2 className="h-4 w-4 animate-spin text-white mt-1 mx-auto" />
+                              )}
+                            </div>
+                          )}
 
                         <Dialog>
                           <DialogTrigger asChild>
@@ -962,106 +1087,14 @@ export default function SuperAdminPage() {
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+                ))
+              )}
             </div>
           </TabsContent>
 
-          {/* Developers Tab */}
-          <TabsContent value="developers" className="space-y-6">
-            <div className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-400/50 rounded-xl p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-3 bg-purple-500/20 rounded-lg">
-                  <Zap className="h-6 w-6 text-purple-400" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-white">Developer Account Management</h3>
-                  <p className="text-white/80">
-                    Toggle developer mode to bypass Stripe fees and receive 100% of service revenue
-                  </p>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-green-500/20 border border-green-400/50 rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-3 h-3 bg-green-400 rounded-full"></div>
-                    <span className="font-semibold text-green-300">Developer Mode</span>
-                  </div>
-                  <p className="text-green-200 text-sm">No platform fees • Full revenue • Special privileges</p>
-                </div>
-                <div className="bg-red-500/20 border border-red-400/50 rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-3 h-3 bg-red-400 rounded-full"></div>
-                    <span className="font-semibold text-red-300">Regular Mode</span>
-                  </div>
-                  <p className="text-red-200 text-sm">$3.38 platform fee • 60% to BOCM • Standard features</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              {filteredBarbers.map((barber) => (
-                <Card key={barber.id} className={`transition-all duration-300 ${
-                  barber.is_developer 
-                    ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-green-400/50 shadow-lg shadow-green-500/20' 
-                    : 'bg-white/10 border-white/20'
-                } ${barber.profiles?.is_disabled ? 'opacity-50' : ''}`}>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <Avatar className="w-12 h-12">
-                          <AvatarImage src={barber.profiles?.avatar_url} />
-                          <AvatarFallback className="bg-secondary text-white">
-                            {barber.profiles?.name?.charAt(0) || 'U'}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="text-lg font-semibold text-white">
-                              {barber.profiles?.name || 'Unknown'}
-                            </h3>
-                            {barber.is_developer && (
-                              <Badge className="bg-green-500 text-white font-bold px-3 py-1 text-sm shadow-lg">
-                                DEVELOPER
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="text-white/80 text-sm">{barber.profiles?.email}</p>
-                          <p className="text-white/60 text-xs">
-                            Business: {barber.business_name || 'No business name'}
-                          </p>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <p className="text-sm font-semibold text-white">Developer Mode</p>
-                          <p className={`text-xs font-medium ${
-                            barber.is_developer ? 'text-green-400' : 'text-red-400'
-                          }`}>
-                            {barber.is_developer ? 'ENABLED' : 'DISABLED'}
-                          </p>
-                        </div>
-                        
-                        <Switch
-                          checked={barber.is_developer}
-                          onCheckedChange={() => toggleDeveloperStatus(barber.id, barber.is_developer)}
-                          disabled={updatingBarber === barber.id || barber.profiles?.is_disabled}
-                          className={`scale-150 transition-all duration-200 ${
-                            barber.is_developer 
-                              ? 'bg-green-500 border-green-400 shadow-lg shadow-green-500/50' 
-                              : 'bg-red-500 border-red-400 shadow-lg shadow-red-500/50'
-                          }`}
-                        />
-                        
-                        {updatingBarber === barber.id && (
-                          <Loader2 className="h-5 w-5 animate-spin text-white" />
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+          {/* Profile Manager Tab */}
+          <TabsContent value="profiles" className="space-y-6">
+            <UserProfileManager />
           </TabsContent>
 
           {/* Reviews Tab */}

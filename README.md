@@ -50,11 +50,11 @@ src/
 
 ## Documentation
 
-- [App Breakdown](docs/APP_BREAKDOWN.md): High-level overview of the app's architecture, main flows (onboarding, booking, payments), and where to find key logic.
-- [Local Development Guide](docs/LOCAL_DEVELOPMENT.md): Step-by-step instructions for running the app locally, Stripe Connect/ngrok setup, troubleshooting, and useful links.
-- [Database Schema](docs/database/database-schema.txt): Full schema reference for all tables and relationships.
-- [Row Level Security Policies](docs/database/rowlevelsecurity.txt): Supabase RLS policies for all tables.
-- [Constraints](docs/database/constraints.txt): Database constraints and keys.
+- [App Breakdown](src/docs/development/APP_BREAKDOWN.md): High-level overview of the app's architecture, main flows (onboarding, booking, payments), and where to find key logic.
+- [Local Development Guide](src/docs/development/LOCAL_DEVELOPMENT.md): Step-by-step instructions for running the app locally, Stripe Connect/ngrok setup, troubleshooting, and useful links.
+- [Database Schema](src/docs/database/database-schema.txt): Full schema reference for all tables and relationships.
+- [Row Level Security Policies](src/docs/database/rowlevelsecurity.txt): Supabase RLS policies for all tables.
+- [Constraints](src/docs/database/constraints.txt): Database constraints and keys.
 
 ## Getting Started
 
@@ -65,11 +65,32 @@ src/
    ```
 3. Set up environment variables:
    ```env
+   # Supabase
    NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_key
+   
+   # Stripe
    STRIPE_SECRET_KEY=your_stripe_secret
    STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key
+   
+   # App Configuration
    NEXT_PUBLIC_APP_URL=https://bocmstyle.com
+   
+   # Sentry Error Monitoring (Optional but recommended for production)
+   NEXT_PUBLIC_SENTRY_DSN=your_sentry_dsn
+   SENTRY_DSN=your_sentry_dsn  # Server-side (optional, can use NEXT_PUBLIC_SENTRY_DSN)
+   SENTRY_ORG=your_sentry_org  # For source maps upload
+   SENTRY_PROJECT=your_sentry_project  # For source maps upload
+   SENTRY_AUTH_TOKEN=your_sentry_auth_token  # For source maps upload (optional)
+   
+   # Security
+   WAITLIST_PASSWORD=your_waitlist_password
+   SUPER_ADMIN_PASSWORD=your_super_admin_password
+   SUPER_ADMIN_EMAIL=primbocm@gmail.com
+   
+   # Email/SMS
+   GMAIL_USER=your_gmail_user
+   GMAIL_PASS=your_gmail_app_password
    ```
 4. Run development server:
    ```bash

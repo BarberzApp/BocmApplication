@@ -11,6 +11,7 @@ import {
   Dimensions,
   SafeAreaView,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../shared/hooks/useAuth';
 import { theme } from '../shared/lib/theme';
@@ -37,9 +38,14 @@ import {
   Share2,
 } from 'lucide-react-native';
 import { supabase } from '../shared/lib/supabase';
+import { logger } from '../shared/lib/logger';
 import VideoPreview from '../shared/components/VideoPreview';
 import { ImageUpload } from '../shared/components/ui/ImageUpload';
 import { VideoUpload } from '../shared/components/ui/VideoUpload';
+import {
+  getAvatarFallbackProps,
+  getCoverFallbackProps,
+} from '../shared/helpers/fallbackImageHelper';
 
 const { width, height } = Dimensions.get('window');
 
@@ -121,16 +127,21 @@ export default function ProfilePortfolio() {
   const { user, userProfile, logout } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [barberProfile, setBarberProfile] = useState<BarberProfile | null>(null);
+  const [allCuts, setAllCuts] = useState<Cut[]>([]);
   const [cuts, setCuts] = useState<Cut[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [likedCuts, setLikedCuts] = useState<Cut[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [openDialog, setOpenDialog] = useState<null | 'video'>(null);
-  const [activeTab, setActiveTab] = useState('portfolio');
+  const [activeTab, setActiveTab] = useState(userProfile?.role === 'barber' ? 'portfolio' : 'cuts');
   const [selectedVideo, setSelectedVideo] = useState<Cut | null>(null);
-  const [avatarLoading, setAvatarLoading] = useState(false);
-  const [coverLoading, setCoverLoading] = useState(false);
+  const [selectedPortfolioImage, setSelectedPortfolioImage] = useState<string | null>(null);
+  const [showAvatarUpload, setShowAvatarUpload] = useState(false);
+  const [showCoverUpload, setShowCoverUpload] = useState(false);
+  const [cutsPage, setCutsPage] = useState(0);
+  const [avatarError, setAvatarError] = useState(false);
+  const [coverError, setCoverError] = useState(false);
+  const CUTS_PER_PAGE = 12;
 
   // Fetch profile data
   const fetchProfileData = async () => {
@@ -138,8 +149,11 @@ export default function ProfilePortfolio() {
 
     try {
       setLoading(true);
-      console.log('🔄 Fetching profile data for user:', user.id);
-      console.log('👤 User profile role:', userProfile?.role);
+      // Reset image error states when fetching new data
+      setAvatarError(false);
+      setCoverError(false);
+      logger.log('🔄 Fetching profile data for user:', user.id);
+      logger.log('👤 User profile role:', userProfile?.role);
 
       // Fetch user profile
       const { data: profileData, error: profileError } = await supabase
@@ -149,7 +163,7 @@ export default function ProfilePortfolio() {
         .single();
 
       if (profileError) {
-        console.error('Error fetching profile:', profileError);
+        logger.error('Error fetching profile:', profileError);
       } else {
         setProfile(profileData);
       }
@@ -163,7 +177,7 @@ export default function ProfilePortfolio() {
             .single();
 
           if (barberError) {
-            console.error('Error fetching barber profile:', barberError);
+            logger.error('Error fetching barber profile:', barberError);
           } else {
             setBarberProfile(barberData);
             
@@ -184,9 +198,9 @@ export default function ProfilePortfolio() {
                 .order('created_at', { ascending: false });
 
               if (cutsError) {
-                console.error('Error fetching cuts:', cutsError);
+                logger.error('Error fetching cuts:', cutsError);
               } else {
-                console.log('📹 Fetched cuts:', cutsData?.length || 0);
+                logger.log('📹 Fetched cuts:', cutsData?.length || 0);
                 const formattedCuts = (cutsData || []).map((cut: any) => ({
                   ...cut,
                   barber: {
@@ -195,7 +209,10 @@ export default function ProfilePortfolio() {
                     image: cut.barbers?.profiles?.avatar_url
                   }
                 }));
-                setCuts(formattedCuts);
+                setAllCuts(formattedCuts);
+                // Load first page
+                setCutsPage(0);
+                setCuts(formattedCuts.slice(0, CUTS_PER_PAGE));
               }
 
               // Fetch services
@@ -206,9 +223,9 @@ export default function ProfilePortfolio() {
                 .order('name', { ascending: true });
 
               if (servicesError) {
-                console.error('Error fetching services:', servicesError);
+                logger.error('Error fetching services:', servicesError);
               } else {
-                console.log('💇 Fetched services:', servicesData?.length || 0);
+                logger.log('💇 Fetched services:', servicesData?.length || 0);
                 // Update barberProfile with services
                 setBarberProfile(prev => prev ? {
                   ...prev,
@@ -218,51 +235,6 @@ export default function ProfilePortfolio() {
             }
           }
       } else {
-        // Fetch client's liked cuts
-        const { data: likedData, error: likedError } = await supabase
-          .from('cut_analytics')
-          .select(`
-            cut_id,
-            cuts (
-              id,
-              title,
-              description,
-              url,
-              thumbnail,
-              views,
-              likes,
-              shares,
-              created_at,
-              is_public,
-              is_featured,
-              barber_id,
-              barbers:barber_id(
-                id,
-                user_id,
-                profiles:user_id(name, avatar_url)
-              )
-            )
-          `)
-          .eq('user_id', user.id)
-          .eq('action_type', 'like');
-
-        if (likedError) {
-          console.error('Error fetching liked cuts:', likedError);
-        } else {
-          const formattedLikedCuts = (likedData || []).map((item: any) => {
-            const cutData = item.cuts;
-            return {
-              ...cutData,
-              barber: {
-                id: cutData.barbers?.id,
-                name: cutData.barbers?.profiles?.name || 'Unknown',
-                image: cutData.barbers?.profiles?.avatar_url
-              }
-            };
-          });
-          setLikedCuts(formattedLikedCuts);
-        }
-
         // Fetch client bookings
         const { data: bookingsData, error: bookingsError } = await supabase
           .from('bookings')
@@ -278,7 +250,7 @@ export default function ProfilePortfolio() {
           .order('date', { ascending: false });
 
         if (bookingsError) {
-          console.error('Error fetching bookings:', bookingsError);
+          logger.error('Error fetching bookings:', bookingsError);
         } else {
           const formattedBookings = (bookingsData || []).map((booking: any) => ({
             ...booking,
@@ -292,7 +264,7 @@ export default function ProfilePortfolio() {
         }
       }
     } catch (error) {
-      console.error('Error fetching profile data:', error);
+      logger.error('Error fetching profile data:', error);
     } finally {
       setLoading(false);
     }
@@ -304,16 +276,68 @@ export default function ProfilePortfolio() {
 
   const onRefresh = async () => {
     setRefreshing(true);
+    setCutsPage(0);
     await fetchProfileData();
     setRefreshing(false);
   };
 
-  const handleAvatarUpload = async () => {
-    Alert.alert('Coming Soon', 'Avatar upload functionality will be implemented soon.');
+  // Load more cuts when scrolling
+  const loadMoreCuts = () => {
+    if (isBarber) {
+      const nextPage = cutsPage + 1;
+      const startIndex = nextPage * CUTS_PER_PAGE;
+      const endIndex = startIndex + CUTS_PER_PAGE;
+      
+      if (startIndex < allCuts.length) {
+        const newCuts = allCuts.slice(startIndex, endIndex);
+        setCuts(prev => [...prev, ...newCuts]);
+        setCutsPage(nextPage);
+      }
+    }
   };
 
-  const handleCoverUpload = async () => {
-    Alert.alert('Coming Soon', 'Cover photo upload functionality will be implemented soon.');
+  const handleAvatarUpload = async (imageUrl: string) => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ avatar_url: imageUrl })
+        .eq('id', user?.id);
+
+      if (error) {
+        logger.error('Error updating avatar:', error);
+        Alert.alert('Error', 'Failed to update avatar. Please try again.');
+      } else {
+        setAvatarError(false); // Reset error state
+        setProfile(prev => prev ? { ...prev, avatar_url: imageUrl } : null);
+        Alert.alert('Success', 'Avatar updated successfully!');
+        await fetchProfileData();
+      }
+    } catch (error) {
+      logger.error('Error updating avatar:', error);
+      Alert.alert('Error', 'Failed to update avatar. Please try again.');
+    }
+  };
+
+  const handleCoverUpload = async (imageUrl: string) => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ coverphoto: imageUrl })
+        .eq('id', user?.id);
+
+      if (error) {
+        logger.error('Error updating cover photo:', error);
+        Alert.alert('Error', 'Failed to update cover photo. Please try again.');
+      } else {
+        setCoverError(false); // Reset error state
+        setProfile(prev => prev ? { ...prev, coverphoto: imageUrl } : null);
+        Alert.alert('Success', 'Cover photo updated successfully!');
+        await fetchProfileData();
+      }
+    } catch (error) {
+      logger.error('Error updating cover photo:', error);
+      Alert.alert('Error', 'Failed to update cover photo. Please try again.');
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -331,6 +355,17 @@ export default function ProfilePortfolio() {
       hour12: true
     });
   };
+
+  // Set initial tab based on user role
+  useEffect(() => {
+    if (userProfile) {
+      if (userProfile.role === 'barber') {
+        setActiveTab('portfolio');
+      } else {
+        setActiveTab('cuts');
+      }
+    }
+  }, [userProfile]);
 
   if (loading) {
     return (
@@ -357,7 +392,6 @@ export default function ProfilePortfolio() {
   }
 
   const isBarber = userProfile?.role === 'barber';
-  const displayCuts = isBarber ? cuts : likedCuts;
   const pastBarbers = [...new Set(bookings.map(b => b.barber.id))].map(barberId => {
     const booking = bookings.find(b => b.barber.id === barberId);
     return booking?.barber;
@@ -390,6 +424,8 @@ export default function ProfilePortfolio() {
                           ...prev,
                           portfolio: updatedPortfolio
                         } : null);
+                        // Refresh profile data to ensure UI is updated
+                        await fetchProfileData();
                         Alert.alert('Success', 'Portfolio image added successfully!');
                       }
                     } catch (error) {
@@ -404,6 +440,9 @@ export default function ProfilePortfolio() {
                   title="Add Portfolio Image"
                   description="Showcase your best work"
                   existingImages={barberProfile?.portfolio || []}
+                  onImagePress={(imageUrl) => {
+                    setSelectedPortfolioImage(imageUrl);
+                  }}
                   onRemoveImage={async (index) => {
                     try {
                       const updatedPortfolio = (barberProfile?.portfolio || []).filter((_, i) => i !== index);
@@ -429,43 +468,11 @@ export default function ProfilePortfolio() {
 
               </View>
             ) : (
-              // Client Portfolio - Show liked cuts
-              <View style={tw`flex-1 px-4`}>
-                {displayCuts.length === 0 ? (
+              // Client Portfolio - Empty state (portfolio tab hidden for clients)
                   <View style={tw`flex-1 justify-center items-center py-8`}>
-                    <Heart size={48} style={[tw`mb-4`, { color: 'rgba(255,255,255,0.4)' }]} />
-                    <Text style={[tw`font-bold text-xl mb-2 text-center`, { color: theme.colors.foreground }]}>
-                      No liked cuts yet
-                    </Text>
                     <Text style={[tw`text-sm text-center`, { color: theme.colors.mutedForeground }]}>
-                      Start exploring and liking cuts from your favorite stylists
+                  Portfolio view not available for clients
                     </Text>
-                  </View>
-                ) : (
-                  <View style={tw`py-4`}>
-                    {/* Grid Layout for Cuts */}
-                    <View style={tw`flex-row flex-wrap justify-between`}>
-                      {displayCuts.map((cut, index) => {
-                        return (
-                          <VideoPreview
-                            key={cut.id}
-                            videoUrl={cut.url}
-                            title={cut.title}
-                            barberName={cut.barber.name}
-                            barberAvatar={cut.barber.image}
-                            views={cut.views}
-                            likes={cut.likes}
-                            onPress={() => {
-                              // Navigate to cuts page for this specific video
-                              // @ts-ignore - Navigation type issue
-                              navigation.navigate('Cuts', { cutId: cut.id });
-                            }}
-                          />
-                        );
-                      })}
-                    </View>
-                  </View>
-                )}
               </View>
             )}
           </View>
@@ -750,26 +757,29 @@ export default function ProfilePortfolio() {
       <View style={tw`relative w-full overflow-hidden`}>
         {/* Cover Photo */}
         <View style={[tw`h-32 w-full flex items-center justify-center relative`, { backgroundColor: theme.colors.muted }]}>
-          {profile.coverphoto ? (
+          {profile.coverphoto && !coverError ? (
             <Image
               source={{ uri: profile.coverphoto }}
               style={tw`absolute inset-0 w-full h-full`}
               resizeMode="cover"
+              onError={() => {
+                setCoverError(true);
+              }}
             />
           ) : (
-            <View style={[tw`absolute inset-0 w-full h-full`, { backgroundColor: theme.colors.muted }]} />
+            <LinearGradient
+              colors={getCoverFallbackProps(profile.name || profile.username).gradientColors as [string, string]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={tw`absolute inset-0 w-full h-full`}
+            />
           )}
           {/* Camera button for cover photo */}
           <TouchableOpacity
             style={tw`absolute top-3 right-3 z-20 h-8 w-8 rounded-full bg-black/40 items-center justify-center`}
-            onPress={handleCoverUpload}
-            disabled={coverLoading}
+            onPress={() => setShowCoverUpload(true)}
           >
-            {coverLoading ? (
-              <Loader2 size={16} color="white" />
-            ) : (
-              <Camera size={16} color="white" />
-            )}
+            <Camera size={16} color="white" />
           </TouchableOpacity>
           {/* Glass overlay */}
           <View style={tw`absolute inset-0 bg-black/30 z-10`} />
@@ -778,22 +788,41 @@ export default function ProfilePortfolio() {
         {/* Avatar - Positioned exactly where cover photo ends */}
         <View style={tw`absolute left-3/8 top-20 -translate-x-1/2  z-20`}>
           <View style={[tw`w-24 h-24 rounded-full overflow-hidden border-2`, { borderColor: theme.colors.secondary }]}>
-            <Image
-              source={{ uri: profile.avatar_url }}
-              style={tw`w-full h-full`}
-              resizeMode="cover"
-            />
+            {profile.avatar_url && !avatarError ? (
+              <Image
+                source={{ uri: profile.avatar_url }}
+                style={tw`w-full h-full`}
+                resizeMode="cover"
+                onError={() => {
+                  setAvatarError(true);
+                }}
+              />
+            ) : (
+              <LinearGradient
+                colors={[
+                  getAvatarFallbackProps(profile.name || profile.username).backgroundColor,
+                  getCoverFallbackProps(profile.name || profile.username).gradientColors[1] || getAvatarFallbackProps(profile.name || profile.username).backgroundColor,
+                ]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={tw`w-full h-full items-center justify-center`}
+              >
+                <Text
+                  style={[
+                    tw`text-3xl font-bold`,
+                    { color: getAvatarFallbackProps(profile.name || profile.username).textColor },
+                  ]}
+                >
+                  {getAvatarFallbackProps(profile.name || profile.username).initials}
+                </Text>
+              </LinearGradient>
+            )}
           </View>
           <TouchableOpacity
             style={[tw`absolute bottom-0 right-0 h-8 w-8 rounded-full items-center justify-center`, { backgroundColor: theme.colors.secondary }]}
-            onPress={handleAvatarUpload}
-            disabled={avatarLoading}
+            onPress={() => setShowAvatarUpload(true)}
           >
-            {avatarLoading ? (
-              <Loader2 size={14} color={theme.colors.primary} />
-            ) : (
-              <Camera size={14} color={theme.colors.primary} />
-            )}
+            <Camera size={14} color={theme.colors.primary} />
           </TouchableOpacity>
         </View>
         
@@ -839,6 +868,7 @@ export default function ProfilePortfolio() {
 
         {/* Tabs Under Avatar */}
         <View style={[tw`flex-row border-b`, { borderColor: 'rgba(255,255,255,0.1)', backgroundColor: theme.colors.background }]}>
+          {isBarber && (
           <TouchableOpacity
             style={tw`flex-1 py-3 items-center`}
             onPress={() => setActiveTab('portfolio')}
@@ -851,9 +881,10 @@ export default function ProfilePortfolio() {
               tw`text-xs mt-1`, 
               { color: activeTab === 'portfolio' ? theme.colors.secondary : theme.colors.mutedForeground }
             ]}>
-              {isBarber ? 'Portfolio' : 'Liked Cuts'}
+                Portfolio
             </Text>
           </TouchableOpacity>
+          )}
           
           <TouchableOpacity
             style={tw`flex-1 py-3 items-center`}
@@ -947,6 +978,106 @@ export default function ProfilePortfolio() {
             </>
           )}
         </DialogContent>
+      </Dialog>
+
+      {/* Portfolio Image Preview Dialog */}
+      <Dialog visible={selectedPortfolioImage !== null} onClose={() => setSelectedPortfolioImage(null)}>
+        {selectedPortfolioImage && (
+          <View style={tw`items-center justify-center`}>
+            <Image
+              source={{ uri: selectedPortfolioImage }}
+              style={[tw`rounded-xl`, { 
+                width: Math.min(width - 80, 400),
+                height: Math.min(width - 80, 400),
+              }]}
+              resizeMode="contain"
+            />
+          </View>
+        )}
+      </Dialog>
+
+      {/* Avatar Upload Modal */}
+      <Dialog visible={showAvatarUpload} onClose={() => setShowAvatarUpload(false)}>
+        <View style={tw`p-4`}>
+          <Text style={[tw`text-lg font-semibold mb-4`, { color: theme.colors.foreground }]}>
+            Update Profile Picture
+          </Text>
+          <ImageUpload
+            onUploadComplete={async (imageUrl) => {
+              await handleAvatarUpload(imageUrl);
+              setShowAvatarUpload(false);
+            }}
+            onUploadError={(error) => {
+              Alert.alert('Upload Error', error);
+            }}
+            maxImages={1}
+            aspectRatio={1}
+            title="Upload Avatar"
+            description="Select a square image for your profile picture"
+            existingImages={profile?.avatar_url ? [profile.avatar_url] : []}
+            customPath="avatars"
+            upsert={true}
+            onRemoveImage={async () => {
+              try {
+                const { error } = await supabase
+                  .from('profiles')
+                  .update({ avatar_url: null })
+                  .eq('id', user?.id);
+
+                if (error) {
+                  Alert.alert('Error', 'Failed to remove avatar');
+                } else {
+                  setProfile(prev => prev ? { ...prev, avatar_url: undefined } : null);
+                  await fetchProfileData();
+                }
+              } catch (error) {
+                Alert.alert('Error', 'Failed to remove avatar');
+              }
+            }}
+          />
+        </View>
+      </Dialog>
+
+      {/* Cover Photo Upload Modal */}
+      <Dialog visible={showCoverUpload} onClose={() => setShowCoverUpload(false)}>
+        <View style={tw`p-4`}>
+          <Text style={[tw`text-lg font-semibold mb-4`, { color: theme.colors.foreground }]}>
+            Update Cover Photo
+          </Text>
+          <ImageUpload
+            onUploadComplete={async (imageUrl) => {
+              await handleCoverUpload(imageUrl);
+              setShowCoverUpload(false);
+            }}
+            onUploadError={(error) => {
+              Alert.alert('Upload Error', error);
+            }}
+            maxImages={1}
+            aspectRatio={16/9}
+            title="Upload Cover Photo"
+            description="Select a wide image for your cover photo"
+            existingImages={profile?.coverphoto ? [profile.coverphoto] : []}
+            customPath="covers"
+            upsert={true}
+            onRemoveImage={async () => {
+              try {
+                const { error } = await supabase
+                  .from('profiles')
+                  .update({ coverphoto: null })
+                  .eq('id', user?.id);
+
+                if (error) {
+                  Alert.alert('Error', 'Failed to remove cover photo');
+                } else {
+                  setProfile(prev => prev ? { ...prev, coverphoto: undefined } : null);
+                  await fetchProfileData();
+                }
+              } catch (error) {
+                Alert.alert('Error', 'Failed to remove cover photo');
+              }
+            }}
+          />
+        </View>
       </Dialog>
     </SafeAreaView>
   );

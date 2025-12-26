@@ -1,37 +1,29 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/shared/lib/supabase';
+import { logger } from '@/shared/lib/logger';
+import { handleCorsPreflight, withCors } from '@/shared/lib/cors';
 
 interface UpdateStatusRequest {
   barberId: string;
   accountId: string;
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    // Handle preflight requests
-    if (request.method === 'OPTIONS') {
-      return new NextResponse(null, { 
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type',
-        }
-      })
-    }
+    // Handle CORS preflight
+    const preflightResponse = handleCorsPreflight(request);
+    if (preflightResponse) return preflightResponse;
 
     const body = await request.json() as UpdateStatusRequest;
     const { barberId, accountId } = body;
 
     // Input validation
     if (!barberId || !accountId) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { error: 'Barber ID and Account ID are required' },
-        { status: 400, headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type',
-        }}
+        { status: 400 }
       )
+      return withCors(request, response)
     }
 
     // Update the barber's Stripe account status
@@ -46,38 +38,27 @@ export async function POST(request: Request) {
       .eq('id', barberId);
 
     if (updateError) {
-      console.error('Error updating barber:', updateError);
-      return NextResponse.json(
+      logger.error('Error updating barber', updateError);
+      const response = NextResponse.json(
         { error: 'Failed to update barber status' },
-        { status: 500, headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type',
-        }}
+        { status: 500 }
       )
+      return withCors(request, response)
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       message: 'Stripe account status updated successfully',
       barberId,
       accountId,
-    }, { headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    }})
+    })
+    return withCors(request, response)
   } catch (error) {
-    console.error('Error updating Stripe status:', error);
-    return NextResponse.json(
+    logger.error('Error updating Stripe status', error);
+    const response = NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to update Stripe status' },
-      {
-        status: 500, headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type',
-        }
-      }
+      { status: 500 }
     )
+    return withCors(request, response)
   }
 }

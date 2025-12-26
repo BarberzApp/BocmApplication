@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { supabase } from '@/shared/lib/supabase'
+import { logger } from '@/shared/lib/logger'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
@@ -149,7 +150,7 @@ export default function BrowsePage() {
       const suggestions = await getAddressSuggestionsNominatim(query);
       setLocationSuggestions(suggestions);
     } catch (error) {
-      console.error('Error fetching location suggestions:', error);
+      logger.error('Error fetching location suggestions', error);
       setLocationSuggestions([]);
     } finally {
       setLocationSuggestionsLoading(false);
@@ -208,7 +209,7 @@ export default function BrowsePage() {
           })
         },
         (error) => {
-          console.error('Error getting location:', error)
+          logger.error('Error getting location', error)
           toast({
             title: 'Location Error',
             description: 'Could not get your current location.',
@@ -434,7 +435,7 @@ export default function BrowsePage() {
 
       setBarbers(combinedBarbers)
     } catch (err) {
-      console.error('Error fetching barbers:', err)
+      logger.error('Error fetching barbers', err)
       setError('Failed to load barbers. Please try again.')
       toast({
         title: 'Error',

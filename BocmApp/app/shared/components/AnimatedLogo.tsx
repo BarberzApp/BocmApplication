@@ -16,13 +16,13 @@ const Sparkle: React.FC<SparkleProps> = ({ delay, top, left }) => {
       Animated.sequence([
         Animated.timing(animatedValue, {
           toValue: 1,
-          duration: 3000,
+          duration: 1500, // Reduced from 3000
           delay,
           useNativeDriver: true,
         }),
         Animated.timing(animatedValue, {
           toValue: 0,
-          duration: 3000,
+          duration: 1500, // Reduced from 3000
           useNativeDriver: true,
         }),
       ])
@@ -72,7 +72,7 @@ export const AnimatedLogo: React.FC = () => {
   const pulseValue = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const timer = setTimeout(() => setIsVisible(true), 500);
+    const timer = setTimeout(() => setIsVisible(true), 200); // Reduced from 500
     return () => clearTimeout(timer);
   }, []);
 
@@ -92,17 +92,17 @@ export const AnimatedLogo: React.FC = () => {
         }),
       ]).start();
 
-      // Continuous pulse animation
+      // Continuous pulse animation - sped up
       Animated.loop(
         Animated.sequence([
           Animated.timing(pulseValue, {
             toValue: 1,
-            duration: 2000,
+            duration: 1000, // Reduced from 2000
             useNativeDriver: true,
           }),
           Animated.timing(pulseValue, {
             toValue: 0,
-            duration: 2000,
+            duration: 1000, // Reduced from 2000
             useNativeDriver: true,
           }),
         ])

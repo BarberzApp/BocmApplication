@@ -8,6 +8,7 @@ import { Input } from '@/shared/components/ui/input'
 import { Alert, AlertDescription } from '@/shared/components/ui/alert'
 import { supabase } from '@/shared/lib/supabase'
 import { toast } from 'sonner'
+import { logger } from '@/shared/lib/logger'
 import { Calendar, Clock, AlertCircle, CheckCircle, Loader2 } from 'lucide-react'
 
 interface Availability {
@@ -53,7 +54,7 @@ export function AvailabilityManager({ barberId, onUpdate }: AvailabilityManagerP
         setAvailability(defaultAvailability)
       }
     } catch (error) {
-      console.error('Error fetching availability:', error)
+      logger.error('Error fetching availability', error)
       toast.error('Failed to load availability')
     } finally {
       setIsLoading(false)
@@ -130,7 +131,7 @@ export function AvailabilityManager({ barberId, onUpdate }: AvailabilityManagerP
       // Call onUpdate to refresh settings data
       onUpdate?.()
     } catch (error) {
-      console.error('Error saving availability:', error)
+      logger.error('Error saving availability', error)
       toast.error('Failed to save availability')
     } finally {
       setIsSaving(false)

@@ -6,6 +6,7 @@
 import { createContext, useContext, useEffect, useState } from "react"
 import { supabase } from '@/shared/lib/supabase'
 import { useToast } from "@/shared/components/ui/use-toast"
+import { logger } from '@/shared/lib/logger'
 
 // Types
 export type UserRole = "client" | "barber"
@@ -96,7 +97,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (!profile) {
-          console.error('Error fetching user profile:', profileError);
+          logger.error('Error fetching user profile', profileError);
           if (mounted) {
             setUser(null);
             setIsLoading(false);
@@ -133,8 +134,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (!barber) {
             // Debugging: log current session user id and user_id to insert
             const { data: sessionData } = await supabase.auth.getSession();
-            console.log('Current session user id:', sessionData?.session?.user?.id);
-            console.log('user_id to insert:', userId);
+            logger.debug('Current session user id', { userId: sessionData?.session?.user?.id });
+            logger.debug('user_id to insert', { userId });
             const { error: insertError } = await supabase
               .from('barbers')
               .insert({
@@ -145,7 +146,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 updated_at: new Date().toISOString(),
               });
             if (insertError) {
-              console.error('Failed to create barber profile after confirmation:', insertError);
+              logger.error('Failed to create barber profile after confirmation', insertError);
               if (mounted) {
                 toast({
                   title: "Barber profile creation failed",
@@ -157,7 +158,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
       } catch (error) {
-        console.error('Error in fetchUserProfile:', error);
+        logger.error('Error in fetchUserProfile', error);
         if (mounted) {
           setUser(null);
           setIsLoading(false);
@@ -171,17 +172,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { data: { session } } = await supabase.auth.getSession()
         
         if (session?.user) {
-          console.log('Found existing session for user:', session.user.email)
+          logger.debug('Found existing session for user', { email: session.user.email })
           await fetchUserProfile(session.user.id)
         } else {
-          console.log('No active session found')
+          logger.debug('No active session found')
           if (mounted) {
             setUser(null)
             setIsLoading(false)
           }
         }
       } catch (error) {
-        console.error('Auth initialization error:', error)
+        logger.error('Auth initialization error', error)
         if (mounted) {
           setUser(null)
           setIsLoading(false)
@@ -195,26 +196,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return
 
-      console.log('Auth state change:', event, session?.user?.email)
+      logger.debug('Auth state change', { event, email: session?.user?.email })
 
       if (event === 'SIGNED_IN' && session?.user) {
-        console.log('User signed in:', session.user.email)
+        logger.debug('User signed in', { email: session.user.email })
         // Don't set loading to true here as it might conflict with login function
         await fetchUserProfile(session.user.id)
       } else if (event === 'SIGNED_OUT') {
-        console.log('User signed out')
+        logger.debug('User signed out')
         if (mounted) {
           setUser(null)
           setIsLoading(false)
         }
       } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-        console.log('Token refreshed for user:', session.user.email)
+        logger.debug('Token refreshed for user', { email: session.user.email })
         // Token was refreshed, ensure user is still set
         if (mounted && !user) {
           await fetchUserProfile(session.user.id)
         }
       } else if (event === 'USER_UPDATED' && session?.user) {
-        console.log('User updated:', session.user.email)
+        logger.debug('User updated', { email: session.user.email })
         await fetchUserProfile(session.user.id)
       }
     })
@@ -237,7 +238,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (authError) {
-        console.error('Auth error:', authError);
+        logger.error('Auth error', authError);
         
         // Handle specific error cases
         let errorMessage = authError.message;
@@ -274,7 +275,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .maybeSingle();
 
       if (profileError || !profile) {
-        console.error('Profile fetch error:', profileError);
+        logger.error('Profile fetch error', profileError);
         toast({
           title: "Login failed",
           description: "Failed to load user profile. Please try again.",
@@ -300,7 +301,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         updatedAt: profile.updated_at
       });
 
-      console.log('Login successful for user:', profile.email);
+      logger.debug('Login successful for user', { email: profile.email });
       toast({
         title: "Login successful",
         description: `Welcome back, ${profile.name}!`,
@@ -308,7 +309,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       return true;
     } catch (error) {
-      console.error('Login process failed:', error);
+      logger.error('Login process failed', error);
       toast({
         title: "Login failed",
         description: error instanceof Error ? error.message : "An unexpected error occurred",
@@ -323,11 +324,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const register = async (name: string, email: string, password: string, role: UserRole, businessName?: string): Promise<boolean> => {
     try {
-      console.log('=== Registration Process Started ===');
-      console.log('Registration Data:', { name, email, role, businessName });
+      logger.debug('Registration Process Started', { name, email, role, hasBusinessName: !!businessName });
       
       // Create auth user with role in metadata
-      console.log('Creating auth user...');
+      logger.debug('Creating auth user');
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
@@ -341,7 +341,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (authError) {
-        console.error('Auth Error:', authError);
+        logger.error('Auth Error', authError);
         toast({
           title: "Registration failed",
           description: authError.message,
@@ -350,12 +350,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return false;
       }
 
-      console.log('Auth Data:', authData);
+      logger.debug('Auth Data', { userId: authData.user?.id, hasUser: !!authData.user });
 
       if (authData.user) {
         // Check if email confirmation is required
         if (authData.user.identities?.length === 0) {
-          console.log('Email confirmation required');
+          logger.debug('Email confirmation required');
           toast({
             title: "Check your email to confirm your account",
             description: "We've sent you a confirmation email. Please verify your email address to complete registration. You won't be able to log in until you confirm.",
@@ -370,7 +370,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         let retries = 3;
         
         while (retries > 0) {
-          console.log(`Fetching profile - Attempt ${4 - retries}/3...`);
+          logger.debug(`Fetching profile - Attempt ${4 - retries}/3`);
           const result = await supabase
             .from('profiles')
             .select('*')
@@ -379,12 +379,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             
           if (result.data) {
             profile = result.data;
-            console.log('Profile fetched successfully:', profile);
+            logger.debug('Profile fetched successfully', { userId: profile.id });
             break;
           }
           
           profileError = result.error;
-          console.log('Profile fetch attempt failed:', profileError);
+          logger.warn('Profile fetch attempt failed', profileError);
           retries--;
           if (retries > 0) {
             await new Promise(resolve => setTimeout(resolve, 1000));
@@ -392,7 +392,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (profileError || !profile) {
-          console.error('Profile Creation Failed:', profileError);
+          logger.error('Profile Creation Failed', profileError);
           toast({
             title: "Registration failed",
             description: "Failed to create user profile. Please try again.",
@@ -403,7 +403,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // For barbers, create a business profile
         if (role === 'barber' && businessName) {
-          console.log('Creating business profile...');
+          logger.debug('Creating business profile');
           const { error: businessError } = await supabase
             .from('barbers')
             .insert({
@@ -416,19 +416,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             });
 
           if (businessError) {
-            console.error('Business Profile Creation Failed:', businessError);
+            logger.error('Business Profile Creation Failed', businessError);
             toast({
               title: "Registration warning",
               description: "Account created but business profile setup failed. Please complete setup in your profile.",
               variant: "destructive",
             });
           } else {
-            console.log('Business profile created successfully');
+            logger.debug('Business profile created successfully');
           }
         }
 
         // Set user state
-        console.log('Setting user state...');
+        logger.debug('Setting user state');
         setUser({
           id: authData.user.id,
           name: profile.name,
@@ -445,7 +445,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           updatedAt: profile.updated_at
         });
 
-        console.log('Registration completed successfully');
+        logger.debug('Registration completed successfully');
         toast({
           title: "Registration successful",
           description: role === 'barber' 
@@ -455,7 +455,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // Redirect barbers to onboarding page
         if (role === 'barber') {
-          console.log('Redirecting to onboarding page...');
+          logger.debug('Redirecting to onboarding page');
           window.location.href = '/barber/onboarding';
         }
 
@@ -464,7 +464,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       return false;
     } catch (error) {
-      console.error('Registration Process Failed:', error);
+      logger.error('Registration Process Failed', error);
       toast({
         title: "Registration failed",
         description: error instanceof Error ? error.message : "An unexpected error occurred",
@@ -487,7 +487,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         description: "You have been successfully logged out",
       });
     } catch (error) {
-      console.error('Logout error:', error);
+      logger.error('Logout error', error);
       toast({
         title: "Logout failed",
         description: "There was an error logging out. Please try again.",
@@ -527,7 +527,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         description: "Your changes have been saved successfully",
       });
     } catch (error) {
-      console.error('Profile update error:', error);
+      logger.error('Profile update error', error);
       toast({
         title: "Profile update failed",
         description: "An unexpected error occurred",
@@ -546,7 +546,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await updateProfile({ favorites: updatedFavorites });
       }
     } catch (error) {
-      console.error('Add to favorites error:', error);
+      logger.error('Add to favorites error', error);
       toast({
         title: "Failed to add to favorites",
         description: "An unexpected error occurred",
@@ -562,7 +562,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const updatedFavorites = user.favorites.filter((id) => id !== barberId);
       await updateProfile({ favorites: updatedFavorites });
     } catch (error) {
-      console.error('Remove from favorites error:', error);
+      logger.error('Remove from favorites error', error);
       toast({
         title: "Failed to remove from favorites",
         description: "An unexpected error occurred",

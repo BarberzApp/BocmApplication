@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { sendSMS } from '@/shared/utils/sendSMS';
+const { logger } = require('@/shared/lib/logger');
 
 export async function POST(req) {
   try {
@@ -11,7 +12,7 @@ export async function POST(req) {
       }, { status: 400 });
     }
 
-    console.log('🧪 Testing client SMS for:', { phoneNumber, carrier });
+    logger.debug('Testing client SMS', { phoneNumber, carrier });
 
     // Send a test booking confirmation message
     const testMessage = `🎉 Booking Confirmed!\n\nService: Test Service\nDate: Thursday, July 24, 2025\nTime: 2:24 PM\nBarber: Test Barber\n\nSee you there!`;
@@ -33,7 +34,7 @@ export async function POST(req) {
     });
 
   } catch (error) {
-    console.error('❌ Test client SMS error:', error);
+    logger.error('Test client SMS error', error);
     return NextResponse.json({ 
       error: 'Failed to send test SMS',
       details: error.message 

@@ -35,6 +35,7 @@ export type RootStackParamList = {
     userType: 'client' | 'barber';
   };
   Terms: undefined;
+  PrivacyPolicy: undefined;
   BookingWebView: {
     barberId: string;
     barberName: string;
@@ -44,6 +45,10 @@ export type RootStackParamList = {
   };
   ProfilePreview: {
     barberId: string;
+  };
+  Cuts: {
+    cutId?: string;
+    barberId?: string;
   };
 }
 

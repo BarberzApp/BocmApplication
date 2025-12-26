@@ -1,6 +1,7 @@
 "use client"
 import Link from "next/link"
 import { useAuth } from "@/shared/hooks/use-auth-zustand"
+import { logger } from "@/shared/lib/logger"
 import { useEffect, useCallback, useState } from "react"
 import { Button } from "@/shared/components/ui/button"
 import {
@@ -84,11 +85,6 @@ export function Navbar() {
           icon: Calendar,
           label: "Calendar",
         },
-        {
-          href: "/cuts",
-          icon: Video,
-          label: "Cuts",
-        },
       ]
     }
 
@@ -98,11 +94,6 @@ export function Navbar() {
         icon: Calendar,
         label: "Bookings",
       },
-      {
-        href: "/cuts",
-        icon: Video,
-        label: "Cuts",
-      },
     ]
   }
 
@@ -111,7 +102,7 @@ export function Navbar() {
       await logout()
       window.location.href = "/"
     } catch (error) {
-      console.error("Logout failed:", error)
+      logger.error("Logout failed", error)
     }
   }
 
@@ -138,8 +129,7 @@ export function Navbar() {
             {/* Role-specific navigation items */}
             {roleSpecificNavItems().map((item) => {
               const isActive = pathname === item.href || 
-                (item.href === "/calendar" && pathname?.startsWith("/calendar")) ||
-                (item.href === "/cuts" && pathname?.startsWith("/cuts"))
+                (item.href === "/calendar" && pathname?.startsWith("/calendar"))
               
               return (
                 <Link

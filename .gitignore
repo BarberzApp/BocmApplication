@@ -7,10 +7,7 @@
 
 # testing
 /coverage
-/cypress/videos/
-/cypress/screenshots/
-cypress.env.json
-cypress.env.*.json
+*.tsbuildinfo
 
 # next.js
 /.next/
@@ -36,7 +33,6 @@ yarn-error.log*
 .vercel
 
 # typescript
-*.tsbuildinfo
 next-env.d.ts
 
 # IDE
@@ -87,6 +83,7 @@ mv app/offline future-features/
 !/src/lib/
 !/src/features/
 !/src/shared/
+!/src/docs/
 
 # Prevent feature-specific code outside of features directory
 /src/features/*

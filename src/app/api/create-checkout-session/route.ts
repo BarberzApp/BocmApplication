@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import Stripe from "stripe"
 import { supabase } from '@/shared/lib/supabase'
+import { logger } from '@/shared/lib/logger'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2024-06-20" as any,
@@ -36,9 +37,9 @@ interface CheckoutSessionRequest {
 
 export async function POST(request: Request) {
   try {
-    console.log('Starting checkout session creation...')
+    logger.debug('Starting checkout session creation...')
     const body = await request.json()
-    console.log('Request body:', body)
+    logger.debug('Request body', { body })
     
     const { 
       barberId, 
@@ -133,13 +134,19 @@ export async function POST(request: Request) {
       }))
     }
     
-    let platformFee = 338 // $3.38 in cents
-    let bocmShare = Math.round(platformFee * 0.60) // 60% of fee to BOCM
-    let barberShare = platformFee - bocmShare // 40% of fee to barber
+    // Platform fee calculation (matches mobile app)
+    // Customer pays $3.38, Stripe takes $0.38, net is $3.00
+    // Split $3.00: 60% to BOCM ($1.80), 40% to barber ($1.20)
+    // BOCM absorbs the Stripe fee as a platform cost, so BOCM net = $1.80 - $0.38 = $1.42
+    const platformFee = 338 // $3.38 in cents (what customer pays)
+    const stripeFee = 38 // $0.38 in cents (Stripe's fee - absorbed by platform)
+    const netAfterStripe = platformFee - stripeFee // $3.00 = 300 cents
+    const bocmGrossShare = Math.round(netAfterStripe * 0.60) // 60% = $1.80 = 180 cents
+    let bocmShare = bocmGrossShare - stripeFee // Platform net after absorbing Stripe fee = $1.42 = 142 cents
+    let barberShare = Math.round(netAfterStripe * 0.40) // 40% = $1.20 = 120 cents
 
     // If barber is a developer, bypass all platform fees
     if (barber.is_developer) {
-      platformFee = 0
       bocmShare = 0
       barberShare = 0
     }
@@ -217,7 +224,7 @@ export async function POST(request: Request) {
         transfer_data: {
           destination: barber.stripe_account_id,
         },
-        application_fee_amount: bocmShare, // Will be 0 for developer
+        application_fee_amount: bocmShare, // Platform net after absorbing Stripe fee = $1.42 (or 0 for developer)
       },
       metadata: {
         barberId,
@@ -243,7 +250,7 @@ export async function POST(request: Request) {
       },
     })
 
-    console.log('Checkout session created successfully:', {
+    logger.debug('Checkout session created successfully', {
       sessionId: session.id,
       url: session.url,
       amount: session.amount_total
@@ -254,7 +261,7 @@ export async function POST(request: Request) {
       sessionId: session.id 
     })
   } catch (error) {
-    console.error("Error creating checkout session:", error)
+    logger.error("Error creating checkout session", error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to create checkout session" },
       { status: 500 }

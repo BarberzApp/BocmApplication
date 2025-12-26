@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { supabaseAdmin } from '@/shared/lib/supabase'
+import { logger } from '@/shared/lib/logger'
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing STRIPE_SECRET_KEY')
@@ -22,15 +23,15 @@ export async function POST(request: Request) {
       )
     }
 
-    console.log('Updating database with Stripe account ID:', { userId, stripeAccountId })
+    logger.debug('Updating database with Stripe account ID', { userId, stripeAccountId })
 
     // First, verify the Stripe account exists and get its status
     let stripeAccount
     try {
       stripeAccount = await stripe.accounts.retrieve(stripeAccountId)
-      console.log('Stripe account found:', stripeAccount.id)
+      logger.debug('Stripe account found', { accountId: stripeAccount.id })
     } catch (error) {
-      console.error('Error retrieving Stripe account:', error)
+      logger.error('Error retrieving Stripe account', error)
       return NextResponse.json(
         { error: 'Invalid Stripe account ID or account not found' },
         { status: 400 }
@@ -45,17 +46,17 @@ export async function POST(request: Request) {
       .single()
 
     if (barberError || !barber) {
-      console.error('Error fetching barber:', barberError)
+      logger.error('Error fetching barber', barberError)
       return NextResponse.json(
         { error: 'Barber record not found' },
         { status: 404 }
       )
     }
 
-    console.log('Found barber record:', barber.id)
+    logger.debug('Found barber record', { barberId: barber.id })
 
     // Update the barber record with the Stripe account information
-    console.log('About to update barber record:', {
+    logger.debug('About to update barber record', {
       barberId: barber.id,
       stripeAccountId: stripeAccountId,
       currentStatus: barber.stripe_account_status,
@@ -73,10 +74,10 @@ export async function POST(request: Request) {
       .eq('id', barber.id)
       .select() // Add select to see what was actually updated
 
-    console.log('Update result:', { updateData, updateError })
+    logger.debug('Update result', { updateData, updateError })
 
     if (updateError) {
-      console.error('Error updating barber:', updateError)
+      logger.error('Error updating barber', updateError)
       return NextResponse.json(
         { error: 'Failed to update database' },
         { status: 500 }
@@ -90,7 +91,7 @@ export async function POST(request: Request) {
       .eq('id', barber.id)
       .single()
 
-    console.log('Verification after update:', { verifyData, verifyError })
+    logger.debug('Verification after update', { verifyData, verifyError })
 
     return NextResponse.json({
       success: true,
@@ -106,7 +107,7 @@ export async function POST(request: Request) {
     })
 
   } catch (error) {
-    console.error('Error updating account ID:', error)
+    logger.error('Error updating account ID', error)
     return NextResponse.json(
       { 
         error: 'Failed to update account ID',

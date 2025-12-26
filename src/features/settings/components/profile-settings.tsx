@@ -20,6 +20,7 @@ import { Badge } from '@/shared/components/ui/badge'
 import { useSafeNavigation } from '@/shared/hooks/use-safe-navigation'
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/shared/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
+import { logger } from '@/shared/lib/logger'
 
 interface ProfileFormData {
   name: string
@@ -198,7 +199,7 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
           .single()
 
         if (barberError) {
-          console.error('Error fetching barber profile:', barberError);
+          logger.error('Error fetching barber profile', barberError)
           safePush('/barber/onboarding');
           return;
         }
@@ -284,7 +285,7 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
         }
       }
     } catch (error) {
-      console.error('Error fetching profile:', error)
+      logger.error('Error fetching profile', error)
       toast({
         title: 'Error',
         description: 'Failed to load profile data. Please try again.',
@@ -360,7 +361,7 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
       if (error.message === 'timeout') {
         toast({ title: 'Timeout', description: 'Avatar upload took too long. Please try again.', variant: 'destructive' })
       } else {
-        console.error('Error uploading avatar:', error)
+        logger.error('Error uploading avatar', error)
         toast({
           title: 'Error',
           description: 'Failed to upload avatar. Please try again.',
@@ -428,7 +429,7 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
       if (error.message === 'timeout') {
         toast({ title: 'Timeout', description: 'Profile update took too long. Please try again.', variant: 'destructive' })
       } else {
-        console.error('Error updating profile:', error)
+        logger.error('Error updating profile', error)
         toast({
           title: 'Error',
           description: 'Failed to update profile. Please try again.',

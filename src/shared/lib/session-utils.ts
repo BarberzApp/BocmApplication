@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { useAuthStore } from '@/shared/stores/auth-store'
+import { logger } from './logger'
 
 export interface SessionValidationResult {
   isValid: boolean
@@ -18,7 +19,7 @@ export async function validateSession(autoRefresh: boolean = true): Promise<Sess
     const { data: { session }, error: sessionError } = await supabase.auth.getSession()
     
     if (sessionError) {
-      console.error('Session validation error:', sessionError)
+      logger.error('Session validation error', sessionError)
       return {
         isValid: false,
         error: sessionError.message
@@ -38,13 +39,13 @@ export async function validateSession(autoRefresh: boolean = true): Promise<Sess
     const fiveMinutes = 5 * 60
     
     if (expiresAt && (expiresAt - now) < fiveMinutes) {
-      console.log('Session expiring soon, refreshing...')
+      logger.debug('Session expiring soon, refreshing')
       
       if (autoRefresh) {
         const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession()
         
         if (refreshError) {
-          console.warn('Session refresh warning:', refreshError)
+          logger.warn('Session refresh warning', refreshError)
           // Don't fail for refresh errors, continue with current session
           return {
             isValid: true,
@@ -52,7 +53,7 @@ export async function validateSession(autoRefresh: boolean = true): Promise<Sess
             needsRefresh: true
           }
         } else if (refreshedSession) {
-          console.log('Session refreshed successfully')
+          logger.debug('Session refreshed successfully')
           return {
             isValid: true,
             session: refreshedSession
@@ -72,7 +73,7 @@ export async function validateSession(autoRefresh: boolean = true): Promise<Sess
       session
     }
   } catch (error) {
-    console.error('Error validating session:', error)
+    logger.error('Error validating session', error)
     return {
       isValid: false,
       error: error instanceof Error ? error.message : 'Unknown error'
@@ -87,13 +88,13 @@ export async function validateSession(autoRefresh: boolean = true): Promise<Sess
  */
 export async function attemptSessionRecovery(maxRetries: number = 3): Promise<boolean> {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    console.log(`Session recovery attempt ${attempt}/${maxRetries}`)
+    logger.debug(`Session recovery attempt ${attempt}/${maxRetries}`)
     
     try {
       const { data: { session }, error: refreshError } = await supabase.auth.refreshSession()
       
       if (refreshError) {
-        console.error(`Recovery attempt ${attempt} failed:`, refreshError)
+        logger.error(`Recovery attempt ${attempt} failed`, refreshError)
         if (attempt === maxRetries) {
           return false
         }
@@ -103,10 +104,10 @@ export async function attemptSessionRecovery(maxRetries: number = 3): Promise<bo
       }
       
       if (session) {
-        console.log('Session recovered successfully')
+        logger.debug('Session recovered successfully')
         return true
       } else {
-        console.log(`Recovery attempt ${attempt}: No session after refresh`)
+        logger.debug(`Recovery attempt ${attempt}: No session after refresh`)
         if (attempt === maxRetries) {
           return false
         }
@@ -114,7 +115,7 @@ export async function attemptSessionRecovery(maxRetries: number = 3): Promise<bo
         await new Promise(resolve => setTimeout(resolve, 1000 * attempt))
       }
     } catch (error) {
-      console.error(`Recovery attempt ${attempt} exception:`, error)
+      logger.error(`Recovery attempt ${attempt} exception`, error)
       if (attempt === maxRetries) {
         return false
       }
@@ -134,16 +135,16 @@ export async function isSessionReadyForStripeConnect(): Promise<boolean> {
   const result = await validateSession(true)
   
   if (!result.isValid) {
-    console.log('Session not valid for Stripe Connect:', result.error)
+    logger.debug('Session not valid for Stripe Connect', { error: result.error })
     return false
   }
   
   if (result.needsRefresh) {
-    console.log('Session needs refresh for Stripe Connect')
+    logger.debug('Session needs refresh for Stripe Connect')
     return false
   }
   
-  console.log('Session ready for Stripe Connect')
+  logger.debug('Session ready for Stripe Connect')
   return true
 }
 
@@ -176,13 +177,13 @@ export async function withValidSession<T>(
       const store = await import('@/shared/stores/auth-store')
       store.useAuthStore.getState().setShowLoginModal(true)
     }
-    console.log('Session not valid for authenticated request:', result.error)
+    logger.debug('Session not valid for authenticated request', { error: result.error })
     return null
   }
   try {
     return await callback(result.session.user.id)
   } catch (error) {
-    console.error('Error in authenticated callback:', error)
+    logger.error('Error in authenticated callback', error)
     return null
   }
 } 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Button } from '@/shared/components/ui/button'
+import { logger } from '@/shared/lib/logger'
 import { Input } from '@/shared/components/ui/input'
 import { Label } from '@/shared/components/ui/label'
 import { Textarea } from '@/shared/components/ui/textarea'
@@ -96,7 +97,7 @@ export function ManualAppointmentForm({
       if (servicesError) throw servicesError
       setServices(servicesData || [])
     } catch (error) {
-      console.error('Error fetching barber data:', error)
+      logger.error('Error fetching barber data', error)
       toast({
         title: 'Error',
         description: 'Failed to load services.',
@@ -192,7 +193,7 @@ export function ManualAppointmentForm({
       if (error) throw error
       setExistingAppointments(conflicts || [])
     } catch (error) {
-      console.error('Error checking availability:', error)
+      logger.error('Error checking availability', error)
     } finally {
       setCheckingAvailability(false)
     }
@@ -273,7 +274,7 @@ export function ManualAppointmentForm({
       onAppointmentCreated(data.booking)
       handleClose()
     } catch (error) {
-      console.error('Error creating manual appointment:', error)
+      logger.error('Error creating manual appointment', error)
       toast({
         title: 'Error',
         description: 'Failed to create appointment. Please try again.',

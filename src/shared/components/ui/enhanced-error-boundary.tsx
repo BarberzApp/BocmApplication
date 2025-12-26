@@ -7,6 +7,8 @@ import { AlertTriangle, RefreshCw, Home, ArrowLeft, Bug } from 'lucide-react'
 import { useSafeNavigation } from '@/shared/hooks/use-safe-navigation'
 import { useAuth } from '@/shared/hooks/use-auth-zustand'
 import { reportReactError } from '@/shared/utils/error-reporter'
+import { logger } from '@/shared/lib/logger'
+import * as Sentry from '@sentry/nextjs'
 
 interface ErrorBoundaryState {
   hasError: boolean
@@ -50,7 +52,25 @@ export class EnhancedErrorBoundary extends React.Component<ErrorBoundaryProps, E
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('EnhancedErrorBoundary caught an error:', error, errorInfo)
+    logger.error('EnhancedErrorBoundary caught an error', error, { errorInfo })
+    
+    // Send to Sentry in production
+    if (process.env.NODE_ENV === 'production') {
+      Sentry.captureException(error, {
+        contexts: {
+          react: {
+            componentStack: errorInfo.componentStack,
+          },
+        },
+        tags: {
+          errorBoundary: true,
+          retryCount: this.state.retryCount,
+        },
+        extra: {
+          errorInfo,
+        },
+      })
+    }
     
     // Report error with SMS notification
     reportReactError(error, errorInfo, this.state.retryCount)
@@ -76,11 +96,11 @@ export class EnhancedErrorBoundary extends React.Component<ErrorBoundaryProps, E
     const { retryCount } = this.state
 
     if (retryCount >= maxRetries) {
-      console.error('Max retries exceeded')
+      logger.error('Max retries exceeded')
       return
     }
 
-    console.log(`Retrying... Attempt ${retryCount + 1}/${maxRetries}`)
+    logger.debug(`Retrying... Attempt ${retryCount + 1}/${maxRetries}`)
     
     this.setState(prev => ({ 
       retryCount: prev.retryCount + 1,
@@ -284,7 +304,7 @@ export function useErrorHandler() {
   const [retryCount, setRetryCount] = useState(0)
 
   const handleError = React.useCallback((error: Error) => {
-    console.error('Error caught by useErrorHandler:', error)
+    logger.error('Error caught by useErrorHandler', error)
     reportReactError(error, undefined, retryCount)
     setError(error)
   }, [retryCount])

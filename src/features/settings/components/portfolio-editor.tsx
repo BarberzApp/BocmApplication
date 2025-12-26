@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { supabase } from '@/shared/lib/supabase'
 import { useAuth } from '@/shared/hooks/use-auth-zustand'
 import { useToast } from '@/shared/components/ui/use-toast'
+import { logger } from '@/shared/lib/logger'
 
 // For drag-and-drop
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
@@ -110,7 +111,7 @@ export function PortfolioEditor({ initialItems, open, onClose, onSave }: Portfol
         ]))
       }
     } catch (error) {
-      console.error('Error uploading media:', error)
+      logger.error('Error uploading media', error)
       setError('Failed to upload media. Please try again.')
     } finally {
       setIsUploading(false)
@@ -151,7 +152,7 @@ export function PortfolioEditor({ initialItems, open, onClose, onSave }: Portfol
       })
       onClose()
     } catch (error) {
-      console.error('Error saving portfolio:', error)
+      logger.error('Error saving portfolio', error)
       setError(error instanceof Error ? error.message : 'Failed to save portfolio. Please try again.')
       toast({
         title: 'Error',

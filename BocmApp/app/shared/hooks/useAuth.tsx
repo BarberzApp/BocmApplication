@@ -3,6 +3,10 @@ import { useState, useEffect, createContext, useContext, ReactNode } from 'react
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { User } from '@supabase/supabase-js';
+import { logger } from '../lib/logger';
+import { withTimeout } from '../lib/errorRecovery';
+import { setUserContext } from '../lib/sentry';
+import { Alert } from 'react-native';
 
 // Types
 export type UserRole = 'client' | 'barber';
@@ -53,9 +57,18 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
       if (session?.user) {
         await fetchUserProfile(session.user.id);
         await AsyncStorage.setItem('user', JSON.stringify(session.user));
+        
+        // Set Sentry user context
+        setUserContext({
+          id: session.user.id,
+          email: session.user.email,
+        });
       } else {
         setUserProfile(null);
         await AsyncStorage.removeItem('user');
+        
+        // Clear Sentry user context
+        setUserContext(null);
       }
     });
 
@@ -64,29 +77,77 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
 
   const checkUser = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      logger.log('🔍 Checking user session...');
+      
+      // Add 10-second timeout to session check
+      const sessionPromise = supabase.auth.getSession();
+      
+      const { data: { session } } = await withTimeout(sessionPromise, {
+        timeout: 10000, // 10 seconds
+        timeoutMessage: 'Session check timed out',
+      });
+      
       setUser(session?.user ?? null);
       
       if (session?.user) {
+        logger.log('✅ Session found, fetching profile...');
         await fetchUserProfile(session.user.id);
+        
+        // Set Sentry user context
+        setUserContext({
+          id: session.user.id,
+          email: session.user.email,
+        });
+      } else {
+        logger.log('❌ No active session found');
+        
+        // Clear Sentry user context
+        setUserContext(null);
       }
-    } catch (error) {
-      console.error('Error checking user session:', error);
+    } catch (error: any) {
+      logger.error('Error checking user session:', error);
+      
+      // Check if it's a timeout error
+      if (error.message?.includes('timed out') || error.message?.includes('timeout')) {
+        logger.warn('⏱️ Session check timed out after 10 seconds');
+        
+        // Clear user state FIRST (so app redirects to login)
+        setUser(null);
+        setUserProfile(null);
+        
+        // Clear Sentry user context
+        setUserContext(null);
+        
+        // Clear stale data from storage
+        AsyncStorage.removeItem('user').catch(e => 
+          logger.error('Failed to clear storage:', e)
+        );
+        
+        // Don't show alert - just clear state and let user login
+        // The AuthGuard will handle redirecting to login screen
+        logger.log('✅ State cleared, redirecting to login...');
+      } else {
+        // For other errors, just clear the state
+        setUser(null);
+        setUserProfile(null);
+      }
     } finally {
+      // ALWAYS set loading to false, even on timeout
+      // This allows the app to show login screen immediately
       setLoading(false);
     }
   };
 
   const fetchUserProfile = async (userId: string) => {
     try {
-      console.log('📋 Fetching profile for user:', userId);
+      logger.log('📋 Fetching profile for user:', userId);
       let profile = null;
       let profileError = null;
       const maxRetries = 3;
       const retryDelay = 1000; // 1 second
 
       for (let i = 0; i < maxRetries; i++) {
-        console.log(`📋 Fetching profile - Attempt ${i + 1}/${maxRetries}...`);
+        logger.log(`📋 Fetching profile - Attempt ${i + 1}/${maxRetries}...`);
         const { data, error } = await supabase
           .from('profiles')
           .select('*')
@@ -95,14 +156,14 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
 
         if (data) {
           profile = data;
-          console.log('✅ Profile fetched successfully');
+          logger.log('✅ Profile fetched successfully');
           break;
         }
 
         if (error && error.code !== 'PGRST116') {
           // If it's not a "not found" error, break immediately
           profileError = error;
-          console.error('❌ Profile fetch error:', error);
+          logger.error('❌ Profile fetch error:', error);
           break;
         }
 
@@ -114,14 +175,14 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
 
       if (!profile) {
         // Don't log as error if profile doesn't exist yet (user might not be confirmed)
-        console.log('❌ Profile not found for user:', userId);
+        logger.log('❌ Profile not found for user:', userId);
         setUserProfile(null);
         return;
       }
 
       // Check if profile is complete
       if (!profile.role || !profile.username) {
-        console.log('⚠️ Profile incomplete, needs completion');
+        logger.log('⚠️ Profile incomplete, needs completion');
       }
 
       setUserProfile({
@@ -142,7 +203,7 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
 
       // Ensure barber row exists after confirmation
       if (profile.role === 'barber') {
-        console.log('💈 Checking for barber row...');
+        logger.log('💈 Checking for barber row...');
         const { data: barber } = await supabase
           .from('barbers')
           .select('id')
@@ -150,7 +211,7 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
           .maybeSingle(); // Use maybeSingle() here too
           
         if (!barber) {
-          console.log('💈 Creating barber row...');
+          logger.log('💈 Creating barber row...');
           const { error: insertError } = await supabase
             .from('barbers')
             .insert({
@@ -162,46 +223,46 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
             });
             
           if (insertError) {
-            console.error('❌ Failed to create barber profile after confirmation:', insertError);
+            logger.error('❌ Failed to create barber profile after confirmation:', insertError);
           } else {
-            console.log('✅ Barber row created successfully');
+            logger.log('✅ Barber row created successfully');
           }
         } else {
-          console.log('✅ Barber row already exists');
+          logger.log('✅ Barber row already exists');
         }
       }
     } catch (error) {
-      console.error('❌ Error in fetchUserProfile:', error);
+      logger.error('❌ Error in fetchUserProfile:', error);
       setUserProfile(null);
     }
   };
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      console.log('🔐 Starting login process for:', email);
+      logger.log('🔐 Starting login process for:', email);
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (authError) {
-        console.error('❌ Login error:', authError);
+        logger.error('❌ Login error:', authError);
         return false;
       }
 
       if (!authData.user) {
-        console.error('❌ No user data returned');
+        logger.error('❌ No user data returned');
         return false;
       }
 
-      console.log('✅ Authentication successful for user:', authData.user.id);
+      logger.log('✅ Authentication successful for user:', authData.user.id);
 
       // Fetch profile with optimized query and retry
       let profile = null;
       let retries = 3;
       
       while (retries > 0) {
-        console.log(`📋 Fetching profile - Attempt ${4 - retries}/3...`);
+        logger.log(`📋 Fetching profile - Attempt ${4 - retries}/3...`);
         const { data, error } = await supabase
           .from('profiles')
           .select('*')
@@ -210,11 +271,11 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
         
         if (data) {
           profile = data;
-          console.log('✅ Profile fetched successfully');
+          logger.log('✅ Profile fetched successfully');
           break;
         }
         
-        console.log('❌ Profile fetch attempt failed:', error);
+        logger.log('❌ Profile fetch attempt failed:', error);
         retries--;
         if (retries > 0) {
           await new Promise(resolve => setTimeout(resolve, 1000));
@@ -222,13 +283,13 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
       }
 
       if (!profile) {
-        console.error('❌ Could not fetch profile after retries');
+        logger.error('❌ Could not fetch profile after retries');
         return false;
       }
 
       // Check if profile is complete
       if (!profile.role || !profile.username) {
-        console.log('⚠️ Profile incomplete, user needs to complete registration');
+        logger.log('⚠️ Profile incomplete, user needs to complete registration');
         // Still set the user state but return false to trigger redirect
         setUser(authData.user);
         await AsyncStorage.setItem('user', JSON.stringify(authData.user));
@@ -237,7 +298,7 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
 
       // Ensure barber row exists for barber users
       if (profile.role === 'barber') {
-        console.log('💈 Checking for barber row...');
+        logger.log('💈 Checking for barber row...');
         const { data: existingBarber } = await supabase
           .from('barbers')
           .select('id')
@@ -245,7 +306,7 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
           .maybeSingle();
 
         if (!existingBarber) {
-          console.log('💈 Creating barber row...');
+          logger.log('💈 Creating barber row...');
           const { error: insertError } = await supabase
             .from('barbers')
             .insert({
@@ -257,9 +318,9 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
             });
 
           if (insertError) {
-            console.error('❌ Failed to create barber row:', insertError);
+            logger.error('❌ Failed to create barber row:', insertError);
           } else {
-            console.log('✅ Barber row created successfully');
+            logger.log('✅ Barber row created successfully');
           }
         }
       }
@@ -282,11 +343,11 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
       });
 
       await AsyncStorage.setItem('user', JSON.stringify(authData.user));
-      console.log('✅ Login successful for user:', profile.email);
+      logger.log('✅ Login successful for user:', profile.email);
       
       return true;
     } catch (error) {
-      console.error('❌ Login error:', error);
+      logger.error('❌ Login error:', error);
       return false;
     }
   };
@@ -299,11 +360,11 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
     businessName?: string
   ): Promise<boolean | 'needs-confirmation' | 'already-exists'> => {
     try {
-      console.log('=== Registration Process Started ===');
-      console.log('Registration Data:', { name, email, role, businessName });
+      logger.log('=== Registration Process Started ===');
+      logger.log('Registration Data:', { name, email, role, businessName });
       
       // Create auth user with role in metadata
-      console.log('Creating auth user...');
+      logger.log('Creating auth user...');
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
@@ -317,13 +378,13 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
       });
 
       if (authError) {
-        console.error('Auth Error:', authError);
+        logger.error('Auth Error:', authError);
         
         // Check for user already registered error
         if (authError.message?.includes('User already registered') || 
             authError.status === 400) {
           // Try to check if user exists but needs confirmation
-          console.log('User may already exist, checking confirmation status...');
+          logger.log('User may already exist, checking confirmation status...');
           
           // Return needs-confirmation since the user exists but may not be confirmed
           return 'already-exists';
@@ -332,7 +393,7 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
         return false;
       }
 
-      console.log('Auth Data:', authData);
+      logger.log('Auth Data:', authData);
 
       // Check if this is a repeated signup (user already exists)
       if (!authError && authData.user && authData.user.identities?.length === 0) {
@@ -344,22 +405,22 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
           .single();
 
         if (existingProfile) {
-          console.log('User already exists with this email');
+          logger.log('User already exists with this email');
           return 'already-exists';
         } else {
-          console.log('Email confirmation required for new user');
+          logger.log('Email confirmation required for new user');
           return 'needs-confirmation';
         }
       }
 
       if (!authData.user) {
-        console.error('No user returned from signup');
+        logger.error('No user returned from signup');
         return false;
       }
 
       // Check if email confirmation is required
       if (!authData.session) {
-        console.log('Email confirmation required');
+        logger.log('Email confirmation required');
         return 'needs-confirmation';
       }
 
@@ -369,7 +430,7 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
       let retries = 3;
       
       while (retries > 0) {
-        console.log(`Fetching profile - Attempt ${4 - retries}/3...`);
+        logger.log(`Fetching profile - Attempt ${4 - retries}/3...`);
         const result = await supabase
           .from('profiles')
           .select('*')
@@ -378,12 +439,12 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
           
         if (result.data) {
           profile = result.data;
-          console.log('Profile fetched successfully:', profile);
+          logger.log('Profile fetched successfully:', profile);
           break;
         }
         
         profileError = result.error;
-        console.log('Profile fetch attempt failed:', profileError);
+        logger.log('Profile fetch attempt failed:', profileError);
         retries--;
         if (retries > 0) {
           await new Promise(resolve => setTimeout(resolve, 1000));
@@ -391,7 +452,7 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
       }
 
       if (profileError || !profile) {
-        console.error('Profile Creation Failed:', profileError);
+        logger.error('Profile Creation Failed:', profileError);
         // If profile doesn't exist, it might not be auto-created, so create it manually
         const { error: createProfileError } = await supabase
           .from('profiles')
@@ -407,7 +468,7 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
           });
 
         if (createProfileError) {
-          console.error('Manual profile creation failed:', createProfileError);
+          logger.error('Manual profile creation failed:', createProfileError);
           return false;
         }
 
@@ -419,7 +480,7 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
           .single();
 
         if (newProfileError || !newProfile) {
-          console.error('Failed to fetch newly created profile:', newProfileError);
+          logger.error('Failed to fetch newly created profile:', newProfileError);
           return false;
         }
 
@@ -428,7 +489,7 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
 
       // For barbers, create a business profile
       if (role === 'barber' && businessName) {
-        console.log('Creating business profile...');
+        logger.log('Creating business profile...');
         const { error: businessError } = await supabase
           .from('barbers')
           .insert({
@@ -440,15 +501,15 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
           });
 
         if (businessError) {
-          console.error('Business Profile Creation Failed:', businessError);
+          logger.error('Business Profile Creation Failed:', businessError);
           // Don't fail the registration, just log the error
         } else {
-          console.log('Business profile created successfully');
+          logger.log('Business profile created successfully');
         }
       }
 
       // Set user state
-      console.log('Setting user state...');
+      logger.log('Setting user state...');
       setUser(authData.user);
       setUserProfile({
         id: authData.user.id,
@@ -467,11 +528,11 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
       });
 
       await AsyncStorage.setItem('user', JSON.stringify(authData.user));
-      console.log('Registration completed successfully');
+      logger.log('Registration completed successfully');
 
       return true;
     } catch (error) {
-      console.error('Registration Process Failed:', error);
+      logger.error('Registration Process Failed:', error);
       return false;
     }
   };
@@ -483,7 +544,7 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
       setUserProfile(null);
       await AsyncStorage.removeItem('user');
     } catch (error) {
-      console.error('Logout error:', error);
+      logger.error('Logout error:', error);
     }
   };
 
@@ -512,9 +573,9 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
       // Update local state
       setUserProfile(prev => prev ? { ...prev, ...data } : null);
 
-      console.log('Profile updated successfully');
+      logger.log('Profile updated successfully');
     } catch (error) {
-      console.error('Profile update error:', error);
+      logger.error('Profile update error:', error);
       throw error;
     }
   };
@@ -529,7 +590,7 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
         await updateProfile({ favorites: updatedFavorites });
       }
     } catch (error) {
-      console.error('Add to favorites error:', error);
+      logger.error('Add to favorites error:', error);
       throw error;
     }
   };
@@ -541,7 +602,7 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
       const updatedFavorites = userProfile.favorites.filter((id) => id !== barberId);
       await updateProfile({ favorites: updatedFavorites });
     } catch (error) {
-      console.error('Remove from favorites error:', error);
+      logger.error('Remove from favorites error:', error);
       throw error;
     }
   };

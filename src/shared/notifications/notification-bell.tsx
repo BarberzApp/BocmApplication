@@ -18,6 +18,7 @@ import { ScrollArea } from '@/shared/components/ui/scroll-area'
 import { supabase } from '@/shared/lib/supabase'
 import { Notification as NotificationType } from '@/shared/types'
 import { cn } from '@/shared/lib/utils'
+import { logger } from '@/shared/lib/logger'
 
 export function NotificationBell() {
   const [notifications, setNotifications] = useState<Notification[]>([])
@@ -42,7 +43,7 @@ export function NotificationBell() {
       const count = await NotificationService.getUnreadCount(user.id)
       setUnreadCount(count)
     } catch (error) {
-      console.error("Error loading notifications:", error)
+      logger.error("Error loading notifications", error)
     }
   }
 
@@ -51,7 +52,7 @@ export function NotificationBell() {
       await NotificationService.markAsRead(notificationId)
       await loadNotifications()
     } catch (error) {
-      console.error("Error marking notification as read:", error)
+      logger.error("Error marking notification as read", error)
     }
   }
 
@@ -61,7 +62,7 @@ export function NotificationBell() {
       await NotificationService.markAllAsRead(user.id)
       await loadNotifications()
     } catch (error) {
-      console.error("Error marking all notifications as read:", error)
+      logger.error("Error marking all notifications as read", error)
     }
   }
 

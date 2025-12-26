@@ -21,6 +21,7 @@ import { Scissors, User, ArrowLeft, Eye, EyeOff, Check } from 'lucide-react-nati
 import { RootStackParamList } from '../shared/types';
 import { supabase } from '../shared/lib/supabase';
 import { theme } from '../shared/lib/theme';
+import { logger } from '../shared/lib/logger';
 import { AnimatedBackground } from '../shared/components/AnimatedBackground';
 import { AnimatedText } from '../shared/components/AnimatedText';
 import { ActionButton } from '../shared/components/ActionButton';
@@ -36,7 +37,6 @@ export default function SignUpPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
-    const [businessName, setBusinessName] = useState('');
     const [agreeToTerms, setAgreeToTerms] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -75,9 +75,6 @@ export default function SignUpPage() {
             newErrors.confirmPassword = 'Passwords do not match';
         }
 
-        if (userType === 'barber' && !businessName.trim()) {
-            newErrors.businessName = 'Business name is required for barbers';
-        }
 
         if (!agreeToTerms) {
             newErrors.terms = 'You must agree to the terms and conditions';
@@ -94,12 +91,12 @@ export default function SignUpPage() {
 
         setIsLoading(true);
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        console.log('=== Registration Process Started ===');
-        console.log('Registration Data:', { name: fullName, email, role: userType, businessName });
+        logger.log('=== Registration Process Started ===');
+        logger.log('Registration Data:', { name: fullName, email, role: userType });
 
         try {
             // Create auth user with metadata
-            console.log('Creating auth user...');
+            logger.log('Creating auth user...');
             const { data: authData, error: authError } = await supabase.auth.signUp({
                 email,
                 password,
@@ -107,13 +104,12 @@ export default function SignUpPage() {
                     data: {
                         name: fullName,
                         role: userType,
-                        business_name: businessName,
                     },
                 },
             });
 
             if (authError) {
-                console.error('Auth Error:', authError);
+                logger.error('Auth Error:', authError);
                 
                 // Check for user already registered error
                 if (authError.message?.includes('User already registered')) {
@@ -131,11 +127,11 @@ export default function SignUpPage() {
                 return;
             }
 
-            console.log('Auth Data:', authData);
+            logger.log('Auth Data:', authData);
 
             // Check if email confirmation is required
             if (authData.user && !authData.session) {
-                console.log('Email confirmation required');
+                logger.log('Email confirmation required');
                 Alert.alert(
                     'Check Your Email',
                     'We\'ve sent you a confirmation email. Please verify your email address to complete registration.',
@@ -150,7 +146,7 @@ export default function SignUpPage() {
             }
 
             if (!authData.user) {
-                console.error('No user returned from signup');
+                logger.error('No user returned from signup');
                 setErrors({ general: 'Registration failed. Please try again.' });
                 return;
             }
@@ -164,36 +160,34 @@ export default function SignUpPage() {
                     name: fullName,
                     username: email.split('@')[0], // Generate username from email
                     role: userType,
-                    business_name: businessName,
                     created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString(),
                 });
 
             if (profileError) {
-                console.error('Profile creation error:', profileError);
+                logger.error('Profile creation error:', profileError);
                 // Don't fail registration, profile will be created on first login
             }
 
             // For barbers, try to create business profile
-            if (userType === 'barber' && businessName) {
-                console.log('Creating business profile...');
+            if (userType === 'barber') {
+                logger.log('Creating business profile...');
                 const { error: businessError } = await supabase
                     .from('barbers')
                     .insert({
                         user_id: authData.user.id,
-                        business_name: businessName,
                         status: 'pending',
                         created_at: new Date().toISOString(),
                         updated_at: new Date().toISOString(),
                     });
 
                 if (businessError) {
-                    console.error('Business Profile Creation Failed:', businessError);
+                    logger.error('Business Profile Creation Failed:', businessError);
                     // Don't fail registration, barber row will be created on first login
                 }
             }
 
-            console.log('Registration completed successfully');
+            logger.log('Registration completed successfully');
             
             // Navigate based on user type
             if (authData.session) {
@@ -218,7 +212,7 @@ export default function SignUpPage() {
             }
 
         } catch (error) {
-            console.error('Registration Process Failed:', error);
+            logger.error('Registration Process Failed:', error);
             setErrors({ general: 'An unexpected error occurred. Please try again.' });
         } finally {
             setIsLoading(false);
@@ -236,12 +230,10 @@ export default function SignUpPage() {
     };
 
     const handleGoogleSignUp = async () => {
+        // Google Sign-Up is not yet implemented
+        // This function is kept for future implementation
+        // For now, Google Sign-Up button is hidden from the UI
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        try {
-            Alert.alert('Coming Soon', 'Google Sign-Up will be available soon!');
-        } catch (error) {
-            console.error('Google sign-up error:', error);
-        }
     };
 
     const handleBack = () => {
@@ -442,52 +434,7 @@ export default function SignUpPage() {
                                             </Text>
                                         )}
                                     </View>
-
-                                    {/* Business Name Input (for barbers) */}
-                                    {userType === 'barber' && (
-                                        <View style={{ marginBottom: 20 }}>
-                                            <Text style={{
-                                                fontSize: 14,
-                                                fontWeight: '600',
-                                                color: theme.colors.foreground,
-                                                marginBottom: 8,
-                                            }}>
-                                                Business Name
-                                            </Text>
-                                            <View style={{
-                                                height: 56,
-                                                borderRadius: 20,
-                                                borderWidth: 1,
-                                                borderColor: errors.businessName ? '#ef4444' : 'rgba(255, 255, 255, 0.2)',
-                                                backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                                                paddingHorizontal: 16,
-                                                justifyContent: 'center',
-                                            }}>
-                                                <TextInput
-                                                    placeholder="Your Barbershop Name"
-                                                    placeholderTextColor="rgba(255, 255, 255, 0.5)"
-                                                    value={businessName}
-                                                    onChangeText={(text) => {
-                                                        setBusinessName(text);
-                                                        setErrors({ ...errors, businessName: '' });
-                                                    }}
-                                                    style={{
-                                                        color: theme.colors.foreground,
-                                                        fontSize: 16,
-                                                    }}
-                                                    autoCapitalize="words"
-                                                    autoCorrect={false}
-                                                    editable={!isLoading}
-                                                />
-                                            </View>
-                                            {errors.businessName && (
-                                                <Text style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>
-                                                    {errors.businessName}
-                                                </Text>
-                                            )}
-                                        </View>
-                                    )}
-
+                                    
                                     {/* Email Input */}
                                     <View style={{ marginBottom: 20 }}>
                                         <Text style={{
@@ -689,6 +636,20 @@ export default function SignUpPage() {
                                             >
                                                 terms and conditions
                                             </Text>
+                                            {' '}and{' '}
+                                            <Text
+                                                onPress={() => {
+                                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                                    navigation.navigate('PrivacyPolicy' as any);
+                                                }}
+                                                style={{
+                                                    color: theme.colors.secondary,
+                                                    textDecorationLine: 'underline',
+                                                    fontWeight: '600',
+                                                }}
+                                            >
+                                                privacy policy
+                                            </Text>
                                         </Text>
                                     </TouchableOpacity>
                                     {errors.terms && (
@@ -706,53 +667,7 @@ export default function SignUpPage() {
                                         {isLoading ? 'Creating account...' : 'Create account'}
                                     </ActionButton>
 
-                                    {/* Divider */}
-                                    <View style={{
-                                        flexDirection: 'row',
-                                        alignItems: 'center',
-                                        marginVertical: 24,
-                                    }}>
-                                        <View style={{
-                                            flex: 1,
-                                            height: 1,
-                                            backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                                        }} />
-                                        <Text style={{
-                                            marginHorizontal: 16,
-                                            color: 'rgba(255, 255, 255, 0.6)',
-                                            fontSize: 14,
-                                        }}>
-                                            or
-                                        </Text>
-                                        <View style={{
-                                            flex: 1,
-                                            height: 1,
-                                            backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                                        }} />
-                                    </View>
-
-                                    {/* Google Sign Up */}
-                                    <TouchableOpacity
-                                        onPress={handleGoogleSignUp}
-                                        disabled={isLoading}
-                                        style={{
-                                            height: 56,
-                                            borderRadius: 20,
-                                            borderWidth: 1,
-                                            borderColor: 'rgba(255, 255, 255, 0.2)',
-                                            backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                                            justifyContent: 'center',
-                                            alignItems: 'center',
-                                        }}
-                                    >
-                                        <Text style={{
-                                            color: theme.colors.foreground,
-                                            fontSize: 16,
-                                            fontWeight: '600',
-                                        }}>
-                                            Sign up with Google
-                                        </Text>
-                                    </TouchableOpacity>
+                                    {/* Google Sign-Up removed - feature not yet implemented */}
                                 </BlurView>
                             </View>
                         )}

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Button } from '@/shared/components/ui/button'
+import { logger } from '@/shared/lib/logger'
 import { Input } from '@/shared/components/ui/input'
 import { Label } from '@/shared/components/ui/label'
 import { Textarea } from '@/shared/components/ui/textarea'
@@ -90,7 +91,7 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
       setServices(servicesResponse.data || [])
       setAddons(addonsResponse.data || [])
     } catch (error) {
-      console.error('Error fetching services and add-ons:', error)
+      logger.error('Error fetching services and add-ons', error)
       toast({
         title: "Error",
         description: "Failed to load services. Please try again.",
@@ -110,7 +111,7 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
       if (error) throw error
       setIsDeveloperAccount(data?.is_developer || false)
     } catch (error) {
-      console.error('Error fetching barber status:', error)
+      logger.error('Error fetching barber status', error)
       setIsDeveloperAccount(false)
     }
   }
@@ -134,7 +135,7 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
       if (bookingsError) throw bookingsError
 
       // Log fetched bookings
-      console.log('Fetched bookings:', bookings)
+      logger.debug('Fetched bookings', { bookings })
 
       // Set bookedTimes based on fetched bookings
       const newBookedTimes = new Set(bookings?.map(b => new Date(b.date).toTimeString().slice(0, 5)) || [])
@@ -189,11 +190,11 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
       }
 
       // Log generated slots
-      console.log('Generated slots:', slots)
+      logger.debug('Generated slots', { slots })
 
       setAvailableTimeSlots(slots)
     } catch (error) {
-      console.error('Error fetching availability:', error)
+      logger.error('Error fetching availability', error)
       toast({
         title: "Error",
         description: "Failed to load available time slots. Please try again.",
@@ -282,7 +283,7 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
           return
         }
 
-        console.log('Creating Stripe Checkout session for web booking...');
+        logger.debug('Creating Stripe Checkout session for web booking...')
         
         // Create Stripe Checkout session
         const response = await fetch('/api/create-checkout-session', {
@@ -304,13 +305,13 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
           throw new Error(data.error || 'Failed to create checkout session')
         }
 
-        console.log('Checkout session created:', data);
+        logger.debug('Checkout session created', { data })
 
         // Redirect to Stripe Checkout
         window.location.href = data.url;
       }
     } catch (error) {
-      console.error('Error creating booking:', error)
+      logger.error('Error creating booking', error)
       toast({
         title: "Error",
         description: "Failed to create booking. Please try again.",

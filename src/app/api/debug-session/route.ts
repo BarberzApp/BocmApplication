@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
+import { logger } from '@/shared/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('🔍 Debug session endpoint called');
+    logger.debug('Debug session endpoint called');
     
     // Get all cookies
     const cookieStore = await cookies();
@@ -18,8 +19,8 @@ export async function GET(request: NextRequest) {
       cookie.name.startsWith('sb-')
     );
     
-    console.log('🍪 All cookies found:', allCookies.map(c => c.name));
-    console.log('🔐 Session cookies found:', sessionCookies.map(c => c.name));
+    logger.debug('All cookies found', { count: allCookies.length, names: allCookies.map(c => c.name) });
+    logger.debug('Session cookies found', { count: sessionCookies.length, names: sessionCookies.map(c => c.name) });
     
     // Try to get session using Supabase
     const supabase = createRouteHandlerClient({ cookies });
@@ -29,9 +30,9 @@ export async function GET(request: NextRequest) {
     let user: any = session?.user || null;
     let userError = sessionError;
     
-    console.log('📋 Session check:', { 
+    logger.debug('Session check', { 
       hasSession: !!session, 
-      sessionError: sessionError?.message,
+      hasError: !!sessionError,
       userId: session?.user?.id 
     });
     
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
       const authHeader = request.headers.get('authorization');
       if (authHeader && authHeader.startsWith('Bearer ')) {
         const token = authHeader.replace('Bearer ', '');
-        console.log('🔐 Debug session - Using Bearer token for authentication');
+        logger.debug('Debug session - Using Bearer token for authentication');
         
         // Create a new Supabase client with the token
         const { createClient } = await import('@supabase/supabase-js');
@@ -69,9 +70,9 @@ export async function GET(request: NextRequest) {
       }
     }
     
-    console.log('👤 User check:', { 
+    logger.debug('User check', { 
       hasUser: !!user, 
-      userError: userError?.message,
+      hasError: !!userError,
       userId: user?.id 
     });
     
@@ -90,14 +91,14 @@ export async function GET(request: NextRequest) {
         dbAccess = !profileError && !!profile;
         dbError = profileError?.message;
         
-        console.log('🗄️ Database access check:', { 
+        logger.debug('Database access check', { 
           dbAccess, 
-          dbError,
+          hasError: !!dbError,
           profileFound: !!profile 
         });
       } catch (dbTestError) {
         dbError = dbTestError instanceof Error ? dbTestError.message : 'Unknown error';
-        console.error('❌ Database test failed:', dbTestError);
+        logger.error('Database test failed', dbTestError);
       }
     }
     
@@ -134,7 +135,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('❌ Debug session error:', error);
+    logger.error('Debug session error', error);
     return NextResponse.json(
       { 
         error: 'Debug session failed', 

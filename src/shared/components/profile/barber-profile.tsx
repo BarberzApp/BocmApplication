@@ -16,6 +16,7 @@ import { useToast } from "@/shared/components/ui/use-toast"
 import { useAuth } from "@/shared/hooks/use-auth-zustand"
 import { useData } from "../../hooks/use-data"
 import { supabase } from '@/shared/lib/supabase'
+import { logger } from '@/shared/lib/logger'
 import { BARBER_SPECIALTIES, getFilteredSpecialties } from '@/shared/constants/specialties'
 import { Check, ChevronsUpDown } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -73,7 +74,7 @@ export function BarberProfile() {
         setBarberId(data.id)
       }
     } catch (error) {
-      console.error('Error fetching barber ID:', error)
+      logger.error('Error fetching barber ID', error)
     }
   }
 
@@ -103,7 +104,7 @@ export function BarberProfile() {
         servicesCount: servicesCount || 0
       })
     } catch (error) {
-      console.error('Error fetching stats:', error)
+      logger.error('Error fetching stats', error)
     }
   }
 
@@ -151,7 +152,7 @@ export function BarberProfile() {
       if (error.message === 'timeout') {
         toast({ title: 'Timeout', description: 'Profile update took too long. Please try again.', variant: 'destructive' })
       } else {
-        console.error('Error updating profile:', error)
+        logger.error('Error updating profile', error)
         toast({
           title: "Error",
           description: "Failed to update profile",
@@ -192,7 +193,7 @@ export function BarberProfile() {
       if (error.message === 'timeout') {
         toast({ title: 'Timeout', description: 'Avatar upload took too long. Please try again.', variant: 'destructive' })
       } else {
-        console.error('Error uploading avatar:', error)
+        logger.error('Error uploading avatar', error)
         toast({ title: 'Error', description: 'Failed to upload avatar. Please try again.', variant: 'destructive' })
       }
     } finally {

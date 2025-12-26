@@ -48,7 +48,7 @@ export default function BookingSuccessPage() {
         </Text>
         
         <Text style={[tw`text-center mb-8`, { color: theme.colors.mutedForeground }]}>
-          Your appointment has been successfully booked. You'll receive a confirmation email shortly.
+          Your appointment has been successfully booked. You&apos;ll receive a confirmation email shortly.
         </Text>
 
         <TouchableOpacity
@@ -62,10 +62,10 @@ export default function BookingSuccessPage() {
 
         <TouchableOpacity
           style={[tw`w-full py-4 rounded-full`, { backgroundColor: 'rgba(255,255,255,0.05)' }]}
-          onPress={() => navigation.navigate('Home')}
+          onPress={() => navigation.navigate('MainTabs', { screen: 'Browse' })}
         >
           <Text style={[tw`text-center font-medium`, { color: theme.colors.foreground }]}>
-            Back to Home
+            Back to Browse
           </Text>
         </TouchableOpacity>
       </View>

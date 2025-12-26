@@ -1,4 +1,5 @@
 // Utility functions for handling redirect URLs during login
+import { logger } from './logger'
 
 /**
  * Store a URL to redirect to after successful login
@@ -8,7 +9,7 @@ export const storeRedirectUrl = (url: string) => {
   try {
     sessionStorage.setItem('redirectAfterLogin', url)
   } catch (error) {
-    console.error('Failed to store redirect URL:', error)
+    logger.error('Failed to store redirect URL', error)
   }
 }
 
@@ -24,7 +25,7 @@ export const getAndClearRedirectUrl = (): string | null => {
     }
     return url
   } catch (error) {
-    console.error('Failed to get redirect URL:', error)
+    logger.error('Failed to get redirect URL', error)
     return null
   }
 }
@@ -37,7 +38,7 @@ export const hasStoredRedirectUrl = (): boolean => {
   try {
     return !!sessionStorage.getItem('redirectAfterLogin')
   } catch (error) {
-    console.error('Failed to check redirect URL:', error)
+    logger.error('Failed to check redirect URL', error)
     return false
   }
 }
@@ -49,7 +50,7 @@ export const clearRedirectUrl = () => {
   try {
     sessionStorage.removeItem('redirectAfterLogin')
   } catch (error) {
-    console.error('Failed to clear redirect URL:', error)
+    logger.error('Failed to clear redirect URL', error)
   }
 }
 
@@ -65,6 +66,6 @@ export const storeCurrentPageAsRedirect = () => {
       storeRedirectUrl(currentUrl)
     }
   } catch (error) {
-    console.error('Failed to store current page as redirect:', error)
+    logger.error('Failed to store current page as redirect', error)
   }
 } 

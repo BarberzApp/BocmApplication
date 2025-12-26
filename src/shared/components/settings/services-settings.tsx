@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { supabase } from '@/shared/lib/supabase'
+import { logger } from '@/shared/lib/logger'
 
 interface Service {
   id?: string
@@ -31,7 +32,7 @@ export function ServicesSettings() {
       if (error) throw error
       if (data) setServices(data)
     } catch (error) {
-      console.error('Error loading services:', error)
+      logger.error('Error loading services', error)
     }
   }
 
@@ -48,7 +49,7 @@ export function ServicesSettings() {
       await loadServices()
       reset()
     } catch (error) {
-      console.error('Error adding service:', error)
+      logger.error('Error adding service', error)
     } finally {
       setIsLoading(false)
     }
@@ -66,7 +67,7 @@ export function ServicesSettings() {
       
       await loadServices()
     } catch (error) {
-      console.error('Error deleting service:', error)
+      logger.error('Error deleting service', error)
     }
   }
 

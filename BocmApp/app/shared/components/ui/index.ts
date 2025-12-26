@@ -43,4 +43,10 @@ export { ImageUpload } from './ImageUpload';
 export { VideoUpload } from './VideoUpload';
 
 // Location Components
-export { LocationInput } from './LocationInput'; 
+export { LocationInput } from './LocationInput';
+
+// Onboarding Components
+export { SectionHeader, default as SectionHeaderDefault } from './SectionHeader';
+export { NumericInput, default as NumericInputDefault } from './NumericInput';
+export { ProgressIndicator, default as ProgressIndicatorDefault } from './ProgressIndicator';
+export { default as OnboardingInputField } from './OnboardingInputField'; 

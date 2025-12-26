@@ -1,12 +1,13 @@
 # Supabase Edge Functions
 
-This directory contains Edge Functions for the Barber App. Edge Functions are serverless functions that run on Supabase's infrastructure.
+This directory contains Edge Functions for the BOCM App (Barber On Call Mobile). Edge Functions are serverless functions that run on Supabase's infrastructure.
 
 ## Available Functions
 
-- `auth-webhook`: Handles authentication webhooks
-- `booking-notification`: Sends notifications for booking events
-- `payment-webhook`: Processes payment webhooks from Stripe
+- `stripe-connect`: Creates and manages Stripe Connect accounts for barbers (used in BarberOnboardingPage)
+- `stripe-dashboard`: Generates Stripe dashboard login links for barbers (used in EarningsDashboard)
+- `create-developer-booking`: Creates bookings for developer accounts without payment processing (used in BookingForm)
+- `create-payment-intent`: Creates Stripe payment intents for regular bookings in the mobile app (used in BookingForm)
 
 ## Development
 

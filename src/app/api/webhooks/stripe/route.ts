@@ -3,6 +3,7 @@ import Stripe from 'stripe'
 import { supabaseAdmin } from "@/shared/lib/supabase"
 import { headers } from "next/headers"
 import { sendBookingConfirmationSMS } from '@/shared/utils/sendSMS'
+import { logger } from '@/shared/lib/logger'
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing STRIPE_SECRET_KEY')
@@ -53,7 +54,7 @@ async function updateBookingStatus(
     .eq('id', bookingId)
 
   if (error) {
-    console.error('Error updating booking:', error)
+    logger.error('Error updating booking', error)
     throw error
   }
 }
@@ -73,7 +74,7 @@ export async function POST(request: Request) {
     // Validate webhook secret is configured
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
     if (!webhookSecret) {
-      console.error('STRIPE_WEBHOOK_SECRET is not configured')
+      logger.error('STRIPE_WEBHOOK_SECRET is not configured')
       return NextResponse.json(
         { error: 'Webhook secret not configured' },
         { status: 500 }
@@ -85,7 +86,7 @@ export async function POST(request: Request) {
     try {
       event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
     } catch (err) {
-      console.error('Webhook signature verification failed:', err)
+      logger.error('Webhook signature verification failed', err)
       return NextResponse.json(
         { error: 'Invalid signature' },
         { status: 400 }
@@ -104,7 +105,7 @@ export async function POST(request: Request) {
     switch (event.type as string) {
       case 'account.created': {
         const account = event.data.object as Stripe.Account
-        console.log('Processing account.created event:', account.id)
+        logger.debug('Processing account.created event', { accountId: account.id })
 
         // Validate account object
         if (!account.id || typeof account.id !== 'string') {
@@ -117,7 +118,7 @@ export async function POST(request: Request) {
         // Get barber ID from metadata
         const barberId = account.metadata?.barber_id
         if (!barberId) {
-          console.error('No barber ID found in account metadata')
+          logger.error('No barber ID found in account metadata')
           return NextResponse.json(
             { error: 'No barber ID found' },
             { status: 400 }
@@ -136,20 +137,20 @@ export async function POST(request: Request) {
           .eq('id', barberId)
 
         if (updateError) {
-          console.error('Error updating barber:', updateError)
+          logger.error('Error updating barber', updateError)
           return NextResponse.json(
             { error: 'Failed to update barber' },
             { status: 500 }
           )
         }
 
-        console.log('Successfully saved Stripe account ID for barber:', barberId)
+        logger.debug('Successfully saved Stripe account ID for barber', { barberId })
         break
       }
 
       case 'account.updated': {
         const account = event.data.object as Stripe.Account
-        console.log('Processing account.updated event:', account.id)
+        logger.debug('Processing account.updated event', { accountId: account.id })
 
         // Validate account object
         if (!account.id || typeof account.id !== 'string') {
@@ -167,7 +168,7 @@ export async function POST(request: Request) {
           .single()
 
         if (findError) {
-          console.error('Error finding barber:', findError)
+          logger.error('Error finding barber', findError)
           return NextResponse.json(
             { error: 'Failed to find barber' },
             { status: 500 }
@@ -192,7 +193,7 @@ export async function POST(request: Request) {
           .eq('id', barber.id)
 
         if (updateError) {
-          console.error('Error updating barber:', updateError)
+          logger.error('Error updating barber', updateError)
           return NextResponse.json(
             { error: 'Failed to update barber' },
             { status: 500 }
@@ -204,7 +205,7 @@ export async function POST(request: Request) {
 
       case 'account.application.deauthorized': {
         const application = event.data.object as Stripe.Application
-        console.log('Processing account.application.deauthorized event:', application.id)
+        logger.debug('Processing account.application.deauthorized event', { applicationId: application.id })
 
         // Validate application object
         if (!application.id || typeof application.id !== 'string') {
@@ -225,7 +226,7 @@ export async function POST(request: Request) {
           .eq('stripe_account_id', application.id)
 
         if (updateError) {
-          console.error('Error updating barber:', updateError)
+          logger.error('Error updating barber', updateError)
           return NextResponse.json(
             { error: 'Failed to update barber' },
             { status: 500 }
@@ -237,7 +238,7 @@ export async function POST(request: Request) {
 
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session
-        console.log('Processing checkout.session.completed event:', session.id)
+        logger.debug('Processing checkout.session.completed event', { sessionId: session.id })
 
         // Validate session object
         if (!session.id || typeof session.id !== 'string') {
@@ -248,7 +249,7 @@ export async function POST(request: Request) {
         }
 
         if (!session.metadata?.bookingId) {
-          console.error('No booking ID found in session metadata')
+          logger.error('No booking ID found in session metadata')
           return NextResponse.json(
             { error: 'No booking ID found' },
             { status: 400 }
@@ -267,7 +268,7 @@ export async function POST(request: Request) {
 
       case 'checkout.session.expired': {
         const session = event.data.object as Stripe.Checkout.Session
-        console.log('Processing checkout.session.expired event:', session.id)
+        logger.debug('Processing checkout.session.expired event', { sessionId: session.id })
 
         // Validate session object
         if (!session.id || typeof session.id !== 'string') {
@@ -278,7 +279,7 @@ export async function POST(request: Request) {
         }
 
         if (!session.metadata?.bookingId) {
-          console.error('No booking ID found in session metadata')
+          logger.error('No booking ID found in session metadata')
           return NextResponse.json(
             { error: 'No booking ID found' },
             { status: 400 }
@@ -295,7 +296,7 @@ export async function POST(request: Request) {
 
       case 'payment_intent.succeeded': {
         const paymentIntent = event.data.object as Stripe.PaymentIntent
-        console.log('Processing payment_intent.succeeded event:', paymentIntent.id)
+        logger.debug('Processing payment_intent.succeeded event', { paymentIntentId: paymentIntent.id })
 
         // Validate payment intent object
         if (!paymentIntent.id || typeof paymentIntent.id !== 'string') {
@@ -320,32 +321,35 @@ export async function POST(request: Request) {
           const { barberId, serviceId, date, notes, guestName, guestEmail, guestPhone, clientId, addonIds, addonTotal, addonsPaidSeparately } = meta
           
           // Debug logging
-          console.log('Payment intent metadata:', meta)
-          console.log('Extracted values:', { barberId, serviceId, date, notes, guestName, guestEmail, guestPhone, clientId })
+          logger.debug('Payment intent metadata', { meta })
+          logger.debug('Extracted values', { barberId, serviceId, date, notes, guestName, guestEmail, guestPhone, clientId })
           
           if (!barberId || !serviceId || !date) {
-            console.error('Missing required booking metadata in payment intent')
+            logger.error('Missing required booking metadata in payment intent')
             return NextResponse.json(
               { error: 'Missing required booking metadata' },
               { status: 400 }
             )
           }
 
-          // (Optional) Look up the service price (stored in dollars)
-          let price = 0
           // Convert Stripe cents to dollars for bookings table (which stores NUMERIC dollars)
           const platform_fee_cents = paymentIntent.application_fee_amount || 0
           const platform_fee = platform_fee_cents / 100
           const barber_payout_cents = paymentIntent.amount - platform_fee_cents
           const barber_payout = barber_payout_cents / 100
+          
+          // Price should be the total amount charged (platform_fee + barber_payout)
+          // This satisfies the check_payment_amounts constraint: platform_fee + barber_payout = price
+          const price = platform_fee + barber_payout
+          
+          // Get service price to store historically (so it doesn't change if service price is updated later)
           const { data: service } = await supabase
             .from('services')
             .select('price')
             .eq('id', serviceId)
             .single()
-          if (service && service.price) {
-            price = Number(service.price)
-          }
+
+          const servicePrice = service?.price ? Number(service.price) : 0
 
           // Calculate add-on total from add-ons table using addonIds (deduplicate first)
           let addon_total = 0
@@ -372,10 +376,11 @@ export async function POST(request: Request) {
             status: 'confirmed',
             payment_status: 'succeeded',
             payment_intent_id: paymentIntent.id,
-            price,        // base service price only
+            price,        // total amount charged (platform_fee + barber_payout) to satisfy constraint
+            service_price: servicePrice, // Store historical service price
             addon_total: 0,  // Let the trigger calculate this from booking_addons
-            platform_fee, // dollars
-            barber_payout, // dollars
+            platform_fee, // dollars - platform's share
+            barber_payout, // dollars - barber's share from platform fee
             notes: notes || null,
             guest_name: guestName || null,
             guest_email: guestEmail || null,
@@ -386,12 +391,12 @@ export async function POST(request: Request) {
           }).select('*, barber:barber_id(*), service:service_id(*), client:client_id(*)').single()
 
           // Debug logging for the insert operation
-          console.log('Inserting booking with client_id:', clientId === 'guest' ? null : clientId)
-          console.log('Original clientId from metadata:', clientId)
-          console.log('Condition check result:', clientId === 'guest')
+          logger.debug('Inserting booking with client_id', { clientId: clientId === 'guest' ? null : clientId })
+          logger.debug('Original clientId from metadata', { clientId })
+          logger.debug('Condition check result', { isGuest: clientId === 'guest' })
 
           if (createError) {
-            console.error('Error creating booking after payment:', createError)
+            logger.error('Error creating booking after payment', createError)
             return NextResponse.json(
               { error: 'Error creating booking after payment' },
               { status: 500 }
@@ -399,20 +404,20 @@ export async function POST(request: Request) {
           }
 
           bookingId = newBooking.id
-          console.log('Booking created after payment for payment_intent:', paymentIntent.id)
+          logger.debug('Booking created after payment for payment_intent', { paymentIntentId: paymentIntent.id })
 
           // Send SMS notifications to both barber and client
           try {
-            console.log('Sending SMS notifications for Stripe booking:', newBooking.id)
+            logger.debug('Sending SMS notifications for Stripe booking', { bookingId: newBooking.id })
             const smsResults = await sendBookingConfirmationSMS(newBooking)
-            console.log('SMS notification results:', smsResults)
+            logger.debug('SMS notification results', { smsResults })
           } catch (smsError) {
-            console.error('Failed to send SMS notifications:', smsError)
+            logger.error('Failed to send SMS notifications', smsError)
             // Don't fail the booking creation if SMS fails
           }
 
           // Log successful booking creation for mobile payments
-          console.log('✅ Mobile payment booking created successfully:', {
+          logger.debug('Mobile payment booking created successfully', {
             bookingId: newBooking.id,
             paymentIntentId: paymentIntent.id,
             barberId,
@@ -441,7 +446,7 @@ export async function POST(request: Request) {
                 created_at: new Date().toISOString()
               })
           } catch (trackingError) {
-            console.error('Error tracking mobile payment event:', trackingError)
+            logger.error('Error tracking mobile payment event', trackingError)
             // Don't fail the webhook if tracking fails
           }
 
@@ -467,16 +472,16 @@ export async function POST(request: Request) {
                   .insert(bookingAddons)
 
                 if (addonError) {
-                  console.error('Error adding add-ons to booking:', addonError)
+                  logger.error('Error adding add-ons to booking', addonError)
                 } else {
-                  console.log(`Added ${addons.length} add-ons to booking`)
+                  logger.debug(`Added ${addons.length} add-ons to booking`)
                 }
               }
             }
           }
         } else if (findError && typeof findError === 'object' && (findError as any).code !== 'PGRST116') {
           // Only log error if it's not the 'no rows' error
-          console.error('Error finding booking:', findError)
+          logger.error('Error finding booking', findError)
           return NextResponse.json(
             { error: 'Failed to find booking' },
             { status: 500 }
@@ -508,7 +513,7 @@ export async function POST(request: Request) {
           })
 
           if (paymentError) {
-            console.error('Error storing payment in Supabase:', paymentError)
+            logger.error('Error storing payment in Supabase', paymentError)
             return NextResponse.json(
               { error: 'Error storing payment' },
               { status: 500 }
@@ -520,7 +525,7 @@ export async function POST(request: Request) {
 
       case 'payment_intent.payment_failed': {
         const paymentIntent = event.data.object as Stripe.PaymentIntent
-        console.log('Processing payment_intent.payment_failed event:', paymentIntent.id)
+        logger.debug('Processing payment_intent.payment_failed event', { paymentIntentId: paymentIntent.id })
 
         // Validate payment intent object
         if (!paymentIntent.id || typeof paymentIntent.id !== 'string') {
@@ -538,7 +543,7 @@ export async function POST(request: Request) {
           .single()
 
         if (findError) {
-          console.error('Error finding booking:', findError)
+          logger.error('Error finding booking', findError)
           return NextResponse.json(
             { error: 'Failed to find booking' },
             { status: 500 }
@@ -561,7 +566,7 @@ export async function POST(request: Request) {
 
         // Handle retry logic if needed
         if (paymentIntent.next_action) {
-          console.log('Payment requires additional action:', paymentIntent.next_action)
+          logger.debug('Payment requires additional action', { nextAction: paymentIntent.next_action })
           // You might want to notify the user or handle the next action
         }
 
@@ -570,7 +575,7 @@ export async function POST(request: Request) {
 
       case 'charge.refunded': {
         const charge = event.data.object as Stripe.Charge
-        console.log('Processing charge.refunded event:', charge.id)
+        logger.debug('Processing charge.refunded event', { chargeId: charge.id })
 
         // Validate charge object
         if (!charge.id || typeof charge.id !== 'string') {
@@ -595,7 +600,7 @@ export async function POST(request: Request) {
           .single()
 
         if (findError) {
-          console.error('Error finding booking:', findError)
+          logger.error('Error finding booking', findError)
           return NextResponse.json(
             { error: 'Failed to find booking' },
             { status: 500 }
@@ -634,7 +639,7 @@ export async function POST(request: Request) {
         })
 
         if (refundError) {
-          console.error('Error storing refund payment record:', refundError)
+          logger.error('Error storing refund payment record', refundError)
           // Don't fail the webhook for this, just log the error
         }
 
@@ -644,7 +649,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ received: true })
   } catch (error) {
-    console.error('Error processing webhook:', error)
+    logger.error('Error processing webhook', error)
     return NextResponse.json(
       { error: 'Webhook error' },
       { status: 400 }

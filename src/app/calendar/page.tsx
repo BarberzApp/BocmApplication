@@ -12,6 +12,7 @@ import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, User, Dolla
 import { cn } from '@/lib/utils';
 import { supabase } from '@/shared/lib/supabase';
 import { useAuth } from '@/shared/hooks/use-auth-zustand';
+import { logger } from '@/shared/lib/logger';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/shared/components/ui/dialog';
 import { EnhancedCalendar } from '@/shared/components/calendar/enhanced-calendar';
 import { CalendarSyncSettings } from '@/shared/components/calendar-sync-settings';
@@ -53,12 +54,12 @@ export default function BarberCalendar() {
 
   useEffect(() => {
     setMounted(true);
-    console.log('Barber calendar page loaded/reloaded');
+    logger.debug('Barber calendar page loaded/reloaded');
   }, []);
 
   useEffect(() => {
     if (!user) return;
-    console.log('Fetching bookings for user:', user);
+    logger.debug('Fetching bookings for user', { userId: user.id });
     
     const fetchBookings = async () => {
       setLoading(true);
@@ -73,7 +74,7 @@ export default function BarberCalendar() {
         if (barberData && !barberError) {
           // User is a barber - fetch their appointments
           setUserRole('barber');
-          console.log('User is a barber, fetching barber appointments');
+          logger.debug('User is a barber, fetching barber appointments');
           
           const { data: bookings, error } = await supabase
             .from('bookings')
@@ -83,7 +84,7 @@ export default function BarberCalendar() {
             .order('date', { ascending: true });
           
           if (error || !bookings) {
-            console.error('Error fetching barber bookings:', error);
+            logger.error('Error fetching barber bookings', error);
             setEvents([]);
             return;
           }
@@ -157,8 +158,7 @@ export default function BarberCalendar() {
         } else {
           // User is a client - fetch their appointments
           setUserRole('client');
-          console.log('User is a client, fetching client appointments');
-          console.log('🔍 Fetching bookings for client ID:', user.id);
+          logger.debug('User is a client, fetching client appointments', { userId: user.id });
           
           const { data: bookings, error } = await supabase
             .from('bookings')
@@ -175,30 +175,19 @@ export default function BarberCalendar() {
             .eq('payment_status', 'succeeded') // Only show successful payments
             .order('date', { ascending: true });
           
-          console.log('📊 Client bookings query result:', { bookings, error });
+          logger.debug('Client bookings query result', { count: bookings?.length, error });
           
           if (error || !bookings) {
-            console.error('Error fetching client bookings:', error);
+            logger.error('Error fetching client bookings', error);
             setEvents([]);
             return;
           }
           
-          console.log('✅ Found', bookings.length, 'bookings for client');
-          
-          // Debug: Check if there are any bookings at all for this user
-          const { data: allBookingsDebug, error: debugError } = await supabase
-            .from('bookings')
-            .select('client_id, barber_id, date, status')
-            .limit(10);
-          
-          console.log('🔍 Debug - All bookings in DB:', allBookingsDebug);
-          console.log('🔍 Debug - Bookings for current user:', allBookingsDebug?.filter(b => b.client_id === user.id));
-          
-          console.log('🔄 Starting to transform bookings into events...');
+          logger.debug(`Found ${bookings.length} bookings for client`);
           
           // For each booking, fetch add-ons
           const events = await Promise.all(bookings.map(async (booking, index) => {
-            console.log(`📅 Processing booking ${index + 1}:`, booking);
+            logger.debug(`Processing booking ${index + 1}`, { bookingId: booking.id });
             
             // Fetch add-ons for this booking
             let addonTotal = 0;
@@ -244,15 +233,14 @@ export default function BarberCalendar() {
               }
             };
             
-            console.log(`✅ Created event for booking ${index + 1}:`, event);
             return event;
           }));
           
-          console.log('🎯 Final events array:', events);
+          logger.debug(`Final events array: ${events.length} events`);
           setEvents(events);
         }
       } catch (error) {
-        console.error('Error fetching bookings:', error);
+        logger.error('Error fetching bookings', error);
         setEvents([]);
       } finally {
         setLoading(false);

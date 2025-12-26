@@ -8,28 +8,41 @@
       "developmentClient": true,
       "distribution": "internal",
       "ios": {
-        "resourceClass": "m-medium",
-        "entitlements": {
-          "aps-environment": "development"
-        }
+        "resourceClass": "medium"
+      },
+      "android": {
+        "resourceClass": "medium",
+        "buildType": "apk"
+      },
+      "env": {
+        "SENTRY_ALLOW_FAILURE": "true"
       }
     },
     "preview": {
       "distribution": "internal",
       "ios": {
-        "resourceClass": "m-medium",
-        "entitlements": {
-          "aps-environment": "development"
-        }
+        "resourceClass": "medium"
+      },
+      "android": {
+        "resourceClass": "medium",
+        "buildType": "apk"
+      },
+      "env": {
+        "SENTRY_ALLOW_FAILURE": "true"
       }
     },
     "production": {
       "autoIncrement": true,
+      "distribution": "store",
       "ios": {
-        "resourceClass": "m-medium",
-        "entitlements": {
-          "aps-environment": "production"
-        }
+        "resourceClass": "medium"
+      },
+      "android": {
+        "resourceClass": "medium",
+        "buildType": "app-bundle"
+      },
+      "env": {
+        "SENTRY_ALLOW_FAILURE": "true"
       }
     }
   },
@@ -38,6 +51,18 @@
       "ios": {
         "appleId": "yaskhalil06@icloud.com",
         "appleTeamId": "6CL27WHBRU"
+      },
+      "android": {
+        "serviceAccountKeyPath": "./google-service-account.json",
+        "track": "internal"
+      }
+    },
+    "production_asc_api_key": {
+      "ios": {
+        "appleTeamId": "6CL27WHBRU",
+        "ascApiKeyPath": "./asc-api-key.p8",
+        "ascApiKeyId": "8M9PVK6L2F",
+        "ascApiKeyIssuerId": "12bc3aa3-c678-403c-b477-15b53438152e"
       }
     }
   }

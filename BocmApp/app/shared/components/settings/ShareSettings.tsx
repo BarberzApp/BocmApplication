@@ -12,6 +12,7 @@ import tw from 'twrnc';
 import { theme } from '../../lib/theme';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
+import { logger } from '../../lib/logger';
 import { Card, CardContent } from '../ui';
 import { 
   Share2, 
@@ -76,7 +77,7 @@ export function ShareSettings({ barberId }: ShareSettingsProps) {
 
       setProfileData({ ...profile, ...barberData });
     } catch (error) {
-      console.error('Error loading profile data:', error);
+      logger.error('Error loading profile data:', error);
     } finally {
       setIsLoading(false);
     }

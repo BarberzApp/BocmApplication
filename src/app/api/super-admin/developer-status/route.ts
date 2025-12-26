@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/shared/lib/supabase'
+import { supabase, supabaseAdmin } from '@/shared/lib/supabase'
+import { logger } from '@/shared/lib/logger'
 
 const SUPER_ADMIN_EMAIL = 'primbocm@gmail.com'
 
@@ -37,14 +38,29 @@ export async function POST(request: Request) {
       )
     }
 
-    // Update the barber's developer status
-    const { error } = await supabase
+    // Verify barber exists first
+    const { data: existingBarber, error: checkError } = await supabaseAdmin
+      .from('barbers')
+      .select('id, business_name, is_developer')
+      .eq('id', barberId)
+      .single()
+
+    if (checkError || !existingBarber) {
+      logger.error('Barber not found', { barberId, error: checkError })
+      return NextResponse.json(
+        { error: 'Barber not found' },
+        { status: 404 }
+      )
+    }
+
+    // Update the barber's developer status using admin client
+    const { error } = await supabaseAdmin
       .from('barbers')
       .update({ is_developer: isDeveloper })
       .eq('id', barberId)
 
     if (error) {
-      console.error('Error updating developer status:', error)
+      logger.error('Error updating developer status', error)
       return NextResponse.json(
         { error: 'Failed to update developer status' },
         { status: 500 }
@@ -56,7 +72,7 @@ export async function POST(request: Request) {
       message: `Developer status ${isDeveloper ? 'enabled' : 'disabled'} successfully`
     })
   } catch (error) {
-    console.error('Developer status update error:', error)
+    logger.error('Developer status update error', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -88,8 +104,8 @@ export async function GET(request: Request) {
       )
     }
 
-    // Get all barbers with their developer status
-    const { data, error } = await supabase
+    // Get all barbers with their developer status using admin client
+    const { data, error } = await supabaseAdmin
       .from('barbers')
       .select(`
         id,
@@ -105,7 +121,7 @@ export async function GET(request: Request) {
       .order('created_at', { ascending: false })
 
     if (error) {
-      console.error('Error fetching barbers:', error)
+      logger.error('Error fetching barbers', error)
       return NextResponse.json(
         { error: 'Failed to fetch barbers' },
         { status: 500 }
@@ -123,7 +139,7 @@ export async function GET(request: Request) {
       barbers: transformedData
     })
   } catch (error) {
-    console.error('Get barbers error:', error)
+    logger.error('Get barbers error', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

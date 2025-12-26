@@ -35,6 +35,7 @@ import { useAuth } from '../hooks/useAuth';
 import { theme } from '../lib/theme';
 import { supabase } from '../lib/supabase';
 import { notificationService, formatAppointmentTime } from '../lib/notifications';
+import { logger } from '../lib/logger';
 
 type BookingFormNavigationProp = NativeStackNavigationProp<RootStackParamList, 'BookingCalendar'>;
 
@@ -116,7 +117,7 @@ export default function BookingForm({
       const matchingService = services.find(service => service.id === preSelectedService.id);
       if (matchingService) {
         setSelectedService(matchingService);
-        console.log('[BOOKING_FORM] Auto-selected service:', matchingService.name);
+        logger.log('Auto-selected service:', matchingService.name);
         // Auto-advance to next step if service is pre-selected
         if (currentStep === 1) {
           setTimeout(() => {
@@ -135,24 +136,19 @@ export default function BookingForm({
 
   const fetchServices = async () => {
     try {
-      console.log('🔍 [BOOKING_FORM] Fetching services for barberId:', barberId);
       setLoading(true);
       
-      // Add timeout to prevent infinite loading
       const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new Error('Request timeout')), 10000)
       );
       
-      // Fetch services first (critical) with timeout
       const servicesData = await Promise.race([
         bookingService.getBarberServices(barberId),
         timeoutPromise
       ]) as Service[];
-      console.log('✅ [BOOKING_FORM] Services fetched successfully:', servicesData);
       
-      // Check if services exist
       if (!servicesData || servicesData.length === 0) {
-        console.warn('⚠️ [BOOKING_FORM] No services found for this barber');
+        logger.warn('No services found for this barber');
         Alert.alert('No Services', 'This barber has no services available for booking.');
         onClose();
         return;
@@ -166,14 +162,13 @@ export default function BookingForm({
           fetchAddons(),
           timeoutPromise
         ]) as ServiceAddon[];
-        console.log('✅ [BOOKING_FORM] Add-ons fetched successfully:', addonsData);
         setAddons(addonsData);
       } catch (addonError) {
-        console.warn('⚠️ [BOOKING_FORM] Add-ons fetch failed, continuing without add-ons:', addonError);
+        logger.warn('Add-ons fetch failed, continuing without add-ons:', addonError);
         setAddons([]);
       }
     } catch (error) {
-      console.error('❌ [BOOKING_FORM] Error fetching services:', error);
+      logger.error('Error fetching services:', error);
       Alert.alert('Error', 'Failed to load services. Please try again.');
     } finally {
       setLoading(false);
@@ -192,49 +187,42 @@ export default function BookingForm({
       if (error) throw error;
       return data || [];
     } catch (error) {
-      console.error('Error fetching add-ons:', error);
+      logger.error('Error fetching add-ons:', error);
       return [];
     }
   };
 
   const fetchBarberStatus = async () => {
     try {
-      console.log('🔍 [BOOKING_FORM] Fetching barber status for barberId:', barberId);
+      logger.log('🔍 Checking if barber is developer account:', barberId);
       const { data, error } = await supabase
         .from('barbers')
         .select('is_developer')
         .eq('id', barberId)
         .single();
 
-      console.log('[BOOKING_FORM] Barber data:', data);
-      console.log('[BOOKING_FORM] Barber error:', error);
-
       if (error) {
-        console.log('[BOOKING_FORM] Error fetching barber status:', error);
+        logger.error('❌ Error fetching barber status:', error);
         setIsDeveloperAccount(false);
         return;
       }
 
-      setIsDeveloperAccount(data?.is_developer || false);
-      console.log('[BOOKING_FORM] Is developer account:', data?.is_developer || false);
+      const isDev = data?.is_developer || false;
+      logger.log(`✅ Barber developer status: ${isDev ? 'DEVELOPER' : 'REGULAR'}`);
+      setIsDeveloperAccount(isDev);
     } catch (error) {
-      console.error('[BOOKING_FORM] Error fetching barber status:', error);
+      logger.error('❌ Error fetching barber status:', error);
       setIsDeveloperAccount(false);
     }
   };
 
   const fetchTimeSlots = async () => {
     if (!selectedDate || !selectedService) {
-      console.log('[BOOKING_FORM] Cannot fetch time slots - missing date or service');
+      // Cannot fetch time slots - missing date or service
       return;
     }
 
     try {
-      console.log('[BOOKING_FORM] Fetching time slots for:', {
-        barberId,
-        date: format(selectedDate, 'yyyy-MM-dd'),
-        serviceDuration: selectedService.duration
-      });
       setLoadingSlots(true);
       const dateStr = format(selectedDate, 'yyyy-MM-dd');
       const slots = await bookingService.getAvailableSlots(
@@ -242,10 +230,9 @@ export default function BookingForm({
         dateStr,
         selectedService.duration
       );
-      console.log('[BOOKING_FORM] Time slots fetched successfully:', slots);
       setTimeSlots(slots);
     } catch (error) {
-      console.error('[BOOKING_FORM] Error fetching time slots:', error);
+      logger.error('Error fetching time slots:', error);
       Alert.alert('Error', 'Failed to load available times. Please try again.');
     } finally {
       setLoadingSlots(false);
@@ -306,30 +293,17 @@ export default function BookingForm({
   };
 
   const handleCreateBooking = async () => {
-    console.log('[BOOKING_FORM] Starting booking creation...');
-    console.log('[BOOKING_FORM] Current state:', {
-      selectedService,
-      selectedDate,
-      selectedTime,
-      user: !!user,
-      isDeveloperAccount,
-      guestInfo
-    });
-
     if (!selectedService || !selectedDate || !selectedTime) {
-      console.log('[BOOKING_FORM] Missing required fields');
       Alert.alert('Error', 'Please complete all required fields.');
       return;
     }
 
     if (!user && !isDeveloperAccount) {
-      console.log('[BOOKING_FORM] User not signed in and not developer account');
       Alert.alert('Error', 'Please sign in to book with this barber.');
       return;
     }
 
     if (!user && isDeveloperAccount && (!guestInfo.name || !guestInfo.email || !guestInfo.phone)) {
-      console.log('[BOOKING_FORM] Missing guest information');
       Alert.alert('Error', 'Please fill in all guest information.');
       return;
     }
@@ -341,14 +315,24 @@ export default function BookingForm({
       const [hours, minutes] = selectedTime.split(':');
       bookingDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
-      console.log('[BOOKING_FORM] Booking date:', bookingDate.toISOString());
-
-      if (isDeveloperAccount) {
-        console.log('[BOOKING_FORM] Creating developer booking via API...');
-        console.log('[BOOKING_FORM] Service being used:', {
-          id: selectedService.id,
-          name: selectedService.name,
-          price: selectedService.price
+      // Double-check barber status before using developer booking
+      // This ensures we don't accidentally use developer booking for non-developer barbers
+      const { data: barberCheck, error: barberCheckError } = await supabase
+        .from('barbers')
+        .select('is_developer')
+        .eq('id', barberId)
+        .single();
+      
+      const isActuallyDeveloper = barberCheck?.is_developer === true;
+      
+      if (isDeveloperAccount && isActuallyDeveloper) {
+        logger.log('🔧 Developer account confirmed - using create-developer-booking endpoint');
+        logger.log('📦 Request data:', {
+          barberId,
+          serviceId: selectedService.id,
+          date: bookingDate.toISOString(),
+          clientId: user?.id,
+          guestName: user ? undefined : guestInfo.name,
         });
         
         // Use the developer booking Edge Function (same as rest of app)
@@ -372,31 +356,35 @@ export default function BookingForm({
           })
         });
 
+        logger.log('📡 Response status:', response.status, response.statusText);
+        
         const data = await response.json();
+        logger.log('📥 Response data:', data);
+        
         if (!response.ok) {
+          logger.error('❌ Developer booking failed:', {
+            status: response.status,
+            error: data.error,
+            details: data
+          });
           throw new Error(data.error || 'Failed to create developer booking');
         }
 
-        console.log('[BOOKING_FORM] Developer booking created successfully:', data.booking);
+        logger.log('✅ Developer booking created successfully');
         Alert.alert(
           'Success!',
           'Your booking has been created successfully (developer mode - no payment required).',
           [{ text: 'OK', onPress: () => onBookingCreated(data.booking) }]
         );
       } else {
-        console.log('[BOOKING_FORM] Creating regular booking with payment...');
-        // Regular booking requires payment first
+        // Barber is NOT a developer - must use Stripe payment flow
+        logger.log('💳 Regular barber account - using Stripe payment flow');
+        logger.log('⚠️ Developer booking was requested but barber is not a developer account');
+        
         if (!user) {
           Alert.alert('Error', 'Please sign in to book with this barber.');
           return;
         }
-
-        console.log('[BOOKING_FORM] Creating payment intent for Stripe Payment Sheet...');
-        console.log('[BOOKING_FORM] Service being used:', {
-          id: selectedService.id,
-          name: selectedService.name,
-          price: selectedService.price
-        });
         
         // Initialize Stripe
         await initStripe({
@@ -404,6 +392,16 @@ export default function BookingForm({
         });
 
         // Create payment intent using Edge Function
+        logger.log('📞 Calling create-payment-intent endpoint...');
+        logger.log('📦 Request data:', {
+          barberId,
+          serviceId: selectedService.id,
+          date: bookingDate.toISOString(),
+          clientId: user.id,
+          paymentType: 'fee',
+          addonIds: selectedAddonIds
+        });
+        
         const response = await fetch(`${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/create-payment-intent`, {
           method: 'POST',
           headers: { 
@@ -421,12 +419,21 @@ export default function BookingForm({
           })
         });
 
+        logger.log('📡 Response status:', response.status, response.statusText);
+        
         const data = await response.json();
+        logger.log('📥 Response data:', data);
+        
         if (!response.ok) {
+          logger.error('❌ Payment intent failed:', {
+            status: response.status,
+            error: data.error,
+            details: data
+          });
           throw new Error(data.error || 'Failed to create payment intent');
         }
 
-        console.log('[BOOKING_FORM] Payment intent created:', data);
+        logger.log('Payment intent created');
 
         // Confirm payment in-app (secure)
         const { error: paymentError } = await confirmPayment(data.clientSecret, {
@@ -434,13 +441,13 @@ export default function BookingForm({
         });
 
         if (paymentError) {
-          console.error('[BOOKING_FORM] Payment error:', paymentError);
+          logger.error('Payment error:', paymentError);
           Alert.alert('Payment Failed', paymentError.message || 'Payment could not be completed.');
           return;
         }
 
         // Payment successful - booking will be created by webhook
-        console.log('[BOOKING_FORM] Payment successful! Booking will be created automatically via webhook.');
+        logger.log('Payment successful - booking will be created via webhook');
         
         Alert.alert(
           'Payment Successful!',
@@ -458,8 +465,33 @@ export default function BookingForm({
 
       onClose();
     } catch (error) {
-      console.error('[BOOKING_FORM] Error creating booking:', error);
-      Alert.alert('Error', 'Failed to create booking. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('❌ Error creating booking:', {
+        error: errorMessage,
+        stack: error instanceof Error ? error.stack : undefined,
+        barberId,
+        serviceId: selectedService?.id,
+        selectedDate,
+        selectedTime,
+      });
+      
+      // Capture error in Sentry
+      const { captureException } = require('../../shared/lib/sentry');
+      captureException(error as Error, {
+        context: 'BookingForm.handleBooking',
+        selectedService: selectedService?.name,
+        selectedBarber: barberId,
+        selectedDate: selectedDate?.toISOString(),
+        selectedTime,
+        errorMessage,
+      });
+      
+      // Show user-friendly error with more detail
+      Alert.alert(
+        'Booking Failed', 
+        errorMessage || 'Failed to create booking. Please try again or contact support.',
+        [{ text: 'OK' }]
+      );
     } finally {
       setBookingLoading(false);
     }
@@ -538,7 +570,7 @@ export default function BookingForm({
         {/* Header */}
         <View style={tw`px-5 pt-4 pb-6 border-b border-white/10`}>
           <View style={tw`flex-row items-center justify-between mb-4`}>
-            <TouchableOpacity onPress={onClose}>
+            <TouchableOpacity testID="close-button" onPress={onClose}>
               <Icon name="x" size={24} color={theme.colors.secondary} />
             </TouchableOpacity>
             <Text style={[tw`text-lg font-semibold`, { color: theme.colors.foreground }]}>
@@ -879,7 +911,7 @@ export default function BookingForm({
                     Tell us about yourself
                   </Text>
                   <Text style={[tw`text-center`, { color: theme.colors.mutedForeground }]}>
-                    We'll use this to confirm your booking
+                    We&apos;ll use this to confirm your booking
                   </Text>
                 </View>
 
@@ -960,7 +992,7 @@ export default function BookingForm({
                         Welcome back, {userProfile?.name}!
                       </Text>
                       <Text style={[tw`text-center`, { color: theme.colors.mutedForeground }]}>
-                        We'll use your account information for this booking
+                        We&apos;ll use your account information for this booking
                       </Text>
                     </View>
                   </View>
@@ -1129,7 +1161,7 @@ export default function BookingForm({
 
                 {/* Card Input Section */}
                 <View style={[
-                  tw`p-6 rounded-2xl`,
+                  tw`p-6 rounded-2xl mb-8`,
                   { 
                     backgroundColor: 'rgba(255,255,255,0.08)',
                     borderWidth: 1,
@@ -1159,14 +1191,14 @@ export default function BookingForm({
                     style={{
                       width: '100%',
                       height: 56,
-                      marginVertical: 8,
+                      marginVertical: 20,
                     }}
                   />
                   
-                  <View style={tw`flex-row items-center mt-3`}>
+                  <View style={tw`flex-row items-center mt-2`}>
                     <Icon name="info" size={14} color={theme.colors.mutedForeground} />
                     <Text style={[tw`ml-2 text-xs`, { color: theme.colors.mutedForeground }]}>
-                      Test: 4242 4242 4242 4242 • Any future date • Any CVC
+                      All transactions are processed securely by Stripe.
                     </Text>
                   </View>
                 </View>
@@ -1180,7 +1212,7 @@ export default function BookingForm({
                     borderColor: 'rgba(255,255,255,0.1)'
                   }
                 ]}>
-                  <View style={tw`flex-row items-center mb-4`}>
+                  <View style={tw`flex-row items-center mb-3`}>
                     <Icon name="receipt" size={20} color={theme.colors.secondary} />
                     <Text style={[tw`ml-2 text-lg font-semibold`, { color: theme.colors.foreground }]}>
                       Payment Summary
@@ -1241,7 +1273,7 @@ export default function BookingForm({
                 {/* Trust Indicators */}
                 <View style={tw`items-center mt-4`}>
                   <View style={tw`flex-row items-center space-x-4`}>
-                    <View style={tw`items-center`}>
+                    <View style={tw`items-center mr-4`}>
                       <Icon name="lock" size={16} color={theme.colors.mutedForeground} />
                       <Text style={[tw`text-xs mt-1`, { color: theme.colors.mutedForeground }]}>
                         Encrypted
@@ -1253,7 +1285,7 @@ export default function BookingForm({
                         Secure
                       </Text>
                     </View>
-                    <View style={tw`items-center`}>
+                    <View style={tw`items-center ml-4`}>
                       <Icon name="check-circle" size={16} color={theme.colors.mutedForeground} />
                       <Text style={[tw`text-xs mt-1`, { color: theme.colors.mutedForeground }]}>
                         Verified

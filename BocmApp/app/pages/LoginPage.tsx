@@ -22,11 +22,13 @@ import { User, Barber } from '../shared/types';
 import { useAuth } from '../shared/hooks/useAuth';
 import { supabase } from '../shared/lib/supabase';
 import { theme } from '../shared/lib/theme';
+import { logger } from '../shared/lib/logger';
 import { AnimatedBackground } from '../shared/components/AnimatedBackground';
 import { AnimatedText } from '../shared/components/AnimatedText';
 import { ActionButton } from '../shared/components/ActionButton';
 
 type RootStackParamList = {
+  Home: undefined;
   Login: undefined;
   SignUp: undefined;
   MainTabs: undefined;
@@ -55,18 +57,18 @@ export default function LoginPage() {
     const checkSession = async () => {
       setCheckingSession(true);
       try {
-        console.log('🔐 Checking existing session...');
+        logger.log('🔐 Checking existing session...');
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session?.user) {
-          console.log('✅ Session found for user:', session.user.id);
+          logger.log('✅ Session found for user:', session.user.id);
           await handleRedirect(session.user.id);
         } else {
-          console.log('❌ No existing session found');
+          logger.log('❌ No existing session found');
           setCheckingSession(false);
         }
       } catch (e) {
-        console.error('❌ Session check error:', e);
+        logger.error('❌ Session check error:', e);
         setCheckingSession(false);
       }
     };
@@ -75,14 +77,14 @@ export default function LoginPage() {
 
   const handleRedirect = async (userId: string) => {
     try {
-      console.log('🎯 Starting redirect process for user:', userId);
+      logger.log('🎯 Starting redirect process for user:', userId);
       
       // Fetch profile with retry
       let profile = null;
       let retries = 3;
       
       while (retries > 0) {
-        console.log(`📋 Fetching profile - Attempt ${4 - retries}/3...`);
+        logger.log(`📋 Fetching profile - Attempt ${4 - retries}/3...`);
         const { data, error } = await supabase
           .from('profiles')
           .select('*')
@@ -91,11 +93,11 @@ export default function LoginPage() {
         
         if (data) {
           profile = data;
-          console.log('✅ Profile fetched successfully');
+          logger.log('✅ Profile fetched successfully');
           break;
         }
         
-        console.log('❌ Profile fetch attempt failed:', error);
+        logger.log('❌ Profile fetch attempt failed:', error);
         retries--;
         if (retries > 0) {
           await new Promise(resolve => setTimeout(resolve, 1000));
@@ -103,21 +105,21 @@ export default function LoginPage() {
       }
 
       if (!profile) {
-        console.log('❌ Could not fetch profile after retries');
+        logger.log('❌ Could not fetch profile after retries');
         setCheckingSession(false);
         return;
       }
 
       // Check if profile needs completion
       if (!profile.role || !profile.username) {
-        console.log('⚠️ Profile incomplete, redirecting to completion');
+        logger.log('⚠️ Profile incomplete, redirecting to completion');
         navigation.replace('ProfileComplete' as any);
         return;
       }
 
       // Ensure barber row exists
       if (profile.role === 'barber') {
-        console.log('💈 Checking for barber row...');
+        logger.log('💈 Checking for barber row...');
         const { data: existingBarber } = await supabase
           .from('barbers')
           .select('id')
@@ -125,7 +127,7 @@ export default function LoginPage() {
           .maybeSingle();
 
         if (!existingBarber) {
-          console.log('💈 Creating barber row...');
+          logger.log('💈 Creating barber row...');
           const { error: insertError } = await supabase
             .from('barbers')
             .insert({
@@ -137,9 +139,9 @@ export default function LoginPage() {
             });
 
           if (insertError) {
-            console.error('❌ Failed to create barber row:', insertError);
+            logger.error('❌ Failed to create barber row:', insertError);
           } else {
-            console.log('✅ Barber row created successfully');
+            logger.log('✅ Barber row created successfully');
           }
         }
       }
@@ -151,7 +153,7 @@ export default function LoginPage() {
         redirectPath = 'SuperAdmin' as any;
       } else if (profile.role === 'barber') {
         // Check if barber onboarding is already complete
-        console.log('💈 Checking if barber onboarding is complete...');
+        logger.log('💈 Checking if barber onboarding is complete...');
         const { data: barberData, error: barberError } = await supabase
           .from('barbers')
           .select('onboarding_complete, business_name, bio, specialties')
@@ -159,10 +161,10 @@ export default function LoginPage() {
           .single();
 
         if (barberError) {
-          console.error('❌ Error checking barber data:', barberError);
+          logger.error('❌ Error checking barber data:', barberError);
           redirectPath = 'BarberOnboarding';
         } else {
-          console.log('💈 Onboarding completion check:', {
+          logger.log('💈 Onboarding completion check:', {
             onboarding_complete: barberData?.onboarding_complete,
             businessName: barberData?.business_name,
             bio: barberData?.bio,
@@ -171,24 +173,22 @@ export default function LoginPage() {
 
           // If onboarding is marked as complete, skip to main app
           if (barberData?.onboarding_complete) {
-            console.log('✅ Barber onboarding is already complete! Going to main app...');
+            logger.log('✅ Barber onboarding is already complete! Going to main app...');
             redirectPath = 'MainTabs';
           } else {
-            console.log('⚠️ Barber onboarding incomplete, going to onboarding...');
+            logger.log('⚠️ Barber onboarding incomplete, going to onboarding...');
             redirectPath = 'BarberOnboarding';
           }
         }
       } else if (profile.location) {
         redirectPath = 'MainTabs';
-      } else {
-        redirectPath = 'ClientOnboarding' as any;
-      }
+      } 
 
-      console.log('🎯 Redirecting to:', redirectPath);
+      logger.log('🎯 Redirecting to:', redirectPath);
       navigation.replace(redirectPath as any);
       
     } catch (error) {
-      console.error('❌ Redirect error:', error);
+      logger.error('❌ Redirect error:', error);
       setCheckingSession(false);
     }
   };
@@ -209,7 +209,7 @@ export default function LoginPage() {
     
     setIsLoading(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    console.log('🔐 Starting login process for:', email);
+    logger.log('🔐 Starting login process for:', email);
     
     try {
       // Authenticate with Supabase
@@ -219,7 +219,7 @@ export default function LoginPage() {
       });
 
       if (authError) {
-        console.error('❌ Authentication error:', authError);
+        logger.error('❌ Authentication error:', authError);
         
         if (authError.message?.includes('Invalid login credentials')) {
           setError('Invalid email or password');
@@ -232,19 +232,19 @@ export default function LoginPage() {
       }
 
       if (!authData.user) {
-        console.error('❌ No user data returned');
+        logger.error('❌ No user data returned');
         setError('Login failed. Please try again.');
         return;
       }
 
-      console.log('✅ Authentication successful for user:', authData.user.id);
+      logger.log('✅ Authentication successful for user:', authData.user.id);
 
       // Fetch profile with retry
       let profile = null;
       let retries = 3;
       
       while (retries > 0) {
-        console.log(`📋 Fetching profile - Attempt ${4 - retries}/3...`);
+        logger.log(`📋 Fetching profile - Attempt ${4 - retries}/3...`);
         const { data, error } = await supabase
           .from('profiles')
           .select('*')
@@ -253,11 +253,11 @@ export default function LoginPage() {
         
         if (data) {
           profile = data;
-          console.log('✅ Profile fetched successfully');
+          logger.log('✅ Profile fetched successfully');
           break;
         }
         
-        console.log('❌ Profile fetch attempt failed:', error);
+        logger.log('❌ Profile fetch attempt failed:', error);
         retries--;
         if (retries > 0) {
           await new Promise(resolve => setTimeout(resolve, 1000));
@@ -265,21 +265,21 @@ export default function LoginPage() {
       }
 
       if (!profile) {
-        console.error('❌ Could not fetch profile after retries');
+        logger.error('❌ Could not fetch profile after retries');
         setError('Could not load profile. Please try again.');
         return;
       }
 
       // Check if profile is complete
       if (!profile.role || !profile.username) {
-        console.log('⚠️ Profile incomplete, user needs to complete registration');
+        logger.log('⚠️ Profile incomplete, user needs to complete registration');
         navigation.replace('ProfileComplete' as any);
         return;
       }
 
       // Ensure barber row exists for barber users
       if (profile.role === 'barber') {
-        console.log('💈 Checking for barber row...');
+        logger.log('💈 Checking for barber row...');
         const { data: existingBarber } = await supabase
           .from('barbers')
           .select('id')
@@ -287,7 +287,7 @@ export default function LoginPage() {
           .maybeSingle();
 
         if (!existingBarber) {
-          console.log('💈 Creating barber row...');
+          logger.log('💈 Creating barber row...');
           const { error: insertError } = await supabase
             .from('barbers')
             .insert({
@@ -299,18 +299,18 @@ export default function LoginPage() {
             });
 
           if (insertError) {
-            console.error('❌ Failed to create barber row:', insertError);
+            logger.error('❌ Failed to create barber row:', insertError);
           } else {
-            console.log('✅ Barber row created successfully');
+            logger.log('✅ Barber row created successfully');
           }
         }
       }
 
-      console.log('✅ Login successful, redirecting...');
+      logger.log('✅ Login successful, redirecting...');
       await handleRedirect(authData.user.id);
       
     } catch (error) {
-      console.error('❌ Login error:', error);
+      logger.error('❌ Login error:', error);
       setError('An unexpected error occurred. Please try again.');
     } finally {
       setIsLoading(false);
@@ -348,17 +348,15 @@ export default function LoginPage() {
   };
 
   const handleGoogleSignIn = async () => {
+    // Google Sign-In is not yet implemented
+    // This function is kept for future implementation
+    // For now, Google Sign-In button is hidden from the UI
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    try {
-      Alert.alert('Coming Soon', 'Google Sign-In will be available soon!');
-    } catch (error) {
-      console.error('Google sign-in error:', error);
-    }
   };
 
   const handleBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    navigation.goBack();
+    navigation.navigate('Home' as any);
   };
 
   if (checkingSession) {
@@ -599,53 +597,7 @@ export default function LoginPage() {
                     {isLoading ? 'Signing in...' : 'Sign in'}
                   </ActionButton>
 
-                  {/* Divider */}
-                  <View style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    marginVertical: 24,
-                  }}>
-                    <View style={{
-                      flex: 1,
-                      height: 1,
-                      backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                    }} />
-                    <Text style={{
-                      marginHorizontal: 16,
-                      color: 'rgba(255, 255, 255, 0.6)',
-                      fontSize: 14,
-                    }}>
-                      or
-                    </Text>
-                    <View style={{
-                      flex: 1,
-                      height: 1,
-                      backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                    }} />
-                  </View>
-
-                  {/* Google Sign In */}
-                  <TouchableOpacity
-                    onPress={handleGoogleSignIn}
-                    disabled={isLoading}
-                    style={{
-                      height: 56,
-                      borderRadius: 20,
-                      borderWidth: 1,
-                      borderColor: 'rgba(255, 255, 255, 0.2)',
-                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <Text style={{
-                      color: theme.colors.foreground,
-                      fontSize: 16,
-                      fontWeight: '600',
-                    }}>
-                      Continue with Google
-                    </Text>
-                  </TouchableOpacity>
+                  {/* Google Sign-In removed - feature not yet implemented */}
                 </BlurView>
                 </View>
 
@@ -656,7 +608,7 @@ export default function LoginPage() {
                     color: 'rgba(255, 255, 255, 0.8)',
                     textAlign: 'center',
                   }}>
-                    Don't have an account?{' '}
+                    Don&apos;t have an account?{' '}
                     <Text
                       onPress={handleSignUp}
                       style={{

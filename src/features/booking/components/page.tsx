@@ -23,6 +23,7 @@ import {
 import { supabase } from "@/shared/lib/supabase"
 import type { Booking } from "@/shared/types/booking"
 import { useToast } from '@/shared/components/ui/use-toast'
+import { logger } from '@/shared/lib/logger'
 
 export default function BookingsPage() {
   const { user } = useAuth()
@@ -68,7 +69,7 @@ export default function BookingsPage() {
           .in('id', userIds)
 
         if (profileError) {
-          console.error('Error fetching usernames:', profileError)
+          logger.error('Error fetching usernames', profileError)
         }
 
         // Create a map of user_id to username
@@ -90,7 +91,7 @@ export default function BookingsPage() {
 
         setBookings(transformedBookings)
       } catch (error) {
-        console.error('Error fetching bookings:', error)
+        logger.error('Error fetching bookings', error)
         toast({
           title: 'Error',
           description: 'Failed to load bookings',
@@ -125,7 +126,7 @@ export default function BookingsPage() {
       ))
       setCancelBookingId(null)
     } catch (error) {
-      console.error('Error cancelling booking:', error)
+      logger.error('Error cancelling booking', error)
     }
   }, [cancelBookingId, bookings])
 

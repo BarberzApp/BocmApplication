@@ -1,0 +1,135 @@
+# Documentation Index
+
+Welcome to the Barber App documentation. This directory contains project documentation organized by category.
+
+## 📁 Documentation Structure
+
+### 🏗️ [Architecture](./architecture/)
+Technical architecture, design decisions, and system patterns.
+
+- [ERROR_RECOVERY_SUMMARY.md](./architecture/ERROR_RECOVERY_SUMMARY.md) - Error handling and recovery strategies
+- [LOGGING_PRODUCTION_READY.md](./architecture/LOGGING_PRODUCTION_READY.md) - Production logging implementation
+- [Architecure_Overiview.md](./development/Architecure_Overiview.md) - High-level architecture overview
+- [SECURITY.md](./development/SECURITY.md) - Security policies and best practices
+
+### 💻 [Development](./development/)
+Development guides and implementation notes.
+
+- [LOCAL_DEVELOPMENT.md](./development/LOCAL_DEVELOPMENT.md) - Local development setup guide
+- [APP_BREAKDOWN.md](./development/APP_BREAKDOWN.md) - High-level app overview and main flows
+- [TESTING_STRATEGY.md](./development/TESTING_STRATEGY.md) - Testing approach and coverage
+- [CURRENT_STATUS_ANALYSIS.md](./development/CURRENT_STATUS_ANALYSIS.md) - Current project status
+
+### 🔧 [Refactoring](./refactoring/)
+Refactoring plans, progress, and file organization strategies.
+
+- [COMPLETE_FILE_ANALYSIS.md](./refactoring/COMPLETE_FILE_ANALYSIS.md) - Analysis of all files needing refactoring
+- [FILE_ORGANIZATION_TEMPLATES.md](./refactoring/FILE_ORGANIZATION_TEMPLATES.md) - Industry-standard architecture templates
+- [FILE_SPLITTING_STRATEGY.md](./refactoring/FILE_SPLITTING_STRATEGY.md) - Strategy for splitting large files
+- [HELPER_EXTRACTION_ANALYSIS.md](./refactoring/HELPER_EXTRACTION_ANALYSIS.md) - Helper method extraction recommendations
+
+### 📊 [Reports](./reports/)
+Status reports and production readiness assessments.
+
+- [PRODUCTION_READY_FINAL_REPORT.md](./reports/PRODUCTION_READY_FINAL_REPORT.md) - Production readiness assessment
+- [SRC_PRODUCTION_READINESS_ASSESSMENT.md](./reports/SRC_PRODUCTION_READINESS_ASSESSMENT.md) - Web (Next.js) production readiness assessment
+- [WEBHOOK_CONFIGURATION_REPORT.md](./reports/WEBHOOK_CONFIGURATION_REPORT.md) - Stripe webhook configuration report
+- [FEE_CALCULATOR_UPDATE_SUMMARY.md](./reports/FEE_CALCULATOR_UPDATE_SUMMARY.md) - Fee calculator update summary
+
+### 🗄️ [Database](./database/)
+Database schema, migrations, and policies.
+
+- [database-schema.txt](./database/database-schema.txt) - Complete database schema
+- [rowlevelsecurity.txt](./database/rowlevelsecurity.txt) - Row-level security policies
+- [constraints.txt](./database/constraints.txt) - Database constraints and keys
+
+### 🎨 [Design](./design/)
+UI/UX design documentation and mockups.
+
+- [Landing_layout.md](./design/Landing_layout.md) - Landing page layout design
+
+### 📈 [Observability](./observability/)
+Monitoring and error reporting documentation.
+
+- [SENTRY_SETUP_GUIDE.md](./observability/sentry/SENTRY_SETUP_GUIDE.md) - Sentry setup guide (web/Next.js)
+
+### 📦 [Archive](./archive/)
+Completed tasks and historical documentation.
+
+- [BOCMAPP_SYNC_PLAN.md](./archive/BOCMAPP_SYNC_PLAN.md) - Mobile app sync plan (completed)
+- [CONSOLE_LOG_CLEANUP_FINAL_STATUS.md](./archive/CONSOLE_LOG_CLEANUP_FINAL_STATUS.md) - Console log cleanup (completed)
+- [LOCATION_MANAGER_REFACTOR.md](./archive/LOCATION_MANAGER_REFACTOR.md) - Location manager refactor (completed)
+- [RACE_CONDITION_FIX_SUMMARY.md](./archive/RACE_CONDITION_FIX_SUMMARY.md) - Race condition fixes (completed)
+- [SESSION_TIMEOUT_IMPLEMENTATION.md](./archive/SESSION_TIMEOUT_IMPLEMENTATION.md) - Session timeout implementation (completed)
+
+### 🧹 Cleanup
+Project cleanup and organization plans.
+
+- [ROOT_CLEANUP_PLAN.md](./development/ROOT_CLEANUP_PLAN.md) - Root directory cleanup plan
+
+---
+
+## 🚀 Quick Links
+
+### Getting Started
+1. [Local Development Guide](./development/LOCAL_DEVELOPMENT.md)
+2. [App Breakdown](./development/APP_BREAKDOWN.md)
+3. [Database Schema](./database/database-schema.txt)
+
+### For Developers
+1. [Architecture Overview](./development/Architecure_Overiview.md)
+2. [Testing Strategy](./development/TESTING_STRATEGY.md)
+3. [Security Guidelines](./development/SECURITY.md)
+
+### For Refactoring
+1. [Complete File Analysis](./refactoring/COMPLETE_FILE_ANALYSIS.md)
+2. [File Organization Templates](./refactoring/FILE_ORGANIZATION_TEMPLATES.md)
+3. [File Splitting Strategy](./refactoring/FILE_SPLITTING_STRATEGY.md)
+
+---
+
+## 📝 Documentation Guidelines
+
+### Adding New Documentation
+
+1. **Choose the right category:**
+   - `architecture/` - Technical architecture and design decisions
+   - `refactoring/` - Code refactoring plans
+   - `reports/` - Status reports and assessments
+   - `features/` - Feature-specific documentation
+   - `database/` - Database-related documentation
+   - `design/` - UI/UX design documentation
+   - `development/` - Development guides
+   - `archive/` - Completed tasks
+
+2. **Use clear naming:**
+   - Use UPPERCASE_WITH_UNDERSCORES for technical docs
+   - Use descriptive names (e.g., `FEATURE_NAME_IMPLEMENTATION.md`)
+   - Include dates for time-sensitive docs (e.g., `REPORT_2024_01.md`)
+
+3. **Update this index:**
+   - Add your new document to the appropriate section
+   - Include a brief description
+   - Keep sections alphabetically organized
+
+### Documentation Standards
+
+- Use Markdown format
+- Include a clear title and introduction
+- Use headers for organization
+- Include code examples where relevant
+- Add diagrams for complex concepts
+- Keep documentation up-to-date
+
+---
+
+## 🔄 Maintenance
+
+This documentation index should be updated whenever:
+- New documentation is added
+- Documentation is moved or renamed
+- Documentation becomes outdated (move to archive)
+- New categories are needed
+
+Last updated: December 2024
+

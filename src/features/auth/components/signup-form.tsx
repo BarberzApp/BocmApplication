@@ -9,6 +9,7 @@ import { RadioGroup, RadioGroupItem } from "@/shared/components/ui/radio-group"
 import { useToast } from "@/shared/components/ui/use-toast"
 import { useRouter } from "next/navigation"
 import { useSafeNavigation } from '@/shared/hooks/use-safe-navigation'
+import { logger } from "@/shared/lib/logger"
 
 export function SignupForm() {
   const { register } = useAuth()
@@ -32,7 +33,7 @@ export function SignupForm() {
         setShowConfirmation(true)
       }
     } catch (error) {
-      console.error('Signup error:', error)
+      logger.error('Signup error', error)
       toast({
         title: "Signup failed",
         description: error instanceof Error ? error.message : "Failed to create account. Please try again.",

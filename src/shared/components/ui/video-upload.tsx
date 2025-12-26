@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/shared/components/ui/badge'
 import { Progress } from '@/shared/components/ui/progress'
 import { useToast } from '@/shared/components/ui/use-toast'
+import { logger } from '@/shared/lib/logger'
 import { 
   Upload, 
   Video, 
@@ -140,7 +141,7 @@ export function VideoUpload({
       }
       video.src = URL.createObjectURL(selectedFile)
     } catch (error) {
-      console.error('Error getting video metadata:', error)
+      logger.error('Error getting video metadata', error)
       setError('Failed to read video metadata')
     }
   }, [thumbnailTime])
@@ -177,7 +178,7 @@ export function VideoUpload({
         description: `Reduced file size by ${result.compressionRatio.toFixed(1)}%`,
       })
     } catch (error) {
-      console.error('Compression error:', error)
+      logger.error('Compression error', error)
       setError('Failed to compress video')
       toast({
         title: 'Compression Failed',
@@ -211,7 +212,7 @@ export function VideoUpload({
       const newThumbnail = await generateThumbnail(file, thumbnailTime)
       setThumbnail(newThumbnail)
     } catch (error) {
-      console.error('Error generating thumbnail:', error)
+      logger.error('Error generating thumbnail', error)
       setError('Failed to generate thumbnail')
     }
   }
@@ -266,7 +267,7 @@ export function VideoUpload({
         description: 'Your video has been uploaded successfully!',
       })
     } catch (error) {
-      console.error('Upload error:', error)
+      logger.error('Upload error', error)
       setError('Failed to upload video')
       toast({
         title: 'Upload Failed',

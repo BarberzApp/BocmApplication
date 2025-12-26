@@ -1,59 +1,68 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { supabase, supabaseAdmin } from '@/shared/lib/supabase'
+import { logger } from '@/shared/lib/logger'
+
+const SUPER_ADMIN_EMAIL = 'primbocm@gmail.com'
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
+    // Get the authorization header
+    const authHeader = request.headers.get('authorization')
     
-    // Check if user is authenticated
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
-      console.log('❌ Unauthorized access attempt')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      logger.debug('Missing authorization header')
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check if user is super admin (primbocm@gmail.com)
-    if (session.user.email !== 'primbocm@gmail.com') {
-      console.log(`❌ Access denied for user: ${session.user.email}`)
+    const token = authHeader.replace('Bearer ', '')
+    
+    // Verify the token and get user info
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+    
+    if (authError || !user || user.email !== SUPER_ADMIN_EMAIL) {
+      logger.debug('Access denied for user', { email: user?.email, error: authError })
       return NextResponse.json({ success: false, error: 'Access denied' }, { status: 403 })
     }
 
     const { userId, isPublic } = await request.json()
-    console.log(`🔄 Processing public status update: userId=${userId}, isPublic=${isPublic}`)
+    logger.debug('Processing public status update', { userId, isPublic })
 
     if (!userId || typeof isPublic !== 'boolean') {
-      console.log('❌ Invalid parameters:', { userId, isPublic })
+      logger.debug('Invalid parameters', { userId, isPublic })
       return NextResponse.json({ success: false, error: 'Invalid parameters' }, { status: 400 })
     }
 
-    // First, verify the profile exists
-    const { data: existingProfile, error: fetchError } = await supabase
+    // First, verify the profile exists using admin client
+    const { data: existingProfile, error: fetchError } = await supabaseAdmin
       .from('profiles')
       .select('id, name, email, is_public')
       .eq('id', userId)
       .single()
 
     if (fetchError || !existingProfile) {
-      console.error('❌ Profile not found:', userId, fetchError)
+      logger.error('Profile not found', { userId, error: fetchError })
       return NextResponse.json({ success: false, error: 'Profile not found' }, { status: 404 })
     }
 
-    console.log(`📋 Updating profile: ${existingProfile.name} (${existingProfile.email})`)
-    console.log(`   Current is_public: ${existingProfile.is_public} → New is_public: ${isPublic}`)
+    logger.debug('Updating profile', { 
+      name: existingProfile.name, 
+      email: existingProfile.email,
+      currentIsPublic: existingProfile.is_public,
+      newIsPublic: isPublic
+    })
 
-    // Update the profile's public status
-    const { error } = await supabase
+    // Update the profile's public status using admin client
+    const { error } = await supabaseAdmin
       .from('profiles')
       .update({ is_public: isPublic })
       .eq('id', userId)
 
     if (error) {
-      console.error('❌ Error updating public status:', error)
+      logger.error('Error updating public status', error)
       return NextResponse.json({ success: false, error: 'Failed to update public status' }, { status: 500 })
     }
 
-    console.log(`✅ Successfully updated public status for ${existingProfile.name}`)
+    logger.debug('Successfully updated public status', { name: existingProfile.name })
 
     return NextResponse.json({ 
       success: true, 
@@ -66,7 +75,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('❌ Error in public status update:', error)
+    logger.error('Error in public status update', error)
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 })
   }
 } 

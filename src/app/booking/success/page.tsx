@@ -7,6 +7,7 @@ import { useSafeNavigation } from '@/shared/hooks/use-safe-navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Button } from '@/shared/components/ui/button'
 import { supabaseAdmin } from "@/shared/lib/supabase"
+import { logger } from "@/shared/lib/logger"
 
 export default function BookingSuccessPage({
   searchParams,
@@ -31,7 +32,7 @@ export default function BookingSuccessPage({
       }
 
       try {
-        console.log('Payment successful! Session ID:', sessionId)
+        logger.debug('Payment successful', { sessionId })
         
         // Verify the session was successful
         const response = await fetch(`/api/payments/session?session_id=${sessionId}`)
@@ -41,7 +42,7 @@ export default function BookingSuccessPage({
         }
         
         const session = await response.json()
-        console.log('Payment verified:', {
+        logger.debug('Payment verified', {
           id: session.id,
           payment_status: session.payment_status,
           amount_total: session.amount_total
@@ -55,13 +56,13 @@ export default function BookingSuccessPage({
           .single()
 
         if (existingBooking) {
-          console.log('✅ Booking created by webhook:', existingBooking.id)
+          logger.debug('Booking created by webhook', { bookingId: existingBooking.id })
           toast({
             title: "Payment Successful!",
             description: "Your booking has been confirmed and you'll receive a confirmation shortly.",
           })
         } else {
-          console.log('⏳ Booking being created by webhook...')
+          logger.debug('Booking being created by webhook')
           toast({
             title: "Payment Successful!",
             description: "Your payment was processed successfully. Your booking will be confirmed shortly.",
@@ -69,7 +70,7 @@ export default function BookingSuccessPage({
         }
 
       } catch (error) {
-        console.error('Error verifying payment:', error)
+        logger.error('Error verifying payment', error)
         // Don't show error to user since payment was successful
         // The webhook will handle booking creation
         toast({

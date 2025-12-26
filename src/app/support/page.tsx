@@ -8,6 +8,7 @@ import { Label } from '@/shared/components/ui/label'
 import { Textarea } from '@/shared/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select'
 import { useToast } from '@/shared/components/ui/use-toast'
+import { logger } from '@/shared/lib/logger'
 import { 
   Mail, 
   MessageCircle, 
@@ -113,7 +114,7 @@ export default function SupportPage() {
         message: ''
       })
     } catch (error) {
-      console.error('Support form error:', error)
+      logger.error('Support form error', error)
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to send your message. Please try again.",

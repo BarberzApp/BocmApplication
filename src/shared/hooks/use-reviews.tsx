@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/shared/lib/supabase';
 import { useToast } from '@/shared/components/ui/use-toast';
 import { Review, ReviewStats } from '@/shared/types';
+import { logger } from '@/shared/lib/logger';
 
 export function useReviews(barberId?: string) {
   const { toast } = useToast();
@@ -50,7 +51,7 @@ export function useReviews(barberId?: string) {
 
       setReviews(data || []);
     } catch (error) {
-      console.error('Error fetching reviews:', error);
+      logger.error('Error fetching reviews', error);
       toast({
         title: 'Error',
         description: 'Failed to load reviews.',
@@ -94,7 +95,7 @@ export function useReviews(barberId?: string) {
         recent_reviews: recentReviews as Review[]
       });
     } catch (error) {
-      console.error('Error fetching review stats:', error);
+      logger.error('Error fetching review stats', error);
     }
   }, []);
 
@@ -130,7 +131,7 @@ export function useReviews(barberId?: string) {
 
       return data;
     } catch (error) {
-      console.error('Error submitting review:', error);
+      logger.error('Error submitting review', error);
       toast({
         title: 'Error',
         description: 'Failed to submit review. Please try again.',
@@ -170,7 +171,7 @@ export function useReviews(barberId?: string) {
 
       return data;
     } catch (error) {
-      console.error('Error updating review:', error);
+      logger.error('Error updating review', error);
       toast({
         title: 'Error',
         description: 'Failed to update review. Please try again.',
@@ -201,7 +202,7 @@ export function useReviews(barberId?: string) {
       await fetchReviews(barberId);
       await fetchReviewStats(barberId);
     } catch (error) {
-      console.error('Error deleting review:', error);
+      logger.error('Error deleting review', error);
       toast({
         title: 'Error',
         description: 'Failed to delete review. Please try again.',
@@ -249,7 +250,7 @@ export function useReviews(barberId?: string) {
 
       return data || [];
     } catch (error) {
-      console.error('Error fetching pending reviews:', error);
+      logger.error('Error fetching pending reviews', error);
       toast({
         title: 'Error',
         description: 'Failed to load pending reviews.',

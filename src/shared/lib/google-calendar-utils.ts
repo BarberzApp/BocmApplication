@@ -3,6 +3,8 @@
  * Handles adding appointments to Google Calendar for both barbers and clients
  */
 
+import { logger } from './logger'
+
 export interface GoogleCalendarEvent {
   summary: string
   description: string
@@ -149,7 +151,7 @@ export function addToGoogleCalendar(
     // Open Google Calendar in a new tab
     window.open(calendarUrl, '_blank', 'noopener,noreferrer')
   } catch (error) {
-    console.error('Error generating Google Calendar URL:', error)
+    logger.error('Error generating Google Calendar URL', error)
     throw new Error('Failed to generate Google Calendar link')
   }
 }
@@ -187,7 +189,7 @@ export function addMultipleToGoogleCalendar(
       }, index * 500) // Stagger the opens by 500ms
     })
   } catch (error) {
-    console.error('Error adding multiple events to Google Calendar:', error)
+    logger.error('Error adding multiple events to Google Calendar', error)
     throw new Error('Failed to add events to Google Calendar')
   }
 }
@@ -289,7 +291,7 @@ export function downloadICalFile(
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
   } catch (error) {
-    console.error('Error downloading iCal file:', error)
+    logger.error('Error downloading iCal file', error)
     throw new Error('Failed to download calendar file')
   }
 } 

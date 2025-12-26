@@ -7,6 +7,7 @@ import { Label } from '@/shared/components/ui/label'
 import { Plus, Trash2, Save, Clock, Calendar, Sparkles, Loader2 } from 'lucide-react'
 import { useToast } from '@/shared/components/ui/use-toast'
 import { supabase } from '@/shared/lib/supabase'
+import { logger } from '@/shared/lib/logger'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Badge } from '@/shared/components/ui/badge'
 
@@ -136,7 +137,7 @@ export function WeeklySchedule({ barberId, initialSchedule, onUpdate }: WeeklySc
       // Call onUpdate to refresh settings data
       onUpdate?.();
     } catch (error) {
-      console.error('Error saving availability:', error);
+      logger.error('Error saving availability', error);
       toast({
         title: "Error",
         description: "Failed to save schedule",

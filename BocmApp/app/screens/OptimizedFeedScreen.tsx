@@ -5,6 +5,7 @@ import { Filter, TrendingUp, Clock, Star, MapPin } from 'lucide-react-native';
 import OptimizedVideoCard from '../components/OptimizedVideoCard';
 import { useOptimizedFeed } from '../hooks/useOptimizedFeed';
 import type { FeedItem, VideoState } from '../types/feed.types';
+import { logger } from '../shared/lib/logger';
 
 const { height, width } = Dimensions.get('window');
 const PAGE_HEIGHT = height; // full-screen paging since filter bar is overlay
@@ -52,7 +53,7 @@ export default function OptimizedFeedScreen() {
   useEffect(() => {
     if (items.length > 0 && !activeId) {
       setActiveId(items[0].id);
-      console.log(`🎬 Auto-setting first video as active: ${items[0].id}`);
+      logger.log(`🎬 Auto-setting first video as active: ${items[0].id}`);
     }
   }, [items, activeId]);
 
@@ -67,7 +68,7 @@ export default function OptimizedFeedScreen() {
       
       // Simple state update like web
       if (newActiveId !== activeId) {
-        console.log(`🎬 Active video changed: ${activeId} -> ${newActiveId}`);
+        logger.log(`🎬 Active video changed: ${activeId} -> ${newActiveId}`);
         setActiveId(newActiveId);
       }
     },
@@ -90,7 +91,7 @@ export default function OptimizedFeedScreen() {
   }, []);
 
   const handleHoldToPause = useCallback((itemId: string, isHolding: boolean) => {
-    console.log(`⏸️ Hold to pause: ${itemId} - ${isHolding ? 'holding' : 'released'}`);
+    logger.log(`⏸️ Hold to pause: ${itemId} - ${isHolding ? 'holding' : 'released'}`);
   }, []);
 
   const renderItem = useCallback(
@@ -108,13 +109,13 @@ export default function OptimizedFeedScreen() {
 
   const onEndReached = useCallback(() => {
     if (!endReached && !loading) {
-      console.log('📄 Reached end, loading more...');
+      logger.log('📄 Reached end, loading more...');
       fetchMore();
     }
   }, [endReached, loading, fetchMore]);
 
   const onRefresh = useCallback(() => {
-    console.log('🔄 Pull to refresh...');
+    logger.log('🔄 Pull to refresh...');
     refresh();
   }, [refresh]);
 

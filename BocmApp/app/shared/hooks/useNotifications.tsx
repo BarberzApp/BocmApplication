@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { notificationService, NotificationData } from '../lib/notifications';
+import { logger } from '../lib/logger';
 
 export interface UseNotificationsReturn {
   isInitialized: boolean;
@@ -49,9 +50,9 @@ export const useNotifications = (): UseNotificationsReturn => {
   const [hasPermission, setHasPermission] = useState(false);
   const [pushToken, setPushToken] = useState<string | null>(null);
   
-  const notificationListener = useRef<Notifications.Subscription>();
-  const responseListener = useRef<Notifications.Subscription>();
-  const appStateListener = useRef<any>();
+  const notificationListener = useRef<Notifications.Subscription | null>(null);
+  const responseListener = useRef<Notifications.Subscription | null>(null);
+  const appStateListener = useRef<{ remove: () => void } | null>(null);
 
   useEffect(() => {
     initializeNotifications();
@@ -59,7 +60,7 @@ export const useNotifications = (): UseNotificationsReturn => {
     // Listen for notifications received while app is foregrounded
     notificationListener.current = notificationService.addNotificationReceivedListener(
       (notification) => {
-        console.log('📱 Notification received:', notification);
+        logger.log('📱 Notification received:', notification);
         // You can handle foreground notifications here
         // For example, show a custom in-app notification
       }
@@ -68,7 +69,7 @@ export const useNotifications = (): UseNotificationsReturn => {
     // Listen for user tapping on notification
     responseListener.current = notificationService.addNotificationResponseReceivedListener(
       (response) => {
-        console.log('👆 Notification tapped:', response);
+        logger.log('👆 Notification tapped:', response);
         handleNotificationResponse(response);
       }
     );
@@ -103,51 +104,51 @@ export const useNotifications = (): UseNotificationsReturn => {
       const token = notificationService.getPushToken();
       setPushToken(token);
       
-      console.log('✅ Notifications initialized successfully');
+      logger.log('✅ Notifications initialized successfully');
     } catch (error) {
-      console.error('❌ Error initializing notifications:', error);
+      logger.error('❌ Error initializing notifications:', error);
       setIsInitialized(true); // Set to true even if failed to avoid infinite retries
     }
   };
 
   const handleNotificationResponse = (response: Notifications.NotificationResponse) => {
-    const data = response.notification.request.content.data as NotificationData;
+    const data = response.notification.request.content.data as Partial<NotificationData>;
     
     // Handle different notification types
     switch (data?.type) {
       case 'booking_confirmation':
         // Navigate to booking details
-        console.log('Navigate to booking:', data.bookingId);
+        logger.log('Navigate to booking:', data.bookingId);
         break;
       case 'booking_reminder':
         // Navigate to booking details
-        console.log('Navigate to booking reminder:', data.bookingId);
+        logger.log('Navigate to booking reminder:', data.bookingId);
         break;
       case 'new_booking':
         // Navigate to new booking
-        console.log('Navigate to new booking:', data.bookingId);
+        logger.log('Navigate to new booking:', data.bookingId);
         break;
       case 'payment_received':
         // Navigate to payment details
-        console.log('Navigate to payment:', data.bookingId);
+        logger.log('Navigate to payment:', data.bookingId);
         break;
       case 'appointment_cancelled':
         // Navigate to booking details
-        console.log('Navigate to cancelled booking:', data.bookingId);
+        logger.log('Navigate to cancelled booking:', data.bookingId);
         break;
       case 'cut_created':
         // Navigate to cut details
-        console.log('Navigate to cut:', data.cutId);
+        logger.log('Navigate to cut:', data.cutId);
         break;
       default:
-        console.log('Unknown notification type:', data?.type);
+        logger.log('Unknown notification type:', data?.type);
     }
   };
 
   const handleAppStateChange = (nextAppState: AppStateStatus) => {
     if (nextAppState === 'active') {
       // App came to foreground - you can refresh data here
-      console.log('📱 App became active');
+      logger.log('📱 App became active');
     }
   };
 
@@ -159,7 +160,7 @@ export const useNotifications = (): UseNotificationsReturn => {
         { type: 'booking_confirmation' }
       );
     } catch (error) {
-      console.error('❌ Error sending test notification:', error);
+      logger.error('❌ Error sending test notification:', error);
     }
   };
 
@@ -208,7 +209,7 @@ export const useNotifications = (): UseNotificationsReturn => {
         );
       }
     } catch (error) {
-      console.error('❌ Error scheduling booking reminders:', error);
+      logger.error('❌ Error scheduling booking reminders:', error);
     }
   };
 
@@ -226,7 +227,7 @@ export const useNotifications = (): UseNotificationsReturn => {
         barberName
       );
     } catch (error) {
-      console.error('❌ Error sending booking confirmation:', error);
+      logger.error('❌ Error sending booking confirmation:', error);
     }
   };
 
@@ -244,7 +245,7 @@ export const useNotifications = (): UseNotificationsReturn => {
         appointmentTime
       );
     } catch (error) {
-      console.error('❌ Error sending new booking notification:', error);
+      logger.error('❌ Error sending new booking notification:', error);
     }
   };
 
@@ -260,7 +261,7 @@ export const useNotifications = (): UseNotificationsReturn => {
         serviceName
       );
     } catch (error) {
-      console.error('❌ Error sending payment confirmation:', error);
+      logger.error('❌ Error sending payment confirmation:', error);
     }
   };
 
@@ -276,7 +277,7 @@ export const useNotifications = (): UseNotificationsReturn => {
         appointmentTime
       );
     } catch (error) {
-      console.error('❌ Error sending cancellation notification:', error);
+      logger.error('❌ Error sending cancellation notification:', error);
     }
   };
 
@@ -290,7 +291,7 @@ export const useNotifications = (): UseNotificationsReturn => {
         cutTitle
       );
     } catch (error) {
-      console.error('❌ Error sending cut created notification:', error);
+      logger.error('❌ Error sending cut created notification:', error);
     }
   };
 
@@ -298,7 +299,7 @@ export const useNotifications = (): UseNotificationsReturn => {
     try {
       return await notificationService.getScheduledNotifications();
     } catch (error) {
-      console.error('❌ Error getting scheduled notifications:', error);
+      logger.error('❌ Error getting scheduled notifications:', error);
       return [];
     }
   };
@@ -307,7 +308,7 @@ export const useNotifications = (): UseNotificationsReturn => {
     try {
       await notificationService.cancelAllNotifications();
     } catch (error) {
-      console.error('❌ Error cancelling notifications:', error);
+      logger.error('❌ Error cancelling notifications:', error);
     }
   };
 

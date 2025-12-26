@@ -1,5 +1,6 @@
 import { google } from 'googleapis';
 import { supabase } from './supabase';
+import { logger } from './logger';
 
 const SCOPES = [
   'https://www.googleapis.com/auth/calendar',
@@ -81,7 +82,7 @@ export class GoogleCalendarAPI {
 
       return response.data.items || [];
     } catch (error) {
-      console.error('Error fetching Google Calendar events:', error);
+      logger.error('Error fetching Google Calendar events', error);
       throw error;
     }
   }
@@ -98,7 +99,7 @@ export class GoogleCalendarAPI {
 
       return response.data;
     } catch (error) {
-      console.error('Error creating Google Calendar event:', error);
+      logger.error('Error creating Google Calendar event', error);
       throw error;
     }
   }
@@ -116,7 +117,7 @@ export class GoogleCalendarAPI {
 
       return response.data;
     } catch (error) {
-      console.error('Error updating Google Calendar event:', error);
+      logger.error('Error updating Google Calendar event', error);
       throw error;
     }
   }
@@ -133,7 +134,7 @@ export class GoogleCalendarAPI {
 
       return true;
     } catch (error) {
-      console.error('Error deleting Google Calendar event:', error);
+      logger.error('Error deleting Google Calendar event', error);
       throw error;
     }
   }
@@ -147,7 +148,7 @@ export class GoogleCalendarAPI {
       
       return response.data.items || [];
     } catch (error) {
-      console.error('Error fetching calendar list:', error);
+      logger.error('Error fetching calendar list', error);
       throw error;
     }
   }
@@ -166,7 +167,7 @@ export class GoogleCalendarAPI {
         expires_at: new Date(credentials.expiry_date).toISOString()
       };
     } catch (error) {
-      console.error('Error refreshing access token:', error);
+      logger.error('Error refreshing access token', error);
       throw error;
     }
   }
@@ -189,7 +190,7 @@ export class CalendarSyncService {
       .single();
 
     if (error) {
-      console.error('Error fetching calendar connection:', error);
+      logger.error('Error fetching calendar connection', error);
       return null;
     }
 
@@ -205,7 +206,7 @@ export class CalendarSyncService {
       .single();
 
     if (error) {
-      console.error('Error saving calendar connection:', error);
+      logger.error('Error saving calendar connection', error);
       throw error;
     }
 
@@ -233,7 +234,7 @@ export class CalendarSyncService {
       });
 
     if (error) {
-      console.error('Error logging sync operation:', error);
+      logger.error('Error logging sync operation', error);
     }
   }
 
@@ -261,7 +262,7 @@ export class CalendarSyncService {
       .single();
 
     if (error) {
-      console.error('Error saving synced event:', error);
+      logger.error('Error saving synced event', error);
       throw error;
     }
 
@@ -276,7 +277,7 @@ export class CalendarSyncService {
       .eq('user_id', userId);
 
     if (error) {
-      console.error('Error fetching synced events:', error);
+      logger.error('Error fetching synced events', error);
       return [];
     }
 
@@ -294,7 +295,7 @@ export class CalendarSyncService {
       .single();
 
     if (error && error.code !== 'PGRST116') {
-      console.error('Error checking if event is synced:', error);
+      logger.error('Error checking if event is synced', error);
       return false;
     }
 
@@ -319,7 +320,7 @@ export class CalendarSyncService {
       .eq('external_calendar_id', externalCalendarId);
 
     if (error) {
-      console.error('Error updating sync status:', error);
+      logger.error('Error updating sync status', error);
       throw error;
     }
   }

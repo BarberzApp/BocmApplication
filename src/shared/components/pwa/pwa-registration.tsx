@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/shared/components/ui/button'
 import { useToast } from '@/shared/components/ui/use-toast'
 import { Download, X, CheckCircle, AlertCircle } from 'lucide-react'
+import { logger } from '@/shared/lib/logger'
 
 interface PWAInstallPromptEvent extends Event {
   prompt: () => Promise<void>
@@ -91,16 +92,16 @@ export function PWARegistration() {
 
             // Handle service worker errors without disrupting the app
             registration.addEventListener('error', (event) => {
-              console.warn('Service Worker registration error:', event)
+              logger.warn('Service Worker registration error', { event })
               // Don't show error to user - PWA is not critical for app functionality
             })
 
-            console.log('Service Worker registered successfully:', registration)
+            logger.debug('Service Worker registered successfully', { scope: registration.scope })
           } else {
-            console.log('Service Worker disabled in development')
+            logger.debug('Service Worker disabled in development')
           }
         } catch (error) {
-          console.warn('Service Worker registration failed:', error)
+          logger.warn('Service Worker registration failed', error)
           // Don't show error to user as PWA is not critical for app functionality
         }
       }
@@ -131,7 +132,7 @@ export function PWARegistration() {
       const { outcome } = await deferredPrompt.userChoice
 
       if (outcome === 'accepted') {
-        console.log('User accepted the install prompt')
+        logger.debug('User accepted the install prompt')
         setIsInstalled(true)
         setShowInstallPrompt(false)
         toast({
@@ -139,14 +140,14 @@ export function PWARegistration() {
           description: 'BOCM is being installed on your device.',
         })
       } else {
-        console.log('User dismissed the install prompt')
+        logger.debug('User dismissed the install prompt')
         toast({
           title: 'Installation Cancelled',
           description: 'You can install BOCM later from your browser menu.',
         })
       }
     } catch (error) {
-      console.error('Install prompt error:', error)
+      logger.error('Install prompt error', error)
       toast({
         title: 'Installation Failed',
         description: 'Unable to install the app. Please try again later.',

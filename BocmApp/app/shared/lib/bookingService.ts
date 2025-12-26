@@ -1,14 +1,9 @@
 // lib/bookingService.ts
 import { supabase } from './supabase';
+import { logger } from './logger';
 
-export interface Service {
-  id: string;
-  barber_id: string;
-  name: string;
-  description: string;
-  duration: number;
-  price: number;
-}
+export type { Service } from '../types';
+import type { Service } from '../types';
 
 export interface TimeSlot {
   date: string;
@@ -54,23 +49,17 @@ export interface CreateBookingData {
 class BookingService {
   // Fetch services for a specific barber (using barber ID directly)
   async getBarberServices(barberId: string): Promise<Service[]> {
-    console.log('🔍 [BOOKING_SERVICE] Fetching services for barberId:', barberId);
-    
-    // Fetch services using the barber ID directly
     const { data, error } = await supabase
       .from('services')
       .select('*')
       .eq('barber_id', barberId)
       .order('price', { ascending: true });
 
-    console.log('📊 [BOOKING_SERVICE] Services query result:', { data, error });
-
     if (error) {
-      console.error('Error fetching services:', error);
+      logger.error('Error fetching services:', error);
       throw error;
     }
 
-    console.log('✅ [BOOKING_SERVICE] Services fetched successfully:', data);
     return data || [];
   }
 
@@ -90,7 +79,7 @@ class BookingService {
       .neq('status', 'cancelled');
 
     if (error) {
-      console.error('Error fetching bookings:', error);
+      logger.error('Error fetching bookings:', error);
       throw error;
     }
 
@@ -149,6 +138,20 @@ class BookingService {
 
   // Create a booking after payment
   async createBooking(bookingData: CreateBookingData): Promise<Booking> {
+    try {
+      // Use advisory lock to prevent race conditions (additional protection)
+      const { data: lockAcquired, error: lockError } = await supabase
+        .rpc('acquire_booking_slot_lock', {
+          p_barber_id: bookingData.barber_id,
+          p_date: bookingData.date
+        });
+
+      if (lockError) {
+        logger.warn('Advisory lock error (non-fatal):', lockError);
+        // Continue anyway - the database trigger will still prevent conflicts
+      }
+
+      // Insert booking (end_time will be calculated by database trigger)
     const { data, error } = await supabase
       .from('bookings')
       .insert({
@@ -160,11 +163,29 @@ class BookingService {
       .single();
 
     if (error) {
-      console.error('Error creating booking:', error);
+      // Check if error is due to conflict (database trigger)
+        if (error.message?.includes('conflicts') || error.message?.includes('slot')) {
+        throw new Error('This time slot is no longer available. Please select another time.')
+      }
       throw error;
     }
 
     return data;
+    } catch (err) {
+      logger.error('Error creating booking:', err);
+      
+      // Capture error in Sentry
+      const { captureException } = require('./sentry');
+      captureException(err as Error, {
+        context: 'bookingService.createBooking',
+        barberId: bookingData.barber_id,
+        serviceId: bookingData.service_id,
+        clientId: bookingData.client_id,
+        date: bookingData.date,
+      });
+      
+      throw err;
+    }
   }
 
   // Get user's bookings
@@ -190,7 +211,7 @@ class BookingService {
       .order('date', { ascending: false });
 
     if (error) {
-      console.error('Error fetching user bookings:', error);
+      logger.error('Error fetching user bookings:', error);
       throw error;
     }
 
@@ -208,7 +229,7 @@ class BookingService {
       .eq('id', bookingId);
 
     if (error) {
-      console.error('Error cancelling booking:', error);
+      logger.error('Error cancelling booking:', error);
       throw error;
     }
   }

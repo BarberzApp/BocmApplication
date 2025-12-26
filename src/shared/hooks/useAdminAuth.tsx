@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from './use-auth-zustand';
 import { supabase } from '@/shared/lib/supabase';
+import { logger } from '@/shared/lib/logger';
 
 export interface AdminUser {
   id: string;
@@ -91,7 +92,7 @@ export function useAdminAuth() {
       setIsAdmin(false);
       setIsSuperAdmin(false);
     } catch (error) {
-      console.error('Error checking admin status:', error);
+      logger.error('Error checking admin status', error);
       setAdminUser(null);
       setIsAdmin(false);
       setIsSuperAdmin(false);
@@ -107,7 +108,7 @@ export function useAdminAuth() {
       setIsAdmin(false);
       setIsSuperAdmin(false);
     } catch (error) {
-      console.error('Error logging out:', error);
+      logger.error('Error logging out', error);
     }
   };
 

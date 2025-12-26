@@ -9,6 +9,7 @@ import { useToast } from '@/shared/components/ui/use-toast'
 import { LoadingSpinner } from '@/shared/components/ui/loading-spinner'
 import { GlassyCard } from '@/shared/components/ui/glassy-card'
 import { format } from 'date-fns'
+import { logger } from '@/shared/lib/logger'
 
 interface PaymentHistoryProps {
   barberId: string
@@ -118,7 +119,7 @@ export function PaymentHistory({ barberId }: PaymentHistoryProps) {
       setHasMore(data.payments.length === limit)
       setPage(pageNum)
     } catch (error) {
-      console.error('Error loading payments:', error)
+      logger.error('Error loading payments', error)
       setError(error instanceof Error ? error.message : 'Failed to load payments')
       toast({
         title: 'Error',
@@ -142,7 +143,7 @@ export function PaymentHistory({ barberId }: PaymentHistoryProps) {
       const data = await response.json()
       setEarningsData(data)
     } catch (error) {
-      console.error('Error loading earnings data:', error)
+      logger.error('Error loading earnings data', error)
       // Don't show error toast for earnings data as it's secondary
     }
   }

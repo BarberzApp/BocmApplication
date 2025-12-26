@@ -4,6 +4,7 @@ import { indexedDBService } from './indexeddb';
 import { Booking } from '@/shared/types/booking';
 import { supabase } from './supabase';
 import { deletionGuard } from './deletion-guard';
+import { logger } from './logger';
 
 interface OfflineBooking extends Booking {
   offline?: boolean;
@@ -73,7 +74,7 @@ class SyncService {
         (booking as OfflineBooking).offline = false;
         await indexedDBService.saveBooking(booking);
       } catch (error) {
-        console.error('Failed to sync booking:', error);
+        logger.error('Failed to sync booking', error);
       }
     }
   }
@@ -160,7 +161,7 @@ class SyncService {
     // Check if booking exists before attempting deletion
     const existingBooking = await indexedDBService.getBooking(id);
     if (!existingBooking) {
-      console.warn(`Attempted to delete non-existent booking: ${id}`);
+      logger.warn(`Attempted to delete non-existent booking: ${id}`);
       return;
     }
 
@@ -173,23 +174,23 @@ class SyncService {
           .eq('id', id)
         
         if (error) {
-          console.error('Server deletion failed:', error);
+          logger.error('Server deletion failed', error);
           throw error;
         }
         
         // Only delete from IndexedDB if server deletion succeeded
         await indexedDBService.deleteBooking(id);
-        console.log(`Booking ${id} deleted successfully from both server and local storage`);
+        logger.debug(`Booking ${id} deleted successfully from both server and local storage`);
         
       } catch (error) {
-        console.error(`Failed to delete booking ${id} from server:`, error);
+        logger.error(`Failed to delete booking ${id} from server`, error);
         // Don't delete from IndexedDB if server deletion failed
         // This prevents data inconsistency
         throw new Error(`Failed to delete booking: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     } else {
       // Offline mode: only delete from local storage
-      console.log(`Deleting booking ${id} from local storage only (offline mode)`);
+      logger.debug(`Deleting booking ${id} from local storage only (offline mode)`);
       await indexedDBService.deleteBooking(id);
     }
   }

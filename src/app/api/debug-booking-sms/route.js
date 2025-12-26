@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/shared/lib/supabase';
+const { logger } = require('@/shared/lib/logger');
 
 export async function POST(req) {
   try {
@@ -9,7 +10,7 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Booking ID is required' }, { status: 400 });
     }
 
-    console.log('🔍 Debugging SMS for booking:', bookingId);
+    logger.debug('Debugging SMS for booking', { bookingId });
 
     // Get the booking with all related data
     const { data: booking, error: bookingError } = await supabaseAdmin
@@ -24,7 +25,7 @@ export async function POST(req) {
       .single();
 
     if (bookingError) {
-      console.error('❌ Error fetching booking:', bookingError);
+      logger.error('Error fetching booking', bookingError);
       return NextResponse.json({ error: 'Failed to fetch booking' }, { status: 500 });
     }
 
@@ -32,28 +33,11 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
     }
 
-    console.log('📋 Booking data:', {
-      id: booking.id,
-      date: booking.date,
-      status: booking.status,
-      barber: {
-        id: booking.barber?.id,
-        name: booking.barber?.business_name || booking.barber?.name,
-        phone: booking.barber?.phone,
-        carrier: booking.barber?.carrier,
-        sms_notifications: booking.barber?.sms_notifications
-      },
-      client: {
-        id: booking.client?.id,
-        name: booking.client?.name || booking.client?.first_name + ' ' + booking.client?.last_name,
-        phone: booking.client?.phone,
-        carrier: booking.client?.carrier,
-        sms_notifications: booking.client?.sms_notifications
-      },
-      service: {
-        id: booking.service?.id,
-        name: booking.service?.name
-      }
+    logger.debug('Booking data', {
+      bookingId: booking.id,
+      hasBarber: !!booking.barber,
+      hasClient: !!booking.client,
+      hasService: !!booking.service
     });
 
     // Check SMS prerequisites
@@ -72,7 +56,7 @@ export async function POST(req) {
       }
     };
 
-    console.log('📱 SMS Checks:', smsChecks);
+    logger.debug('SMS Checks', smsChecks);
 
     // Check environment variables
     const envChecks = {
@@ -81,7 +65,7 @@ export async function POST(req) {
       gmailUser: process.env.GMAIL_USER ? `${process.env.GMAIL_USER.substring(0, 3)}***` : 'NOT SET'
     };
 
-    console.log('🔧 Environment Checks:', envChecks);
+    logger.debug('Environment Checks', { hasGmailUser: envChecks.hasGmailUser, hasGmailPass: envChecks.hasGmailPass });
 
     return NextResponse.json({
       success: true,
@@ -103,7 +87,7 @@ export async function POST(req) {
     });
 
   } catch (error) {
-    console.error('❌ Debug error:', error);
+    logger.error('Debug error', error);
     return NextResponse.json({ 
       error: 'Debug failed',
       details: error.message 

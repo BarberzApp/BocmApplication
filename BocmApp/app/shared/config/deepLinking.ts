@@ -1,5 +1,6 @@
 import { LinkingOptions } from '@react-navigation/native';
 import { DEEP_LINKING_CONFIG } from './routeMapping';
+import { logger } from '../lib/logger';
 
 export const linking: LinkingOptions<any> = {
   prefixes: DEEP_LINKING_CONFIG.prefixes,
@@ -17,7 +18,7 @@ export const linking: LinkingOptions<any> = {
         screens: {
           Browse: 'browse',
           Calendar: 'calendar',
-          Cuts: 'reels',
+          // Cuts: 'reels', // Commented out - TikTok-style feed disabled
           Profile: 'profile',
           Settings: 'settings',
         },
@@ -61,7 +62,7 @@ export const deepLinkPatterns = {
   // Main app patterns
   browse: 'bocm://browse',
   calendar: 'bocm://calendar',
-  reels: 'bocm://reels',
+  // reels: 'bocm://reels', // Commented out - TikTok-style feed disabled
   profile: 'bocm://profile',
   settings: 'bocm://settings',
   
@@ -78,7 +79,7 @@ export const deepLinkPatterns = {
   // Web app equivalent patterns (for cross-platform linking)
   webBrowse: 'https://bocm.app/browse',
   webCalendar: 'https://bocm.app/calendar',
-  webReels: 'https://bocm.app/reels',
+  // webReels: 'https://bocm.app/reels', // Commented out - TikTok-style feed disabled
   webProfile: 'https://bocm.app/profile',
   webSettings: 'https://bocm.app/settings',
   webBook: (barberId?: string) => barberId ? `https://bocm.app/book/${barberId}` : 'https://bocm.app/book',
@@ -105,7 +106,7 @@ export function generateDeepLink(route: string, params?: Record<string, string>)
 
 // Function to handle incoming deep links
 export function handleDeepLink(url: string) {
-  console.log('🔗 Handling deep link:', url);
+  logger.log('🔗 Handling deep link:', url);
   
   // Parse the URL and extract route and parameters
   const urlObj = new URL(url);
@@ -121,7 +122,7 @@ export function handleDeepLink(url: string) {
     '/terms': 'Terms',
     '/browse': 'Browse',
     '/calendar': 'Calendar',
-    '/reels': 'Cuts',
+    // '/reels': 'Cuts', // Commented out - TikTok-style feed disabled
     '/profile': 'Profile',
     '/settings': 'Settings',
     '/book': 'BookingCalendar',
@@ -146,7 +147,7 @@ export function shareDeepLink(route: string, params?: Record<string, string>) {
   
   // In a real implementation, you would use a sharing library
   // For now, we'll just log the deep link
-  console.log('📤 Sharing deep link:', deepLink);
+  logger.log('📤 Sharing deep link:', deepLink);
   
   return deepLink;
 } 

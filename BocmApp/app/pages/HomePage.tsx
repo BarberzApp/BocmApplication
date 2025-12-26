@@ -22,10 +22,10 @@ export default function HomePage() {
   const [showSocialProof, setShowSocialProof] = useState(false);
 
   useEffect(() => {
-    // Staggered content appearance
-    const contentTimer = setTimeout(() => setShowContent(true), 500);
-    const buttonsTimer = setTimeout(() => setShowButtons(true), 2500);
-    const socialProofTimer = setTimeout(() => setShowSocialProof(true), 3000);
+    // Staggered content appearance - sped up
+    const contentTimer = setTimeout(() => setShowContent(true), 200); // Reduced from 500
+    const buttonsTimer = setTimeout(() => setShowButtons(true), 1200); // Reduced from 2500
+    const socialProofTimer = setTimeout(() => setShowSocialProof(true), 1500); // Reduced from 3000
 
     return () => {
       clearTimeout(contentTimer);
@@ -70,7 +70,7 @@ export default function HomePage() {
               <AnimatedText
                 text="Welcome to"
                 type="welcome"
-                delay={1000}
+                delay={400}
               />
             </View>
 
@@ -78,7 +78,7 @@ export default function HomePage() {
               <AnimatedText
                 text="BOCM"
                 type="title"
-                delay={1500}
+                delay={600}
               />
             </View>
 
@@ -86,7 +86,7 @@ export default function HomePage() {
               <AnimatedText
                 text="The future of booking"
                 type="tagline"
-                delay={2000}
+                delay={800}
               />
             </View>
           </View>
