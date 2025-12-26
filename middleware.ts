@@ -1,8 +1,8 @@
 import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { securityHeaders } from '@/lib/security-headers'
-import { csrfProtection } from '@/lib/csrf'
+import { securityHeaders } from './src/lib/security-headers'
+import { csrfProtection } from './src/lib/csrf'
 
 export async function middleware(req: NextRequest) {
   try {
