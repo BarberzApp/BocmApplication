@@ -41,14 +41,14 @@ NEXT_PUBLIC_APP_URL=http://localhost:3002
 
 ## Supabase
 - The app uses Supabase for authentication and database. You can use the hosted project or run Supabase locally with the CLI.
-- See `docs/database/database-schema.txt` for schema reference.
+- See `src/docs/database/database-schema.txt` (or `../database/database-schema.txt`) for schema reference.
 
 ## Troubleshooting
-- **403 errors:** Check Supabase Row Level Security (see `docs/database/rowlevelsecurity.txt`).
+- **403 errors:** Check Supabase Row Level Security (see `../database/rowlevelsecurity.txt`).
 - **Stripe onboarding issues:** Ensure you are not using `localhost` or ngrok URLs for `business_profile.url`.
-- **Database errors:** Check schema and constraints in `docs/database/database-schema.txt` and `constraints.txt`.
+- **Database errors:** Check schema and constraints in `../database/database-schema.txt` and `../database/constraints.txt`.
 
 ## Useful Links
 - [README.md](../README.md)
-- [Database Schema](./database/database-schema.txt)
-- [RLS Policies](./database/rowlevelsecurity.txt) 
+- [Database Schema](../database/database-schema.txt)
+- [RLS Policies](../database/rowlevelsecurity.txt)

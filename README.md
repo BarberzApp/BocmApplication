@@ -50,11 +50,11 @@ src/
 
 ## Documentation
 
-- [App Breakdown](docs/APP_BREAKDOWN.md): High-level overview of the app's architecture, main flows (onboarding, booking, payments), and where to find key logic.
-- [Local Development Guide](docs/LOCAL_DEVELOPMENT.md): Step-by-step instructions for running the app locally, Stripe Connect/ngrok setup, troubleshooting, and useful links.
-- [Database Schema](docs/database/database-schema.txt): Full schema reference for all tables and relationships.
-- [Row Level Security Policies](docs/database/rowlevelsecurity.txt): Supabase RLS policies for all tables.
-- [Constraints](docs/database/constraints.txt): Database constraints and keys.
+- [App Breakdown](src/docs/development/APP_BREAKDOWN.md): High-level overview of the app's architecture, main flows (onboarding, booking, payments), and where to find key logic.
+- [Local Development Guide](src/docs/development/LOCAL_DEVELOPMENT.md): Step-by-step instructions for running the app locally, Stripe Connect/ngrok setup, troubleshooting, and useful links.
+- [Database Schema](src/docs/database/database-schema.txt): Full schema reference for all tables and relationships.
+- [Row Level Security Policies](src/docs/database/rowlevelsecurity.txt): Supabase RLS policies for all tables.
+- [Constraints](src/docs/database/constraints.txt): Database constraints and keys.
 
 ## Getting Started
 

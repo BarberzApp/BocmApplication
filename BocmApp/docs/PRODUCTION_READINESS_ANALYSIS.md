@@ -285,7 +285,7 @@ The `src/` folder contains a separate Next.js web application with 1,062 console
 1. `app/shared/lib/errorRecovery.ts` - Core utilities (~280 lines)
 2. `app/shared/hooks/useErrorRecovery.ts` - React hooks (~300 lines)
 3. `__tests__/errorRecovery.test.ts` - Comprehensive tests (~200 lines)
-4. `docs/ERROR_RECOVERY_IMPLEMENTATION.md` - Full documentation with examples
+4. `./ERROR_RECOVERY_IMPLEMENTATION.md` - Full documentation with examples
 
 **Usage Example:**
 ```typescript

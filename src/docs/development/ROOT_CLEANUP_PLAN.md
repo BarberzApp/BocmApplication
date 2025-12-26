@@ -325,7 +325,7 @@ mv Landing_layout.md docs/design/
 ### **Phase 4: Organize Documentation**
 - [ ] Create `docs/` subfolders (architecture, refactoring, reports, archive, design)
 - [ ] Move all loose MD files to appropriate folders
-- [ ] Create `docs/README.md` with index
+- [ ] Create `src/docs/README.md` with index
 
 ### **Phase 5: Update References**
 - [ ] Update any imports/references to moved files

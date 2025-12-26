@@ -83,6 +83,7 @@ mv app/offline future-features/
 !/src/lib/
 !/src/features/
 !/src/shared/
+!/src/docs/
 
 # Prevent feature-specific code outside of features directory
 /src/features/*

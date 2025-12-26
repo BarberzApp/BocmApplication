@@ -79,30 +79,30 @@ docs/
 
 ### **Moved Files:**
 
-#### To `docs/architecture/`:
+#### To `src/docs/architecture/`:
 - ✅ ERROR_RECOVERY_SUMMARY.md
 - ✅ LOGGING_PRODUCTION_READY.md
 
-#### To `docs/refactoring/`:
+#### To `src/docs/refactoring/`:
 - ✅ COMPLETE_FILE_ANALYSIS.md
 - ✅ FILE_ORGANIZATION_TEMPLATES.md
 - ✅ FILE_SPLITTING_STRATEGY.md
 - ✅ HELPER_EXTRACTION_ANALYSIS.md
 
-#### To `docs/reports/`:
+#### To `src/docs/reports/`:
 - ✅ PRODUCTION_READY_FINAL_REPORT.md
 
-#### To `docs/archive/`:
+#### To `src/docs/archive/`:
 - ✅ BOCMAPP_SYNC_PLAN.md
 - ✅ CONSOLE_LOG_CLEANUP_FINAL_STATUS.md
 - ✅ LOCATION_MANAGER_REFACTOR.md
 - ✅ RACE_CONDITION_FIX_SUMMARY.md
 - ✅ SESSION_TIMEOUT_IMPLEMENTATION.md
 
-#### To `docs/design/`:
+#### To `src/docs/design/`:
 - ✅ Landing_layout.md
 
-#### To `docs/`:
+#### To `src/docs/`:
 - ✅ ROOT_CLEANUP_PLAN.md
 
 **Total Organized:** 14 files moved to proper locations
@@ -200,7 +200,7 @@ barber-app-main/
 - ✅ Clear archive for completed tasks
 
 ### **3. Discoverability**
-- ✅ New `docs/README.md` index with links to all documentation
+- ✅ New `src/docs/README.md` index with links to all documentation
 - ✅ Organized folder structure
 - ✅ Clear naming conventions
 
@@ -222,7 +222,7 @@ barber-app-main/
 ### **Recommended:**
 
 1. **Review the new structure:**
-   - Check `docs/README.md` for documentation index
+   - Check `src/docs/README.md` for documentation index
    - Verify all links work
    - Familiarize yourself with new organization
 
@@ -238,7 +238,7 @@ barber-app-main/
 
 4. **Consider Phase 2 (Optional):**
    - Refactor large files (CalendarPage, BrowsePage, etc.)
-   - See `docs/refactoring/COMPLETE_FILE_ANALYSIS.md`
+   - See `src/docs/refactoring/COMPLETE_FILE_ANALYSIS.md`
 
 ---
 

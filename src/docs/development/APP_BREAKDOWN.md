@@ -6,7 +6,7 @@ This document provides a high-level overview of the Barber App's architecture, m
 - **Frontend:** Next.js 14 (TypeScript, Tailwind CSS)
 - **Backend:** Next.js API routes, Supabase (Postgres, Auth)
 - **Payments:** Stripe Connect
-- **Database:** See `docs/database/database-schema.txt`
+- **Database:** See `../database/database-schema.txt`
 
 ## Main Flows
 
@@ -17,7 +17,7 @@ This document provides a high-level overview of the Barber App's architecture, m
 - **Stripe Connect:** See `/api/connect/create-account` and Stripe dashboard for account status.
 - **Logic:**
   - Checks for required fields and Stripe account status before marking onboarding as complete.
-  - See RLS policies in `docs/database/rowlevelsecurity.txt` for permissions.
+  - See RLS policies in `../database/rowlevelsecurity.txt` for permissions.
 
 ### 2. Booking
 - **Purpose:** Clients book appointments with barbers.
@@ -36,15 +36,15 @@ This document provides a high-level overview of the Barber App's architecture, m
 - **DB Tables:** `payments`, `bookings`, `barbers`
 - **Logic:**
   - Stripe webhooks update payment and booking status.
-  - See `docs/database/database-schema.txt` for payment fields.
+  - See `../database/database-schema.txt` for payment fields.
 
 ## Where to Find Key Logic
 - **Authentication:** `src/features/auth/`
 - **Profile Management:** `src/features/profile/`, `src/app/(client)/profile/`, `src/app/(barber)/profile/`
 - **Stripe Connect:** `src/app/api/connect/`, `src/shared/lib/stripe-service.ts`
-- **RLS Policies:** `docs/database/rowlevelsecurity.txt`
+- **RLS Policies:** `../database/rowlevelsecurity.txt`
 
 ## Additional References
 - [README.md](../README.md)
-- [Database Schema](./database/database-schema.txt)
+- [Database Schema](../database/database-schema.txt)
 - [Local Development Guide](./LOCAL_DEVELOPMENT.md) 

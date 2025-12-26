@@ -96,7 +96,7 @@ features/calendar/
 └── components/   ← Frontend (UI)
 ```
 
-**See:** `docs/refactoring/ARCHITECTURE_RECOMMENDATION.md` (deleted but concept documented)
+**See:** `src/docs/refactoring/ARCHITECTURE_RECOMMENDATION.md` (deleted, but concept documented)
 
 ---
 
@@ -120,15 +120,15 @@ features/calendar/
 9. `BocmApp/__tests__/useCalendarData.test.ts` (integration tested)
 
 ### **Documentation Created (9):**
-1. `docs/refactoring/COMPLETE_FILE_ANALYSIS.md` - All files analysis
-2. `docs/refactoring/FILE_ORGANIZATION_TEMPLATES.md` - Architecture templates
-3. `docs/refactoring/FILE_SPLITTING_STRATEGY.md` - Splitting strategy
-4. `docs/refactoring/CALENDAR_PAGE_REFACTOR_STATUS.md` - Detailed status
-5. `docs/refactoring/CALENDAR_REFACTOR_PROGRESS.md` - Progress report
-6. `docs/refactoring/CALENDAR_FINAL_STATUS.md` - Final status
-7. `CALENDAR_REFACTOR_PLAN.md` - Implementation plan
-8. `HELPER_EXTRACTION_ANALYSIS.md` - Helper analysis
-9. `REFACTORING_SESSION_SUMMARY.md` - This file
+1. `src/docs/refactoring/COMPLETE_FILE_ANALYSIS.md` - All files analysis
+2. `src/docs/refactoring/FILE_ORGANIZATION_TEMPLATES.md` - Architecture templates
+3. `src/docs/refactoring/FILE_SPLITTING_STRATEGY.md` - Splitting strategy
+4. `src/docs/refactoring/CALENDAR_PAGE_REFACTOR_STATUS.md` - Detailed status
+5. `src/docs/refactoring/CALENDAR_REFACTOR_PROGRESS.md` - Progress report
+6. `src/docs/refactoring/CALENDAR_FINAL_STATUS.md` - Final status
+7. `src/docs/refactoring/CALENDAR_REFACTOR_PLAN.md` - Implementation plan
+8. `src/docs/refactoring/HELPER_EXTRACTION_ANALYSIS.md` - Helper analysis
+9. `src/docs/refactoring/REFACTORING_SESSION_SUMMARY.md` - This file
 
 ---
 

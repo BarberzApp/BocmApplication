@@ -66,7 +66,7 @@ npx expo run:android
 - [ ] Get DSN and add to `.env` (2 min)
 - [ ] Test error reporting (5 min)
 
-**Setup Guide:** See `/SENTRY_SETUP_GUIDE.md`
+**Setup Guide:** See [SENTRY_INTEGRATION_SUMMARY.md](../observability/sentry/SENTRY_INTEGRATION_SUMMARY.md)
 
 **Quick Steps:**
 1. Go to https://sentry.io/signup/
@@ -333,8 +333,8 @@ Week 3-4:     Public launch!
 ## 📋 **Quick Reference**
 
 ### **Critical Links:**
-- Production Readiness: `/PRODUCTION_READINESS_ASSESSMENT.md`
-- Auth Test Fix: `/AUTH_TEST_FIX_SUMMARY.md`
+- Production Readiness: [PRODUCTION_READINESS_ASSESSMENT.md](./PRODUCTION_READINESS_ASSESSMENT.md)
+- Auth Test Fix: [AUTH_TEST_FIX_SUMMARY.md](../testing/AUTH_TEST_FIX_SUMMARY.md)
 - Test Results: Run `npm test` in BocmApp/
 
 ### **Support:**

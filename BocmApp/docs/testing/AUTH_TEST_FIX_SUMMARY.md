@@ -180,7 +180,7 @@ Tests:       6 passed
    - Simplified test cases
    - **Result:** 6/6 tests passing
 
-2. `/PRODUCTION_READINESS_ASSESSMENT.md`
+2. `BocmApp/docs/release/PRODUCTION_READINESS_ASSESSMENT.md`
    - Updated test status
    - Updated beta readiness
    - Updated timeline

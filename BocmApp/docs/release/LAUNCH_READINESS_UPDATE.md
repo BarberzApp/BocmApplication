@@ -140,14 +140,13 @@ Public Launch: 70% 🟡 2 weeks
 ## 📄 Documentation Created
 
 ### **Launch Guides:**
-1. `/BETA_LAUNCH_CHECKLIST.md` - Complete launch guide
-2. `/SENTRY_SETUP_GUIDE.md` - Detailed Sentry setup
-3. `/SENTRY_INTEGRATION_SUMMARY.md` - What was done
-4. `/PRODUCTION_READINESS_ASSESSMENT.md` - Full readiness analysis
+1. [BETA_LAUNCH_CHECKLIST.md](./BETA_LAUNCH_CHECKLIST.md) - Complete launch guide
+2. [SENTRY_INTEGRATION_SUMMARY.md](../observability/sentry/SENTRY_INTEGRATION_SUMMARY.md) - Detailed Sentry setup
+3. [PRODUCTION_READINESS_ASSESSMENT.md](./PRODUCTION_READINESS_ASSESSMENT.md) - Full readiness analysis
 
 ### **Technical Docs:**
-5. `/AUTH_TEST_FIX_SUMMARY.md` - Auth test fixes
-6. `/LAUNCH_READINESS_UPDATE.md` - This document
+5. [AUTH_TEST_FIX_SUMMARY.md](../testing/AUTH_TEST_FIX_SUMMARY.md) - Auth test fixes
+6. [LAUNCH_READINESS_UPDATE.md](./LAUNCH_READINESS_UPDATE.md) - This document
 
 ---
 

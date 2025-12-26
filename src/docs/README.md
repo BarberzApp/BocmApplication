@@ -1,6 +1,6 @@
 # Documentation Index
 
-Welcome to the Barber App documentation. This directory contains all project documentation organized by category.
+Welcome to the Barber App documentation. This directory contains project documentation organized by category.
 
 ## 📁 Documentation Structure
 
@@ -9,11 +9,19 @@ Technical architecture, design decisions, and system patterns.
 
 - [ERROR_RECOVERY_SUMMARY.md](./architecture/ERROR_RECOVERY_SUMMARY.md) - Error handling and recovery strategies
 - [LOGGING_PRODUCTION_READY.md](./architecture/LOGGING_PRODUCTION_READY.md) - Production logging implementation
-- [Architecure_Overiview.md](./Architecure_Overiview.md) - High-level architecture overview
-- [SECURITY.md](./SECURITY.md) - Security policies and best practices
+- [Architecure_Overiview.md](./development/Architecure_Overiview.md) - High-level architecture overview
+- [SECURITY.md](./development/SECURITY.md) - Security policies and best practices
+
+### 💻 [Development](./development/)
+Development guides and implementation notes.
+
+- [LOCAL_DEVELOPMENT.md](./development/LOCAL_DEVELOPMENT.md) - Local development setup guide
+- [APP_BREAKDOWN.md](./development/APP_BREAKDOWN.md) - High-level app overview and main flows
+- [TESTING_STRATEGY.md](./development/TESTING_STRATEGY.md) - Testing approach and coverage
+- [CURRENT_STATUS_ANALYSIS.md](./development/CURRENT_STATUS_ANALYSIS.md) - Current project status
 
 ### 🔧 [Refactoring](./refactoring/)
-Code refactoring plans and file organization strategies.
+Refactoring plans, progress, and file organization strategies.
 
 - [COMPLETE_FILE_ANALYSIS.md](./refactoring/COMPLETE_FILE_ANALYSIS.md) - Analysis of all files needing refactoring
 - [FILE_ORGANIZATION_TEMPLATES.md](./refactoring/FILE_ORGANIZATION_TEMPLATES.md) - Industry-standard architecture templates
@@ -24,31 +32,9 @@ Code refactoring plans and file organization strategies.
 Status reports and production readiness assessments.
 
 - [PRODUCTION_READY_FINAL_REPORT.md](./reports/PRODUCTION_READY_FINAL_REPORT.md) - Production readiness assessment
-- [CURRENT_STATUS_ANALYSIS.md](./CURRENT_STATUS_ANALYSIS.md) - Current project status
-- [TESTING_STRATEGY.md](./TESTING_STRATEGY.md) - Testing approach and coverage
-
-### ✨ [Features](./features/)
-Feature-specific documentation and implementation guides.
-
-#### Core Features
-- [APP_BREAKDOWN.md](./APP_BREAKDOWN.md) - High-level app overview and main flows
-- [BROWSE_PAGE_IMPROVEMENTS.md](./BROWSE_PAGE_IMPROVEMENTS.md) - Browse page enhancements
-- [ENHANCED_CALENDAR.md](./ENHANCED_CALENDAR.md) - Calendar feature improvements
-- [ONBOARDING_IMPROVEMENTS.md](./ONBOARDING_IMPROVEMENTS.md) - Onboarding flow enhancements
-- [SETTINGS_IMPROVEMENTS.md](./SETTINGS_IMPROVEMENTS.md) - Settings page improvements
-
-#### Integrations
-- [GOOGLE_CALENDAR_INTEGRATION.md](./GOOGLE_CALENDAR_INTEGRATION.md) - Google Calendar integration
-- [GOOGLE_CALENDAR_SYNC.md](./GOOGLE_CALENDAR_SYNC.md) - Calendar sync implementation
-- [GOOGLE_OAUTH_FLOW.md](./GOOGLE_OAUTH_FLOW.md) - OAuth authentication flow
-- [WEBHOOK_ANALYSIS.md](./WEBHOOK_ANALYSIS.md) - Webhook implementation analysis
-
-#### UI/UX
-- [LANDING_PAGE_STRUCTURE.md](./LANDING_PAGE_STRUCTURE.md) - Landing page structure
-- [LOADING_ERROR_HANDLING.md](./LOADING_ERROR_HANDLING.md) - Loading states and error handling
-- [LOGIN_FLOW_FIXES.md](./LOGIN_FLOW_FIXES.md) - Login flow improvements
-- [RETURN_PAGE_ANALYSIS.md](./RETURN_PAGE_ANALYSIS.md) - Return page analysis
-- [AUTOPLAY_SYSTEM_EXPLANATION.md](./AUTOPLAY_SYSTEM_EXPLANATION.md) - Video autoplay system
+- [SRC_PRODUCTION_READINESS_ASSESSMENT.md](./reports/SRC_PRODUCTION_READINESS_ASSESSMENT.md) - Web (Next.js) production readiness assessment
+- [WEBHOOK_CONFIGURATION_REPORT.md](./reports/WEBHOOK_CONFIGURATION_REPORT.md) - Stripe webhook configuration report
+- [FEE_CALCULATOR_UPDATE_SUMMARY.md](./reports/FEE_CALCULATOR_UPDATE_SUMMARY.md) - Fee calculator update summary
 
 ### 🗄️ [Database](./database/)
 Database schema, migrations, and policies.
@@ -62,11 +48,10 @@ UI/UX design documentation and mockups.
 
 - [Landing_layout.md](./design/Landing_layout.md) - Landing page layout design
 
-### 💻 [Development](./development/)
-Development guides and setup instructions.
+### 📈 [Observability](./observability/)
+Monitoring and error reporting documentation.
 
-- [LOCAL_DEVELOPMENT.md](./LOCAL_DEVELOPMENT.md) - Local development setup guide
-- [FUTURE_DEVELOPMENT.md](./FUTURE_DEVELOPMENT.md) - Future feature roadmap
+- [SENTRY_SETUP_GUIDE.md](./observability/sentry/SENTRY_SETUP_GUIDE.md) - Sentry setup guide (web/Next.js)
 
 ### 📦 [Archive](./archive/)
 Completed tasks and historical documentation.
@@ -77,24 +62,24 @@ Completed tasks and historical documentation.
 - [RACE_CONDITION_FIX_SUMMARY.md](./archive/RACE_CONDITION_FIX_SUMMARY.md) - Race condition fixes (completed)
 - [SESSION_TIMEOUT_IMPLEMENTATION.md](./archive/SESSION_TIMEOUT_IMPLEMENTATION.md) - Session timeout implementation (completed)
 
-### 🧹 [Cleanup](./ROOT_CLEANUP_PLAN.md)
+### 🧹 Cleanup
 Project cleanup and organization plans.
 
-- [ROOT_CLEANUP_PLAN.md](./ROOT_CLEANUP_PLAN.md) - Root directory cleanup plan
+- [ROOT_CLEANUP_PLAN.md](./development/ROOT_CLEANUP_PLAN.md) - Root directory cleanup plan
 
 ---
 
 ## 🚀 Quick Links
 
 ### Getting Started
-1. [Local Development Guide](./LOCAL_DEVELOPMENT.md)
-2. [App Breakdown](./APP_BREAKDOWN.md)
+1. [Local Development Guide](./development/LOCAL_DEVELOPMENT.md)
+2. [App Breakdown](./development/APP_BREAKDOWN.md)
 3. [Database Schema](./database/database-schema.txt)
 
 ### For Developers
-1. [Architecture Overview](./Architecure_Overiview.md)
-2. [Testing Strategy](./TESTING_STRATEGY.md)
-3. [Security Guidelines](./SECURITY.md)
+1. [Architecture Overview](./development/Architecure_Overiview.md)
+2. [Testing Strategy](./development/TESTING_STRATEGY.md)
+3. [Security Guidelines](./development/SECURITY.md)
 
 ### For Refactoring
 1. [Complete File Analysis](./refactoring/COMPLETE_FILE_ANALYSIS.md)

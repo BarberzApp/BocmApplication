@@ -268,7 +268,7 @@ addBreadcrumb('User clicked book button', 'user-action', {
 
 ## 📚 Documentation
 
-**Detailed Setup Guide:** `/SENTRY_SETUP_GUIDE.md`
+**Detailed Setup Guide:** [SENTRY_INTEGRATION_SUMMARY.md](./SENTRY_INTEGRATION_SUMMARY.md)
 
 **Quick Reference:**
 - Sentry config: `/BocmApp/app/shared/lib/sentry.ts`
