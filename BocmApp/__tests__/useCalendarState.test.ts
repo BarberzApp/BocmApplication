@@ -4,7 +4,7 @@
  * Tests state management functionality
  */
 
-import { renderHook, act } from '@testing-library/react-hooks';
+import { renderHook, act } from '@testing-library/react-native';
 import { useCalendarState } from '../app/shared/hooks/useCalendarState';
 
 describe('useCalendarState', () => {

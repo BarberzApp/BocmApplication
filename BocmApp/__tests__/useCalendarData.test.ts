@@ -4,7 +4,7 @@
  * Tests data fetching and operations
  */
 
-import { renderHook, act } from '@testing-library/react-hooks';
+import { renderHook, act } from '@testing-library/react-native';
 import { useCalendarData } from '../app/shared/hooks/useCalendarData';
 import { useCalendarState } from '../app/shared/hooks/useCalendarState';
 import * as calendarDataService from '../app/shared/lib/calendar/calendarDataService';
