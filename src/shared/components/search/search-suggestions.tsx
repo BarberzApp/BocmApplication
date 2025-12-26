@@ -5,6 +5,7 @@ import { Button } from '@/shared/components/ui/button'
 import { Badge } from '@/shared/components/ui/badge'
 import { Search, Clock, TrendingUp, MapPin, Scissors } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { logger } from '@/shared/lib/logger'
 
 interface SearchSuggestionsProps {
   onSuggestionClick: (suggestion: string) => void

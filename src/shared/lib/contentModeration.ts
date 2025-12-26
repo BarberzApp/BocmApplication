@@ -1,5 +1,6 @@
 // Content Moderation Service
 // This service provides multiple layers of content moderation
+import { logger } from './logger';
 
 export interface ModerationResult {
   isAppropriate: boolean;

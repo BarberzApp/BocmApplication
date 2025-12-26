@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/shared/lib/supabase';
+import { logger } from '@/shared/lib/logger';
 
 export default function StripeConnectRefresh() {
   const router = useRouter();

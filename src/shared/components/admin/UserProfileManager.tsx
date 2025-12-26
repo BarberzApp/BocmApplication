@@ -37,10 +37,10 @@ interface UserProfile {
   id: string
   name: string
   email: string
-  phone?: string
+  phone?: string | null
   role: string
-  avatar_url?: string
-  coverphoto?: string
+  avatar_url?: string | null
+  coverphoto?: string | null
   join_date?: string
   barber?: {
     id: string
@@ -100,7 +100,7 @@ export function UserProfileManager() {
       }
 
       // Get barber data if user is a barber
-      let barberData = null
+      let barberData: UserProfile['barber'] = undefined
       if (profile.role === 'barber') {
         const { data: barber, error: barberError } = await supabase
           .from('barbers')
@@ -297,7 +297,7 @@ export function UserProfileManager() {
                   {/* User Info */}
                   <div className="flex items-start gap-4">
                     <Avatar className="w-20 h-20">
-                      <AvatarImage src={userProfile.avatar_url} />
+                      <AvatarImage src={userProfile.avatar_url ?? undefined} />
                       <AvatarFallback className="bg-secondary text-primary text-xl">
                         {userProfile.name?.charAt(0) || 'U'}
                       </AvatarFallback>

@@ -1,5 +1,6 @@
 import { Metadata } from 'next'
 import { supabase } from '@/shared/lib/supabase'
+import { logger } from '@/shared/lib/logger'
 
 export async function generateMetadata({ params }: { params: { username: string } }): Promise<Metadata> {
   try {

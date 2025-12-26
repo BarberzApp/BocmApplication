@@ -255,12 +255,12 @@ export default function RegisterPage() {
                   className="text-sm font-medium text-white leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                 >
                   I agree to the{' '}
-                  <Link 
-                    href="/terms" 
-                    className="text-saffron hover:underline font-pacifico"
-                    tabIndex={0}
-                  >
+                  <Link href="/terms" className="text-saffron hover:underline font-pacifico" tabIndex={0}>
                     terms and conditions
+                  </Link>{' '}
+                  and{' '}
+                  <Link href="/privacy" className="text-saffron hover:underline font-pacifico" tabIndex={0}>
+                    privacy policy
                   </Link>
                 </label>
               </div>

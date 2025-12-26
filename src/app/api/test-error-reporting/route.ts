@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { logger } from '@/shared/lib/logger'
 
 export async function POST(request: NextRequest) {
   try {

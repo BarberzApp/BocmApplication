@@ -8,6 +8,7 @@ import { useToast } from "@/shared/components/ui/use-toast";
 import { useAuth } from "@/shared/hooks/use-auth-zustand";
 import { supabase } from "@/shared/lib/supabase";
 import { validateContent, moderateContentWithAI, getModerationStatus } from "@/shared/lib/contentModeration";
+import { logger } from "@/shared/lib/logger";
 
 interface WriteReviewModalProps {
   isOpen: boolean;

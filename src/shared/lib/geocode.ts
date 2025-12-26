@@ -1,4 +1,6 @@
 // Geocoding helper using OpenStreetMap Nominatim
+import { logger } from './logger';
+
 export async function geocodeAddress(address: string): Promise<{ lat: number, lon: number } | null> {
   if (typeof window === 'undefined') return null;
   const url = `/api/nominatim?q=${encodeURIComponent(address)}`;

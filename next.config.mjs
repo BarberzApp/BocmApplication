@@ -1,4 +1,3 @@
-import withPWA from 'next-pwa'
 import { withSentryConfig } from '@sentry/nextjs'
 
 /** @type {import('next').NextConfig} */
@@ -25,11 +24,6 @@ const nextConfig = {
   },
 };
 
-// Temporarily disable PWA to fix build issues
-const pwaConfig = {
-  disable: true,
-};
-
 // Sentry configuration
 const sentryWebpackPluginOptions = {
   // For all available options, see:
@@ -52,5 +46,4 @@ const configWithSentry = withSentryConfig(
   nextConfig,
   sentryWebpackPluginOptions
 );
-
-export default withPWA(pwaConfig)(configWithSentry);
+export default configWithSentry;

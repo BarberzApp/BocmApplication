@@ -98,7 +98,7 @@ export function SettingsPage() {
         logger.error('Error fetching profile', profileError)
       }
 
-      logger.debug('Profile data loaded', { userId: profile?.id })
+      logger.debug('Profile data loaded', { userId: user.id })
 
       // Check if user is a barber
       if (user.role === 'barber') {

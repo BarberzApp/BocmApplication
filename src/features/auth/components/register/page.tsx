@@ -186,6 +186,10 @@ export default function RegisterPage() {
                     I agree to the{" "}
                     <Link href="/terms" className="text-primary hover:underline">
                       terms and conditions
+                    </Link>{" "}
+                    and{" "}
+                    <Link href="/privacy" className="text-primary hover:underline">
+                      privacy policy
                     </Link>
                   </label>
                 </div>
@@ -278,6 +282,10 @@ export default function RegisterPage() {
                     I agree to the{" "}
                     <Link href="/terms" className="text-primary hover:underline">
                       terms and conditions
+                    </Link>{" "}
+                    and{" "}
+                    <Link href="/privacy" className="text-primary hover:underline">
+                      privacy policy
                     </Link>
                   </label>
                 </div>

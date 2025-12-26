@@ -94,9 +94,9 @@ class Logger {
    * Also sends to Sentry in production
    */
   error(message: string, error?: Error | unknown, context?: LogContext): void {
+    const formattedMessage = this.formatMessage(message, context)
+
     if (this.shouldLog('error')) {
-      const formattedMessage = this.formatMessage(message, context)
-      
       if (error instanceof Error) {
         console.error(`[ERROR] ${formattedMessage}`, error)
       } else if (error) {

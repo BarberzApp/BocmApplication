@@ -16,6 +16,7 @@ import { useToast } from "@/shared/components/ui/use-toast"
 import { useAuth } from "@/shared/hooks/use-auth-zustand"
 import { useData } from "../../hooks/use-data"
 import { supabase } from '@/shared/lib/supabase'
+import { logger } from '@/shared/lib/logger'
 import { BARBER_SPECIALTIES, getFilteredSpecialties } from '@/shared/constants/specialties'
 import { Check, ChevronsUpDown } from "lucide-react"
 import { cn } from "@/lib/utils"

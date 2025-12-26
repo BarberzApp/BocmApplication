@@ -1,5 +1,6 @@
 import { google } from 'googleapis';
 import { supabase } from './supabase';
+import { logger } from './logger';
 
 const SCOPES = [
   'https://www.googleapis.com/auth/calendar',

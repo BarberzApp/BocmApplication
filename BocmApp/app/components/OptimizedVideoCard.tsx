@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState, memo, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableWithoutFeedback, Dimensions, Animated, TouchableOpacity, Alert, Linking } from 'react-native';
 import { Video, ResizeMode, AVPlaybackStatusSuccess } from 'expo-av';
-import { User, Calendar } from 'lucide-react-native';
+import { User, Calendar, Flag } from 'lucide-react-native';
 import type { FeedItem, VideoState } from '../types/feed.types';
 import { useNavigation } from '@react-navigation/native';
 import { logger } from '../shared/lib/logger';
+import { ReportContentModal } from '../shared/components/ReportContentModal';
 
 const { height, width } = Dimensions.get('window');
 
@@ -26,6 +27,7 @@ function OptimizedVideoCardImpl({ item, isActive, navBottomInset, onVideoStateCh
   const [videoState, setVideoState] = useState<VideoState>('loading');
   const [isHolding, setIsHolding] = useState(false);
   const [showProfileInfo, setShowProfileInfo] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -116,6 +118,10 @@ function OptimizedVideoCardImpl({ item, isActive, navBottomInset, onVideoStateCh
       Alert.alert('Error', 'Barber profile not available');
     }
   }, [item.barber_id, item.username, navigation]);
+
+  const handleReportPress = useCallback(() => {
+    setShowReportModal(true);
+  }, []);
 
 
 
@@ -246,8 +252,20 @@ function OptimizedVideoCardImpl({ item, isActive, navBottomInset, onVideoStateCh
             <Calendar size={28} color="white" />
             <Text style={styles.bookActionText}>Book Now</Text>
           </TouchableOpacity>
+          <TouchableOpacity onPress={handleReportPress} style={styles.reportActionButton}>
+            <Flag size={22} color="white" />
+            <Text style={styles.reportActionText}>Report</Text>
+          </TouchableOpacity>
         </View>
       </View>
+
+      <ReportContentModal
+        visible={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        contentType="video"
+        contentId={item.id}
+        contentDescription={item.username ? `Video by @${item.username}` : 'Video content'}
+      />
 
       {/* Profile info overlay */}
       {showProfileInfo && (
@@ -438,6 +456,24 @@ const styles = StyleSheet.create({
     textShadowRadius: 2,
     textAlign: 'center',
     flexShrink: 0,
+  },
+  reportActionButton: {
+    alignItems: 'center',
+    marginBottom: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    minWidth: 80,
+  },
+  reportActionText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 4,
+    textAlign: 'center',
   },
   profileOverlay: {
     position: 'absolute',
