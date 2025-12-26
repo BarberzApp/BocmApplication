@@ -47,7 +47,33 @@ export class MobileSecurity {
 
   // Generate secure random strings
   static generateSecureToken(length: number = 32): string {
-    return Crypto.getRandomBytes(length).toString('hex')
+    // expo-crypto's getRandomBytes() signature can vary by version; in this project it's 0-arg.
+    // We generate enough bytes by calling it multiple times if needed.
+    const bytesNeeded = Math.max(1, length);
+    const chunks: Uint8Array[] = [];
+    let collected = 0;
+
+    while (collected < bytesNeeded) {
+      // expo-crypto's TS types differ across versions (some require a length arg, some don't).
+      // Use a safe runtime call and slice to requested length.
+      const remaining = bytesNeeded - collected;
+      const chunk = (Crypto as any).getRandomBytes(remaining) as Uint8Array;
+      chunks.push(chunk);
+      collected += chunk.length;
+    }
+
+    const merged = new Uint8Array(collected);
+    let offset = 0;
+    for (const chunk of chunks) {
+      merged.set(chunk, offset);
+      offset += chunk.length;
+    }
+
+    const hex = Array.from(merged)
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+
+    return hex.slice(0, bytesNeeded * 2);
   }
 
   // Hash sensitive data

@@ -201,11 +201,12 @@ export class NotificationService {
           },
           sound: 'default',
         },
-        trigger: secondsFromNow > 0 ? { 
-          type: 'timeInterval',
-          seconds: secondsFromNow 
+        trigger: secondsFromNow > 0 ? {
+          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+          seconds: secondsFromNow,
+          repeats: false,
+          channelId: 'reminders',
         } : null,
-        channelId: 'reminders',
       });
       logger.log('Booking reminder scheduled for:', new Date(Date.now() + secondsFromNow * 1000));
     } catch (error) {

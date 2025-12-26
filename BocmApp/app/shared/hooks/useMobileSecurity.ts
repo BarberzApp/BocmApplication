@@ -1,14 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Alert, Platform } from 'react-native'
+import { Alert } from 'react-native'
 import { logger } from '../lib/logger'
-import { 
-  MobileSecurity, 
-  MobileSecurityLogger, 
-  SecureAuth, 
-  SecureStorage,
-  mobileSecurityConfig,
-  checkSecurityStatus
-} from '../lib/mobile-security-config'
+import { MobileSecurity, MobileSecurityLogger } from '../lib/mobile-security'
+import { SecureAuth, SecureStorage } from '../lib/secure-auth'
+import { checkSecurityStatus, mobileSecurityConfig } from '../lib/mobile-security-config'
 
 // Security hook for React Native components
 export const useMobileSecurity = () => {
@@ -33,10 +28,11 @@ export const useMobileSecurity = () => {
       })
     } catch (error) {
       logger.error('Security check failed:', error)
+      const message = error instanceof Error ? error.message : String(error)
       MobileSecurityLogger.logSecurityEvent(
         'security_check_failed',
         'high',
-        { error: error.message }
+        { error: message }
       )
     } finally {
       setIsLoading(false)
@@ -104,10 +100,11 @@ export const useMobileSecurity = () => {
       return true
     } catch (error) {
       logger.error('Failed to store secure data:', error)
+      const message = error instanceof Error ? error.message : String(error)
       MobileSecurityLogger.logSecurityEvent(
         'secure_storage_failed',
         'medium',
-        { key, error: error.message }
+        { key, error: message }
       )
       return false
     }
@@ -119,10 +116,11 @@ export const useMobileSecurity = () => {
       return await SecureStorage.getItem<T>(key)
     } catch (error) {
       logger.error('Failed to retrieve secure data:', error)
+      const message = error instanceof Error ? error.message : String(error)
       MobileSecurityLogger.logSecurityEvent(
         'secure_retrieval_failed',
         'medium',
-        { key, error: error.message }
+        { key, error: message }
       )
       return null
     }
@@ -239,7 +237,8 @@ export const useSecureAPI = () => {
       return result
     } catch (error) {
       logger.error('Secure API request failed:', error)
-      setError(error.message)
+      const message = error instanceof Error ? error.message : String(error)
+      setError(message)
       return null
     } finally {
       setIsLoading(false)

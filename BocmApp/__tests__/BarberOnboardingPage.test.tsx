@@ -73,7 +73,8 @@ describe('BarberOnboardingPage - Onboarding Logic Tests', () => {
       }, { onConflict: 'user_id' });
 
       expect(mockUpsert).toHaveBeenCalled();
-      const callArgs = mockUpsert.mock.calls[0][0];
+      const callArgs = (mockUpsert as jest.Mock).mock.calls[0]?.[0] as any;
+      expect(callArgs).toBeDefined();
       expect(callArgs.business_name).toBe('Test Shop');
       expect(callArgs.onboarding_complete).toBe(true);
     });
@@ -136,7 +137,8 @@ describe('BarberOnboardingPage - Onboarding Logic Tests', () => {
 
       expect(mockDelete).toHaveBeenCalled();
       expect(mockInsert).toHaveBeenCalled();
-      const insertArgs = mockInsert.mock.calls[0][0];
+      const insertArgs = (mockInsert as jest.Mock).mock.calls[0]?.[0] as any[];
+      expect(insertArgs).toBeDefined();
       expect(insertArgs).toHaveLength(2);
       expect(insertArgs[0].name).toBe('Haircut');
     });
@@ -224,9 +226,10 @@ describe('BarberOnboardingPage - Onboarding Logic Tests', () => {
         error: null,
       }));
 
-      mockSupabase.functions = {
-        invoke: mockInvoke,
-      } as any;
+      Object.defineProperty(mockSupabase, 'functions', {
+        value: { invoke: mockInvoke },
+        writable: true,
+      });
 
       mockSupabase.auth = {
         getSession: jest.fn(() => Promise.resolve({

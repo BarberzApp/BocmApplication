@@ -6,13 +6,13 @@ import { Animated } from 'react-native';
 // Mock Animated to avoid timer issues
 jest.mock('react-native/Libraries/Animated/NativeAnimatedHelper');
 
-Animated.timing = () => ({
+;(Animated as any).timing = () => ({
   start: jest.fn(),
   stop: jest.fn(),
   reset: jest.fn(),
 });
 
-Animated.spring = () => ({
+;(Animated as any).spring = () => ({
   start: jest.fn(),
   stop: jest.fn(),
   reset: jest.fn(),

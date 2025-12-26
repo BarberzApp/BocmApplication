@@ -92,10 +92,13 @@ describe('BookingForm - Basic Tests', () => {
   it('should accept optional preSelectedService prop', () => {
     const preSelectedService = {
       id: 'service-1',
+      barber_id: 'test-barber-id',
       name: 'Haircut',
       description: 'Basic haircut',
       price: 30,
       duration: 30,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     };
     
     expect(() => {

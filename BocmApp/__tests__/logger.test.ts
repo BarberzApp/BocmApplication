@@ -12,7 +12,7 @@ describe('Logger', () => {
     jest.clearAllMocks()
     jest.resetModules()
     ;(global as any).__DEV__ = true
-    process.env.NODE_ENV = 'development'
+    ;(process.env as any).NODE_ENV = 'development'
     
     delete require.cache[require.resolve('../app/shared/lib/logger')]
     logger = require('../app/shared/lib/logger').logger
@@ -50,7 +50,7 @@ describe('Logger', () => {
     beforeEach(() => {
       jest.resetModules()
       ;(global as any).__DEV__ = false
-      process.env.NODE_ENV = 'production'
+      ;(process.env as any).NODE_ENV = 'production'
       delete require.cache[require.resolve('../app/shared/lib/logger')]
       logger = require('../app/shared/lib/logger').logger
     })

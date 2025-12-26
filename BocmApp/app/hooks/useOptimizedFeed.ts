@@ -18,6 +18,13 @@ export function useOptimizedFeed(opts: FeedOptions = {}) {
   const pageRef = useRef(0);
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  const getBarberFromCut = (cut: any) => {
+    const barbers = cut?.barbers;
+    // Supabase nested relations can come back as an object or an array depending on schema inference.
+    if (Array.isArray(barbers)) return barbers[0];
+    return barbers;
+  };
+
   const fetchPage = useCallback(async (selectedSpecialty?: string) => {
     // Use refs to avoid dependency issues
     if (pageRef.current === 0) {
@@ -92,18 +99,20 @@ export function useOptimizedFeed(opts: FeedOptions = {}) {
 
       // Transform cuts to FeedItem format with distance calculation
       const feedItems: FeedItem[] = cuts.map((cut) => {
+        const barber = getBarberFromCut(cut);
+
         // Calculate distance if location is enabled and barber has coordinates
         let distance: number | undefined;
-        if (useLocation && userLocation && cut.barbers?.latitude && cut.barbers?.longitude) {
+        if (useLocation && userLocation && barber?.latitude && barber?.longitude) {
           distance = calculateDistance(
             userLocation.coords.latitude,
             userLocation.coords.longitude,
-            cut.barbers.latitude,
-            cut.barbers.longitude
+            barber.latitude,
+            barber.longitude
           );
-        } else if (useLocation && userLocation && cut.barbers?.city) {
+        } else if (useLocation && userLocation && barber?.city) {
           // If no coordinates, skip distance calculation to avoid false "closest" results
-          logger.log(`📍 Cut from ${cut.barbers.city} has no coordinates - skipping distance calculation`);
+          logger.log(`📍 Cut from ${barber.city} has no coordinates - skipping distance calculation`);
           distance = undefined;
         }
 
@@ -111,10 +120,10 @@ export function useOptimizedFeed(opts: FeedOptions = {}) {
           id: cut.id,
           videoUrl: cut.url,
           caption: cut.description || cut.title,
-          username: cut.barbers?.profiles?.username || 'unknown',
+          username: barber?.profiles?.username || 'unknown',
           barber_id: cut.barber_id,
-          barber_name: cut.barbers?.profiles?.name,
-          barber_avatar: cut.barbers?.profiles?.avatar_url,
+          barber_name: barber?.profiles?.name,
+          barber_avatar: barber?.profiles?.avatar_url,
           created_at: cut.created_at,
           aspect_ratio: 9/16, // Default to 9:16 aspect ratio
           duration: cut.duration,
@@ -125,7 +134,7 @@ export function useOptimizedFeed(opts: FeedOptions = {}) {
           shares: cut.shares || 0,
           music: 'Original Sound', // TODO: Add music field to cuts table
           distance: distance,
-          barber_location: cut.barbers?.city || cut.barbers?.state || 'Unknown location',
+          barber_location: barber?.city || barber?.state || 'Unknown location',
         };
       });
 
@@ -218,6 +227,13 @@ export function useOptimizedFeed(opts: FeedOptions = {}) {
       setLocationLoading(false);
     }
   }, []);
+
+  const refresh = useCallback(() => {
+    setItems([]);
+    setEndReached(false);
+    pageRef.current = 0;
+    fetchPage();
+  }, [fetchPage]);
 
   const getUserLocation = useCallback(async () => {
     try {
@@ -325,13 +341,6 @@ export function useOptimizedFeed(opts: FeedOptions = {}) {
         abortControllerRef.current.abort();
       }
     };
-  }, [fetchPage]);
-
-  const refresh = useCallback(() => {
-    setItems([]);
-    setEndReached(false);
-    pageRef.current = 0;
-    fetchPage();
   }, [fetchPage]);
 
   return {

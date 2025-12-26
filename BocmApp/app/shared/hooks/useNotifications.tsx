@@ -50,9 +50,9 @@ export const useNotifications = (): UseNotificationsReturn => {
   const [hasPermission, setHasPermission] = useState(false);
   const [pushToken, setPushToken] = useState<string | null>(null);
   
-  const notificationListener = useRef<Notifications.Subscription>();
-  const responseListener = useRef<Notifications.Subscription>();
-  const appStateListener = useRef<any>();
+  const notificationListener = useRef<Notifications.Subscription | null>(null);
+  const responseListener = useRef<Notifications.Subscription | null>(null);
+  const appStateListener = useRef<{ remove: () => void } | null>(null);
 
   useEffect(() => {
     initializeNotifications();
@@ -112,7 +112,7 @@ export const useNotifications = (): UseNotificationsReturn => {
   };
 
   const handleNotificationResponse = (response: Notifications.NotificationResponse) => {
-    const data = response.notification.request.content.data as NotificationData;
+    const data = response.notification.request.content.data as Partial<NotificationData>;
     
     // Handle different notification types
     switch (data?.type) {

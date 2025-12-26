@@ -2,14 +2,8 @@
 import { supabase } from './supabase';
 import { logger } from './logger';
 
-export interface Service {
-  id: string;
-  barber_id: string;
-  name: string;
-  description: string;
-  duration: number;
-  price: number;
-}
+export type { Service } from '../types';
+import type { Service } from '../types';
 
 export interface TimeSlot {
   date: string;

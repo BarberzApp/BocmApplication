@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './useAuth';
 import { useToast } from '../components/ui/use-toast';

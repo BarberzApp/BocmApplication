@@ -29,7 +29,7 @@ interface ErrorBoundaryProps {
 }
 
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  private retryTimeout?: NodeJS.Timeout;
+  private retryTimeout?: ReturnType<typeof setTimeout>;
 
   constructor(props: ErrorBoundaryProps) {
     super(props);

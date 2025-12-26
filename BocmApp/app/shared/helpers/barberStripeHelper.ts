@@ -47,16 +47,13 @@ export const handleStripeConnect = async ({
   setStripeLoading(true);
 
   try {
-    const controller = new AbortController();
     const timeout = setTimeout(() => {
       logger.log('Stripe Connect timeout - resetting loading state');
-      controller.abort();
       setStripeLoading(false);
     }, 30000);
 
     const { data, error } = await supabase.functions.invoke('stripe-connect', {
       body: { userId },
-      signal: controller.signal,
     });
 
     if (error) throw new Error(error.message || 'Failed to connect Stripe account');
