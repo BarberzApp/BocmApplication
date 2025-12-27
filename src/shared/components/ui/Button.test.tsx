@@ -1,6 +1,6 @@
 import React from 'react'
 import { render, screen, fireEvent } from '@/shared/utils/test-utils'
-import { Button } from './Button'
+import { Button } from './button'
 
 describe('Button Component', () => {
   it('renders with default props', () => {
