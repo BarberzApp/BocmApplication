@@ -13,6 +13,7 @@ import { theme } from './app/shared/lib/theme';
 import { AppNavigator } from './app/navigation/AppNavigator';
 import { AuthProvider } from './app/shared/hooks/useAuth';
 import { StripeProvider } from '@stripe/stripe-react-native';
+import { ErrorBoundary } from './app/shared/components/ui/ErrorBoundary';
 // Initialize Sentry as early as possible (using secure configuration from sentry.ts)
 // The initSentry() function handles proper configuration with data privacy protections
 initSentry();
@@ -84,67 +85,109 @@ const App = () => {
   }, []);
 
   useEffect(() => {
-    // Initialize notifications
-    notificationService.initialize();
-    setIsLoading(false);
+    // Initialize notifications with error handling
+    (async () => {
+      try {
+        await notificationService.initialize();
+      } catch (error) {
+        logger.error('Error initializing notifications:', error);
+        // Don't crash the app - notifications are not critical for startup
+      } finally {
+        setIsLoading(false);
+      }
+    })();
   }, []);
 
   // Handle deep links
   useEffect(() => {
     const handleDeepLink = (event: { url: string }) => {
-      logger.log('Deep link received:', event.url);
-      
-      // Handle Stripe connect redirects
-      if (event.url.includes('bocm://stripe-connect/')) {
-        if (event.url.includes('/return')) {
-          // User completed Stripe onboarding
-          logger.log('Stripe onboarding completed via deep link');
-          
-          // Extract account_id if present
-          const urlParams = new URL(event.url);
-          const accountId = urlParams.searchParams.get('account_id');
-          logger.log('Account ID from deep link:', accountId);
-          
-          // Show a success message immediately
-          logger.log('Stripe onboarding completed successfully - account ID:', accountId);
-          
-          // You could add a global state or navigation here to show success
-          // For now, we'll rely on the focus effect in the onboarding page
-        } else if (event.url.includes('/refresh')) {
-          // User needs to refresh/retry Stripe onboarding
-          logger.log('Stripe onboarding refresh via deep link');
-          
-          // Extract account_id if present
-          const urlParams = new URL(event.url);
-          const accountId = urlParams.searchParams.get('account_id');
-          logger.log('Account ID from refresh deep link:', accountId);
+      try {
+        logger.log('Deep link received:', event.url);
+        
+        if (!event.url || typeof event.url !== 'string') {
+          logger.error('Invalid deep link URL:', event.url);
+          return;
         }
-      }
-      
-      // Handle booking payment redirects
-      if (event.url.includes('bocm://booking/')) {
-        if (event.url.includes('/success')) {
-          // User completed payment successfully
-          logger.log('Booking payment completed via deep link');
-          
-          // Extract session_id if present
-          const urlParams = new URL(event.url);
-          const sessionId = urlParams.searchParams.get('session_id');
-          logger.log('Session ID from deep link:', sessionId);
-          
-          if (sessionId) {
-            // Create booking using the session ID
-            createBookingFromSession(sessionId);
+        
+        // Handle Stripe connect redirects
+        if (event.url.includes('bocm://stripe-connect/')) {
+          if (event.url.includes('/return')) {
+            // User completed Stripe onboarding
+            logger.log('Stripe onboarding completed via deep link');
+            
+            // Extract account_id if present
+            try {
+              const urlParams = new URL(event.url);
+              const accountId = urlParams.searchParams.get('account_id');
+              logger.log('Account ID from deep link:', accountId);
+              
+              // Show a success message immediately
+              logger.log('Stripe onboarding completed successfully - account ID:', accountId);
+            } catch (urlError) {
+              logger.error('Error parsing Stripe connect return URL:', urlError);
+              // Continue without account_id
+            }
+            
+            // You could add a global state or navigation here to show success
+            // For now, we'll rely on the focus effect in the onboarding page
+          } else if (event.url.includes('/refresh')) {
+            // User needs to refresh/retry Stripe onboarding
+            logger.log('Stripe onboarding refresh via deep link');
+            
+            // Extract account_id if present
+            try {
+              const urlParams = new URL(event.url);
+              const accountId = urlParams.searchParams.get('account_id');
+              logger.log('Account ID from refresh deep link:', accountId);
+            } catch (urlError) {
+              logger.error('Error parsing Stripe connect refresh URL:', urlError);
+              // Continue without account_id
+            }
           }
-        } else if (event.url.includes('/cancel')) {
-          // User cancelled payment
-          logger.log('Booking payment cancelled via deep link');
-          Alert.alert(
-            'Payment Cancelled',
-            'Your payment was not completed. Please try again.',
-            [{ text: 'OK' }]
-          );
         }
+        
+        // Handle booking payment redirects
+        if (event.url.includes('bocm://booking/')) {
+          if (event.url.includes('/success')) {
+            // User completed payment successfully
+            logger.log('Booking payment completed via deep link');
+            
+            // Extract session_id if present
+            try {
+              const urlParams = new URL(event.url);
+              const sessionId = urlParams.searchParams.get('session_id');
+              logger.log('Session ID from deep link:', sessionId);
+              
+              if (sessionId) {
+                // Create booking using the session ID
+                createBookingFromSession(sessionId);
+              }
+            } catch (urlError) {
+              logger.error('Error parsing booking success URL:', urlError);
+              Alert.alert(
+                'Error',
+                'Unable to process booking confirmation. Please check your bookings.',
+                [{ text: 'OK' }]
+              );
+            }
+          } else if (event.url.includes('/cancel')) {
+            // User cancelled payment
+            logger.log('Booking payment cancelled via deep link');
+            Alert.alert(
+              'Payment Cancelled',
+              'Your payment was not completed. Please try again.',
+              [{ text: 'OK' }]
+            );
+          }
+        }
+      } catch (error) {
+        logger.error('Error handling deep link:', error);
+        // Don't crash the app - just log the error
+        const { captureException } = require('./app/shared/lib/sentry');
+        captureException(error as Error, {
+          context: 'handleDeepLink',
+          url: event.url,
+        });
       }
     };
 
@@ -157,6 +200,9 @@ const App = () => {
         logger.log('App opened with URL:', url);
         handleDeepLink({ url });
       }
+    }).catch((error) => {
+      logger.error('Error getting initial URL:', error);
+      // Don't crash - just log the error
     });
 
     return () => {
@@ -173,13 +219,29 @@ const App = () => {
     );
   }
 
+  // Validate Stripe publishable key
+  const stripePublishableKey = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+  if (!stripePublishableKey) {
+    logger.error('Stripe publishable key is missing');
     return (
-        <StripeProvider publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY!}>
-            <AuthProvider>
-                <AppNavigator />
-            </AuthProvider>
-        </StripeProvider>
+      <View style={[tw`flex-1 justify-center items-center`, { backgroundColor: theme.colors.background }]}>
+        <Text style={[tw`text-xl font-bold`, { color: theme.colors.foreground }]}>Configuration Error</Text>
+        <Text style={[tw`text-sm mt-2 text-center px-4`, { color: theme.colors.mutedForeground }]}>
+          The app is not properly configured. Please contact support.
+        </Text>
+      </View>
     );
+  }
+
+  return (
+    <ErrorBoundary>
+      <StripeProvider publishableKey={stripePublishableKey}>
+        <AuthProvider>
+          <AppNavigator />
+        </AuthProvider>
+      </StripeProvider>
+    </ErrorBoundary>
+  );
 };
 
 export default App;

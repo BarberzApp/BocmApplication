@@ -108,10 +108,33 @@ export function generateDeepLink(route: string, params?: Record<string, string>)
 export function handleDeepLink(url: string) {
   logger.log('🔗 Handling deep link:', url);
   
+  if (!url || typeof url !== 'string') {
+    logger.error('Invalid deep link URL provided:', url);
+    return {
+      route: 'Home',
+      params: {},
+      url: url || '',
+    };
+  }
+  
   // Parse the URL and extract route and parameters
-  const urlObj = new URL(url);
-  const path = urlObj.pathname;
-  const params = Object.fromEntries(urlObj.searchParams.entries());
+  let urlObj: URL;
+  let path: string;
+  let params: Record<string, string>;
+  
+  try {
+    urlObj = new URL(url);
+    path = urlObj.pathname;
+    params = Object.fromEntries(urlObj.searchParams.entries());
+  } catch (error) {
+    logger.error('Error parsing deep link URL:', error, { url });
+    // Return safe defaults if URL parsing fails
+    return {
+      route: 'Home',
+      params: {},
+      url: url,
+    };
+  }
   
   // Map web app routes to mobile app routes (aligned with Next.js)
   const routeMapping: Record<string, string> = {
