@@ -8,7 +8,7 @@ export interface PaymentIntentData {
   serviceId: string;
   date: string;
   servicePrice: number;
-  paymentType: 'full' | 'fee';
+  paymentType?: 'fee'; // Always fee-only payment model (service price paid at appointment)
   clientId?: string;
   guestName?: string;
   guestEmail?: string;

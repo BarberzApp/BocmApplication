@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Alert,
   Linking,
+  Platform,
 } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import tw from 'twrnc';
@@ -168,6 +169,7 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'expo-platform': Platform.OS,
         },
         body: JSON.stringify({ 
           barberId: barberId,
@@ -312,6 +314,7 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'expo-platform': Platform.OS,
         },
         body: JSON.stringify({ 
           barberId: barberId,
@@ -338,6 +341,7 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
+              'expo-platform': Platform.OS,
             },
             body: JSON.stringify({ 
               barberId: barberId,

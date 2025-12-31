@@ -55,6 +55,22 @@ export async function POST(request: Request) {
       }
     }
 
+    // Fetch service price to store historically (required for accurate pricing even if service price changes later)
+    const { data: service, error: serviceError } = await supabaseAdmin
+      .from('services')
+      .select('price')
+      .eq('id', service_id)
+      .single()
+
+    if (serviceError || !service) {
+      return NextResponse.json(
+        { error: 'Service not found' },
+        { status: 400 }
+      )
+    }
+
+    const service_price = service.price ? Number(service.price) : null
+
     // Create the booking using the admin client
     const { data: booking, error: bookingError } = await supabaseAdmin
       .from('bookings')
@@ -64,6 +80,7 @@ export async function POST(request: Request) {
         date,
         end_time: end_time || null,
         price,
+        service_price, // Store historical service price
         status: "confirmed",
         payment_status: "succeeded",
         payment_intent_id: payment_intent_id || null,

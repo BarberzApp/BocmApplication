@@ -12,7 +12,8 @@ import {
   Animated,
   Vibration,
   TextInput,
-  RefreshControl
+  RefreshControl,
+  Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
@@ -106,7 +107,7 @@ export default function CalendarPage() {
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [reviewFormData, setReviewFormData] = useState<{
     barberId: string;
-    bookingId: string;
+    bookingId: string | null; // Can be null for reviews not tied to a booking
     isEditing?: boolean;
     reviewId?: string;
     initialRating?: number;
@@ -438,18 +439,14 @@ export default function CalendarPage() {
           }
         }
 
-        // Fetch add-ons for this booking
-        let calculatedAddonTotal = 0;
+        // Fetch add-on names for this booking (addon_total is maintained by database trigger)
         let addonNames: string[] = [];
         const { data: bookingAddons } = await supabase
           .from('booking_addons')
-          .select('addon_id, price')
+          .select('addon_id')
           .eq('booking_id', booking.id);
 
         if (bookingAddons && bookingAddons.length > 0) {
-          // Use the stored addon prices from booking_addons table
-          calculatedAddonTotal = bookingAddons.reduce((sum, ba) => sum + (ba.price || 0), 0);
-          
           // Get addon names from service_addons table
           const addonIds = bookingAddons.map((ba) => ba.addon_id);
           const { data: addons } = await supabase
@@ -482,30 +479,22 @@ export default function CalendarPage() {
         // For barbers viewing "My Appointments" (where they're providing service), use barber view
         const isClientView = userRoleToUse === 'client' || (userRoleToUse === 'barber' && barberViewMode === 'bookings');
         
-        // Use stored service_price from booking (historical price) if available,
-        // otherwise fall back to fetching current service price
-        let historicalServicePrice = booking.service_price || 0;
-        if (!historicalServicePrice) {
-          // Fallback: fetch current service price if historical price not stored
-          const { data: currentService } = await supabase
-            .from('services')
-            .select('price')
-            .eq('id', booking.service_id)
-            .single();
-          historicalServicePrice = currentService?.price || 0;
-        }
+        // Use stored service_price from booking (historical price - required field)
+        // Note: service_price is now required (NOT NULL) and set by trigger if not provided
+        const historicalServicePrice = booking.service_price || 0;
         
         const breakdown = isClientView
           ? getClientBookingDetails({
               price: booking.price,
               platform_fee: booking.platform_fee,
-              addon_total: calculatedAddonTotal || booking.addon_total,
+              barber_payout: booking.barber_payout, // Needed to detect old bookings
+              addon_total: booking.addon_total || 0, // Use trigger-maintained value
             }, historicalServicePrice)
           : getBarberBookingDetails({
           price: booking.price,
           platform_fee: booking.platform_fee,
           barber_payout: booking.barber_payout,
-          addon_total: calculatedAddonTotal || booking.addon_total,
+          addon_total: booking.addon_total || 0, // Use trigger-maintained value
             }, historicalServicePrice);
 
         return {
@@ -878,9 +867,13 @@ export default function CalendarPage() {
       }
 
       // Create booking using API to keep behavior consistent (adds notifications)
-      const response = await fetch('/api/bookings/create', {
+      const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "https://www.bocmstyle.com";
+      const response = await fetch(`${API_BASE_URL}/api/bookings/create`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'expo-platform': Platform.OS,
+        },
         body: JSON.stringify({
           barber_id: barberData.id,
           service_id: manualFormData.serviceId,
@@ -1533,42 +1526,13 @@ export default function CalendarPage() {
                         barberPayout: selectedEvent.extendedProps.barberPayout,
                       };
 
+                  // For barbers viewing "My Appointments" and clients, only show total (no breakdown)
+                  const isBarberAppointmentView = userRole === 'barber' && barberViewMode === 'appointments';
+                  const isClientView = userRole === 'client';
+                  const showBreakdown = !isBarberAppointmentView && !isClientView; // Only show for barbers viewing "My Bookings"
+                  
                   return (
                     <>
-                      <View style={tw`mb-4`}>
-                        <Text style={[tw`text-sm font-semibold mb-3`, { color: theme.colors.foreground }]}>
-                          Pricing Breakdown
-                        </Text>
-                        
-                        <View style={tw`space-y-2`}>
-                          <View style={tw`flex-row items-center justify-between`}>
-                            <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>Service Price</Text>
-                            <Text style={[tw`font-semibold`, { color: theme.colors.foreground }]}>
-                              ${breakdown.servicePrice.toFixed(2)}
-                            </Text>
-                          </View>
-
-                          {selectedEvent.extendedProps.addonNames.length > 0 && (
-                            <View style={tw`flex-row items-center justify-between`}>
-                              <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>Add-ons</Text>
-                              <Text style={[tw`font-semibold`, { color: theme.colors.foreground }]}>
-                                +${breakdown.addons.toFixed(2)}
-                              </Text>
-                            </View>
-                          )}
-
-                          {/* Show platform fee */}
-                          {breakdown.platformFee > 0 && (
-                            <View style={tw`flex-row items-center justify-between`}>
-                              <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>Platform Fee</Text>
-                              <Text style={[tw`font-semibold`, { color: theme.colors.foreground }]}>
-                                +${breakdown.platformFee.toFixed(2)}
-                              </Text>
-                            </View>
-                          )}
-                        </View>
-                      </View>
-
                       {/* Total Section */}
                       <View style={tw`mb-4`}>
                         {/* Show "Total Charged" for clients OR barbers viewing "My Bookings" (when they're the client) */}

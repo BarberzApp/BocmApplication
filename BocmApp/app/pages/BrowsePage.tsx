@@ -372,7 +372,7 @@ export default function BrowsePage() {
   const [showReviews, setShowReviews] = useState(false);
   const [reviewFormData, setReviewFormData] = useState<{
     barberId: string;
-    bookingId: string;
+    bookingId: string | null; // Can be null for reviews not tied to a booking
     isEditing?: boolean;
     reviewId?: string;
     initialRating?: number;
@@ -1629,12 +1629,11 @@ export default function BrowsePage() {
               <ReviewsList 
                 barberId={selectedBarberForReviews} 
                 onAddReview={() => {
-                  // For reviews from browse page, we'll use a placeholder booking ID
-                  // In a real scenario, users should only review after a booking
-                  // For now, we'll allow reviews but mark them as unverified
+                  // For reviews from browse page, no booking ID (null)
+                  // These reviews are unverified since they're not tied to a booking
                   setReviewFormData({
                     barberId: selectedBarberForReviews,
-                    bookingId: 'browse-review', // Placeholder - indicates review from browse page
+                    bookingId: null, // Null for reviews not tied to a booking
                     isEditing: false,
                   });
                   setShowReviews(false);

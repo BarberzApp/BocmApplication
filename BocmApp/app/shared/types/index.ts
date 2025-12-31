@@ -220,6 +220,7 @@ export interface Booking {
   barber_payout?: number;
   payment_intent_id?: string;
   addon_total?: number;
+  service_price?: number; // Historical service price at time of booking
   // Relations
   barber?: Barber;
   service?: Service;

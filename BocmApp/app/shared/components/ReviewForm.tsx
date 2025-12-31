@@ -16,7 +16,7 @@ import { validateReviewContent, sanitizeText } from '../lib/contentModeration';
 
 interface ReviewFormProps {
   barberId: string;
-  bookingId: string;
+  bookingId: string | null; // Can be null for reviews not tied to a booking
   onClose: () => void;
   onSuccess?: () => void;
   initialRating?: number;
@@ -118,7 +118,7 @@ export function ReviewForm({
 
   return (
     <View style={tw`flex-1 bg-black/90 justify-end`}>
-      <View style={tw`bg-white/10 border border-white/20 rounded-t-3xl p-6 max-h-96`}>
+      <View style={tw`bg-white/10 border border-white/20 rounded-t-3xl p-15 max-h-[100%]`}>
         <View style={tw`flex-row items-center justify-between mb-6`}>
           <Text style={tw`text-white text-xl font-bold`}>
             {isEditing ? 'Edit Review' : 'Write a Review'}
@@ -172,7 +172,7 @@ export function ReviewForm({
 
           {/* Submit Button */}
           <TouchableOpacity
-            style={tw`bg-blue-500 rounded-lg p-4 flex-row items-center justify-center ${
+            style={tw`secondary rounded-lg p-4 flex-row items-center justify-center ${
               rating === 0 ? 'opacity-50' : ''
             }`}
             onPress={handleSubmit}

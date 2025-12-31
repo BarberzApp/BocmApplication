@@ -151,62 +151,24 @@ export async function POST(request: Request) {
       barberShare = 0
     }
 
-    // Determine payment amount based on payment type
-    let totalAmount: number
-    let lineItems: any[] = []
-    let transferAmount: number
-
-    if (paymentType === 'fee') {
-      // Customer only pays the platform fee (no add-ons in fee-only mode)
-      totalAmount = platformFee
-      transferAmount = barberShare // Barber gets 40% of fee (or 0 if developer)
-      
-      lineItems = [
-        {
-          price_data: {
-            currency: "usd",
-            product_data: {
-              name: "Processing Fee",
-              description: "Payment processing fee"
-            },
-            unit_amount: platformFee,
+    // Customer only pays the platform fee (fee-only payment model)
+    // Service price and addons are paid directly to barber at appointment
+    const totalAmount = platformFee
+    const transferAmount = barberShare // Barber gets 40% of fee (or 0 if developer)
+    
+    const lineItems = [
+      {
+        price_data: {
+          currency: "usd",
+          product_data: {
+            name: "Processing Fee",
+            description: "Payment processing fee"
           },
-          quantity: 1,
-        }
-      ]
-    } else {
-      // Customer pays full amount (service + add-ons + fee)
-      totalAmount = servicePrice + Math.round(addonTotal * 100) + platformFee
-      transferAmount = barber.is_developer ? 
-        servicePrice + Math.round(addonTotal * 100) : 
-        servicePrice + Math.round(addonTotal * 100) + barberShare // Developer gets full price
-      
-      lineItems = [
-        {
-          price_data: {
-            currency: "usd",
-            product_data: {
-              name: service.name,
-              description: `Duration: ${service.duration} minutes`
-            },
-            unit_amount: servicePrice,
-          },
-          quantity: 1,
+          unit_amount: platformFee,
         },
-        ...addonItems, // Add add-on items
-        {
-          price_data: {
-            currency: "usd",
-            product_data: {
-              name: "Processing Fee",
-              description: "Payment processing fee"
-            },
-            unit_amount: platformFee,
-          },
-          quantity: 1,
-        }
-      ]
-    }
+        quantity: 1,
+      }
+    ]
 
     // Create success and cancel URLs
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://bocmstyle.com'
@@ -240,8 +202,8 @@ export async function POST(request: Request) {
         addonTotal: Math.round(addonTotal * 100).toString(),
         addonIds: [...new Set(addonIds)].join(','),
         platformFee: platformFee.toString(),
-        paymentType,
-        feeType: paymentType === 'fee' ? 'fee_only' : 'fee_and_cut',
+        paymentType: 'fee', // Always fee-only payment model
+        feeType: 'fee_only',
         bocmShare: bocmShare.toString(),
         barberShare: barberShare.toString(),
         isDeveloper: barber.is_developer ? 'true' : 'false',

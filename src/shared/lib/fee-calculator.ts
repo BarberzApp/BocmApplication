@@ -34,20 +34,15 @@ export function calculateFeeBreakdown(): FeeBreakdown {
   }
 }
 
-export function calculateBarberPayout(servicePriceCents: number, paymentType: 'fee' | 'full'): number {
+export function calculateBarberPayout(): number {
   const { barberShare } = calculateFeeBreakdown()
   
-  if (paymentType === 'fee') {
-    // For fee-only payments, barber only gets their share of the fee after Stripe
-    // Service and addons are paid directly to barber at appointment
-    return barberShare // $1.20 (40% of net $3.00)
-  } else {
-    // For full payments, barber gets service price + their share of the fee
-    return servicePriceCents + barberShare
-  }
+  // For fee-only payments, barber only gets their share of the fee after Stripe
+  // Service and addons are paid directly to barber at appointment
+  return barberShare // $1.20 (40% of net $3.00)
 }
 
-export function calculatePlatformFee(paymentType: 'fee' | 'full'): number {
+export function calculatePlatformFee(): number {
   const { bocmNetShare } = calculateFeeBreakdown()
   
   // Platform gets their net share after absorbing Stripe fee
