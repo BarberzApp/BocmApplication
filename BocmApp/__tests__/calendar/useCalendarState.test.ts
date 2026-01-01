@@ -5,7 +5,7 @@
  */
 
 import { renderHook, act } from '@testing-library/react-native';
-import { useCalendarState } from '../app/shared/hooks/useCalendarState';
+import { useCalendarState } from '@/hooks/useCalendarState';
 
 describe('useCalendarState', () => {
   it('should initialize with default values', () => {

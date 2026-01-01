@@ -14,8 +14,9 @@ describe('Logger', () => {
     ;(global as any).__DEV__ = true
     ;(process.env as any).NODE_ENV = 'development'
     
-    delete require.cache[require.resolve('../app/shared/lib/logger')]
-    logger = require('../app/shared/lib/logger').logger
+    const loggerPath = require.resolve('../../app/shared/lib/logger')
+    delete require.cache[loggerPath]
+    logger = require('../../app/shared/lib/logger').logger
   })
 
   afterEach(() => {
@@ -51,8 +52,9 @@ describe('Logger', () => {
       jest.resetModules()
       ;(global as any).__DEV__ = false
       ;(process.env as any).NODE_ENV = 'production'
-      delete require.cache[require.resolve('../app/shared/lib/logger')]
-      logger = require('../app/shared/lib/logger').logger
+      const loggerPath = require.resolve('../../app/shared/lib/logger')
+      delete require.cache[loggerPath]
+      logger = require('../../app/shared/lib/logger').logger
     })
 
     it('should not log regular messages', () => {

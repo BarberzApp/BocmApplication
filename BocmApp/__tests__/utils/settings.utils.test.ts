@@ -1,4 +1,4 @@
-import { extractHandle, BARBER_SPECIALTIES, PRICE_RANGES, CARRIER_OPTIONS } from '../app/shared/utils/settings.utils';
+import { extractHandle, BARBER_SPECIALTIES, PRICE_RANGES, CARRIER_OPTIONS } from '@/utils/settings.utils';
 
 describe('settings.utils', () => {
   describe('extractHandle', () => {
@@ -62,7 +62,7 @@ describe('settings.utils', () => {
     });
 
     it('should have value and label for each option', () => {
-      PRICE_RANGES.forEach(range => {
+      PRICE_RANGES.forEach((range: { value: string; label: string }) => {
         expect(range).toHaveProperty('value');
         expect(range).toHaveProperty('label');
         expect(typeof range.value).toBe('string');
@@ -73,7 +73,7 @@ describe('settings.utils', () => {
 
   describe('CARRIER_OPTIONS', () => {
     it('should contain major carriers', () => {
-      const carriers = CARRIER_OPTIONS.map(c => c.value);
+      const carriers = CARRIER_OPTIONS.map((c: { value: string; label: string }) => c.value);
       expect(carriers).toContain('verizon');
       expect(carriers).toContain('att');
       expect(carriers).toContain('tmobile');
@@ -81,7 +81,7 @@ describe('settings.utils', () => {
     });
 
     it('should have value and label for each carrier', () => {
-      CARRIER_OPTIONS.forEach(carrier => {
+      CARRIER_OPTIONS.forEach((carrier: { value: string; label: string }) => {
         expect(carrier).toHaveProperty('value');
         expect(carrier).toHaveProperty('label');
         expect(typeof carrier.value).toBe('string');

@@ -22,8 +22,8 @@ import {
   canCancelBooking,
   canMarkCompleted,
   canMarkMissed,
-} from '../app/shared/lib/calendar/calendarUtils';
-import type { CalendarEvent } from '../app/shared/lib/calendar/calendarDataService';
+} from '@/lib/calendar/calendarUtils';
+import type { CalendarEvent } from '@/lib/calendar/calendarDataService';
 
 describe('calendarUtils', () => {
   describe('getStatusColors', () => {

@@ -1,4 +1,4 @@
-import { isBookingConflict, calculateBookingEnd } from '../app/shared/lib/bookingConflictCheck'
+import { isBookingConflict, calculateBookingEnd } from '@/lib/bookingConflictCheck'
 
 describe('bookingConflictCheck', () => {
   describe('isBookingConflict', () => {

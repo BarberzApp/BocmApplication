@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, waitFor } from '@testing-library/react-native';
-import SettingsPage from '../app/pages/SettingsPage';
+import SettingsPage from '@/pages/SettingsPage';
 
 // Mock twrnc
 jest.mock('twrnc', () => {
@@ -10,7 +10,7 @@ jest.mock('twrnc', () => {
 });
 
 // Mock dependencies
-jest.mock('../app/shared/hooks/useAuth', () => ({
+jest.mock('@/hooks/useAuth', () => ({
   useAuth: () => ({
     user: { id: 'test-user', email: 'test@example.com' },
     userProfile: { name: 'Test User', role: 'client' },
@@ -18,7 +18,7 @@ jest.mock('../app/shared/hooks/useAuth', () => ({
   }),
 }));
 
-jest.mock('../app/shared/lib/supabase', () => ({
+jest.mock('@/lib/supabase', () => ({
   supabase: {
     from: jest.fn((table) => ({
       select: jest.fn().mockReturnThis(),
@@ -53,31 +53,31 @@ jest.mock('lucide-react-native', () => ({
 }));
 
 // Mock settings components
-jest.mock('../app/shared/components/settings/ProfileSettings', () => ({
+jest.mock('@/components/settings/ProfileSettings', () => ({
   ProfileSettings: 'ProfileSettings',
 }));
 
-jest.mock('../app/shared/components/settings/ServicesSettings', () => ({
+jest.mock('@/components/settings/ServicesSettings', () => ({
   ServicesSettings: 'ServicesSettings',
 }));
 
-jest.mock('../app/shared/components/settings/AddonsSettings', () => ({
+jest.mock('@/components/settings/AddonsSettings', () => ({
   AddonsSettings: 'AddonsSettings',
 }));
 
-jest.mock('../app/shared/components/settings/ShareSettings', () => ({
+jest.mock('@/components/settings/ShareSettings', () => ({
   ShareSettings: 'ShareSettings',
 }));
 
-jest.mock('../app/shared/components/settings/AvailabilityManager', () => ({
+jest.mock('@/components/settings/AvailabilityManager', () => ({
   AvailabilityManager: 'AvailabilityManager',
 }));
 
-jest.mock('../app/shared/components/settings/EarningsDashboard', () => ({
+jest.mock('@/components/settings/EarningsDashboard', () => ({
   EarningsDashboard: 'EarningsDashboard',
 }));
 
-jest.mock('../app/shared/components/ui', () => ({
+jest.mock('@/components/ui', () => ({
   Button: 'Button',
   Card: 'Card',
   CardContent: 'CardContent',

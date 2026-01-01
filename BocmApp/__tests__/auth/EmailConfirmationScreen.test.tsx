@@ -1,6 +1,13 @@
+// Mock Platform before any imports
+jest.mock('react-native/Libraries/Utilities/Platform', () => ({
+  OS: 'ios',
+  Version: '15.0',
+  select: jest.fn((obj) => obj.ios || obj.default),
+}));
+
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
-import EmailConfirmationScreen from '../app/pages/EmailConfirmationScreen';
+import EmailConfirmationScreen from '@/pages/EmailConfirmationScreen';
 
 // Mock navigation and route
 const mockRouteParams: { email?: string } = { email: 'test@example.com' };
@@ -18,7 +25,7 @@ jest.mock('@react-navigation/native', () => ({
 }));
 
 // Mock useAuth
-jest.mock('../app/shared/hooks/useAuth', () => ({
+jest.mock('@/hooks/useAuth', () => ({
   useAuth: () => ({
     user: null,
   }),
@@ -26,7 +33,7 @@ jest.mock('../app/shared/hooks/useAuth', () => ({
 
 // Mock supabase
 const mockResend = jest.fn();
-jest.mock('../app/shared/lib/supabase', () => ({
+jest.mock('@/lib/supabase', () => ({
   supabase: {
     auth: {
       resend: (...args: any[]) => mockResend(...args),
@@ -42,17 +49,17 @@ jest.mock('react-native/Libraries/Alert/Alert', () => ({
 }));
 
 // Mock AnimatedBackground to simple view
-jest.mock('../app/shared/components/AnimatedBackground', () => ({
+jest.mock('@/components/AnimatedBackground', () => ({
   AnimatedBackground: () => null,
 }));
 
 // Mock UI components used inside
-jest.mock('../app/shared/components/ui', () => ({
+jest.mock('@/components/ui', () => ({
   Card: ({ children }: any) => children,
   CardContent: ({ children }: any) => children,
 }));
 
-jest.mock('../app/shared/components/ui/Button', () => {
+jest.mock('@/components/ui/Button', () => {
   const React = require('react');
   const { TouchableOpacity, Text } = require('react-native');
   return ({ onPress, children, style }: any) => (

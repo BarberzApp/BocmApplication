@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
-import BrowsePage from '../app/pages/BrowsePage';
+import BrowsePage from '@/pages/BrowsePage';
 
 // Mock twrnc - needs to be a function that returns style objects
 jest.mock('twrnc', () => {
@@ -10,7 +10,7 @@ jest.mock('twrnc', () => {
 });
 
 // Mock all dependencies
-jest.mock('../app/shared/hooks/useAuth', () => ({
+jest.mock('@/hooks/useAuth', () => ({
   useAuth: () => ({
     user: { id: 'test-user' },
     userProfile: null,
@@ -18,7 +18,7 @@ jest.mock('../app/shared/hooks/useAuth', () => ({
   }),
 }));
 
-jest.mock('../app/shared/lib/supabase', () => ({
+jest.mock('@/lib/supabase', () => ({
   supabase: {
     from: jest.fn(() => ({
       select: jest.fn().mockReturnThis(),
@@ -55,15 +55,15 @@ jest.mock('lucide-react-native', () => ({
   Star: 'Star',
 }));
 
-jest.mock('../app/shared/components/StaircaseGrid', () => 'StaircaseGrid');
-jest.mock('../app/shared/components/BookingForm', () => 'BookingForm');
-jest.mock('../app/pages/ProfilePreview', () => 'ProfilePreview');
-jest.mock('../app/shared/components/ReviewCard', () => ({ ReviewCard: 'ReviewCard' }));
-jest.mock('../app/shared/components/ReviewForm', () => ({ ReviewForm: 'ReviewForm' }));
-jest.mock('../app/shared/hooks/useReviews', () => ({
+jest.mock('@/components/StaircaseGrid', () => 'StaircaseGrid');
+jest.mock('@/components/BookingForm', () => 'BookingForm');
+jest.mock('@/pages/ProfilePreview', () => 'ProfilePreview');
+jest.mock('@/components/ReviewCard', () => ({ ReviewCard: 'ReviewCard' }));
+jest.mock('@/components/ReviewForm', () => ({ ReviewForm: 'ReviewForm' }));
+jest.mock('@/hooks/useReviews', () => ({
   useReviews: () => ({ stats: null, loading: false }),
 }));
-jest.mock('../app/shared/components/ui', () => ({ Avatar: 'Avatar' }));
+jest.mock('@/components/ui', () => ({ Avatar: 'Avatar' }));
 
 describe('BrowsePage - Basic Tests', () => {
   it('should render browse page', () => {

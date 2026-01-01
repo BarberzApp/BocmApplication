@@ -164,6 +164,21 @@ export function useCalendarState() {
     setIsMarkingCompleted(false);
     setIsSubmitting(false);
     setLoadingTimeSlots(false);
+    // Reset user-specific state
+    setUserRole(null);
+    setBarberId(null);
+    setBarberViewMode('appointments');
+    // Reset form data
+    setManualFormData({
+      clientName: '',
+      serviceId: '',
+      price: '',
+      time: '',
+      date: new Date()
+    });
+    setServices([]);
+    setTimeSlots([]);
+    setReviewFormData(null);
   }, []);
 
   return {

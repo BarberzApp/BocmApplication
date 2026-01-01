@@ -1,6 +1,6 @@
 import React from 'react';
 import { render } from '@testing-library/react-native';
-import BookingForm from '../app/shared/components/BookingForm';
+import BookingForm from '@/components/BookingForm';
 
 // Mock dependencies to keep tests simple
 jest.mock('twrnc', () => {
@@ -16,14 +16,14 @@ jest.mock('date-fns', () => ({
   isSameDay: jest.fn(() => false),
 }));
 
-jest.mock('../app/shared/hooks/useAuth', () => ({
+jest.mock('@/hooks/useAuth', () => ({
   useAuth: () => ({
     user: { id: 'test-user', email: 'test@example.com' },
     userProfile: { name: 'Test User' },
   }),
 }));
 
-jest.mock('../app/shared/lib/supabase', () => ({
+jest.mock('@/lib/supabase', () => ({
   supabase: {
     from: jest.fn(() => ({
       select: jest.fn().mockReturnThis(),
@@ -47,7 +47,7 @@ jest.mock('@stripe/stripe-react-native', () => ({
   CardField: 'CardField',
 }));
 
-jest.mock('../app/shared/lib/bookingService', () => ({
+jest.mock('@/lib/bookingService', () => ({
   bookingService: {
     getBarberServices: jest.fn().mockResolvedValue([
       { id: 'service-1', name: 'Haircut', description: 'Basic haircut', price: 30, duration: 30 },
@@ -58,7 +58,7 @@ jest.mock('../app/shared/lib/bookingService', () => ({
   },
 }));
 
-jest.mock('../app/shared/lib/notifications', () => ({
+jest.mock('@/lib/notifications', () => ({
   notificationService: { scheduleBookingReminder: jest.fn() },
   formatAppointmentTime: jest.fn(() => '9:00 AM'),
 }));
