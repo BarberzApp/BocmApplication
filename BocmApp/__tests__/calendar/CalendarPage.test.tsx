@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, waitFor } from '@testing-library/react-native';
-import CalendarPage from '../app/pages/CalendarPage';
+import CalendarPage from '@/pages/CalendarPage';
 import { Animated } from 'react-native';
 
 // Mock Animated to avoid timer issues
@@ -47,7 +47,7 @@ jest.mock('date-fns', () => ({
 }));
 
 // Mock all dependencies
-jest.mock('../app/shared/hooks/useAuth', () => ({
+jest.mock('@/hooks/useAuth', () => ({
   useAuth: () => ({
     user: { id: 'test-user' },
     userProfile: null,
@@ -55,7 +55,7 @@ jest.mock('../app/shared/hooks/useAuth', () => ({
   }),
 }));
 
-jest.mock('../app/shared/lib/supabase', () => ({
+jest.mock('@/lib/supabase', () => ({
   supabase: {
     from: jest.fn((table) => ({
       select: jest.fn().mockReturnThis(),
@@ -93,11 +93,11 @@ jest.mock('lucide-react-native', () => ({
   Search: 'Search',
 }));
 
-jest.mock('../app/shared/components/ReviewForm', () => ({
+jest.mock('@/components/ReviewForm', () => ({
   ReviewForm: 'ReviewForm',
 }));
 
-jest.mock('../app/shared/lib/bookingService', () => ({
+jest.mock('@/lib/bookingService', () => ({
   bookingService: {
     getBarberBookings: jest.fn().mockResolvedValue([]),
     getClientBookings: jest.fn().mockResolvedValue([]),

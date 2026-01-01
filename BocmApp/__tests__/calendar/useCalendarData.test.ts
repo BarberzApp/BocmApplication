@@ -5,14 +5,14 @@
  */
 
 import { renderHook, act } from '@testing-library/react-native';
-import { useCalendarData } from '../app/shared/hooks/useCalendarData';
-import { useCalendarState } from '../app/shared/hooks/useCalendarState';
-import * as calendarDataService from '../app/shared/lib/calendar/calendarDataService';
-import { logger } from '../app/shared/lib/logger';
+import { useCalendarData } from '@/hooks/useCalendarData';
+import { useCalendarState } from '@/hooks/useCalendarState';
+import * as calendarDataService from '@/lib/calendar/calendarDataService';
+import { logger } from '@/lib/logger';
 
 // Mock dependencies
-jest.mock('../app/shared/lib/calendar/calendarDataService');
-jest.mock('../app/shared/lib/logger');
+jest.mock('@/lib/calendar/calendarDataService');
+jest.mock('@/lib/logger');
 
 const mockCalendarDataService = calendarDataService as jest.Mocked<typeof calendarDataService>;
 
@@ -198,6 +198,7 @@ describe('useCalendarData', () => {
     });
 
     it('should handle refresh errors', async () => {
+      mockState.userRole = 'client';
       mockCalendarDataService.fetchClientBookings.mockRejectedValue(new Error('Network error'));
 
       const { result } = renderHook(() => useCalendarData(mockState, 'user-123'));

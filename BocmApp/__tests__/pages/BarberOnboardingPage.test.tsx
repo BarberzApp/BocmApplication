@@ -10,11 +10,11 @@ jest.mock('@sentry/react-native', () => ({
   captureMessage: jest.fn(),
 }));
 
-jest.mock('../app/shared/lib/sentry', () => ({
+jest.mock('@/lib/sentry', () => ({
   initSentry: jest.fn(),
 }));
 
-jest.mock('../app/shared/lib/logger', () => ({
+jest.mock('@/lib/logger', () => ({
   logger: {
     log: jest.fn(),
     error: jest.fn(),
@@ -24,11 +24,11 @@ jest.mock('../app/shared/lib/logger', () => ({
 }));
 
 // Mock all dependencies
-jest.mock('../app/shared/lib/supabase');
-jest.mock('../app/shared/hooks/useAuth');
+jest.mock('@/lib/supabase');
+jest.mock('@/hooks/useAuth');
 
-import { supabase } from '../app/shared/lib/supabase';
-import { useAuth } from '../app/shared/hooks/useAuth';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/hooks/useAuth';
 
 describe('BarberOnboardingPage - Onboarding Logic Tests', () => {
   const mockSupabase = supabase as jest.Mocked<typeof supabase>;

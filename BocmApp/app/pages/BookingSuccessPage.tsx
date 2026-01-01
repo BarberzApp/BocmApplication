@@ -40,7 +40,7 @@ export default function BookingSuccessPage() {
     <SafeAreaView style={[tw`flex-1`, { backgroundColor: theme.colors.background }]}>
       <View style={tw`flex-1 items-center justify-center px-8`}>
         <View style={[tw`w-20 h-20 rounded-full items-center justify-center mb-6`, { backgroundColor: theme.colors.accent }]}>
-          <Icon name="check" size={40} color={theme.colors.accent} />
+          <Icon name="check" size={45} color={theme.colors.lightGrey} />
         </View>
         
         <Text style={tw`text-2xl font-bold text-white text-center mb-2`}>
@@ -52,19 +52,10 @@ export default function BookingSuccessPage() {
         </Text>
 
         <TouchableOpacity
-          style={[tw`w-full py-4 rounded-full mb-3`, { backgroundColor: theme.colors.secondary }]}
-          onPress={() => navigation.navigate('FindBarber')}
-        >
-          <Text style={[tw`text-center font-semibold`, { color: theme.colors.primaryForeground }]}>
-            Book Another Appointment
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
           style={[tw`w-full py-4 rounded-full`, { backgroundColor: 'rgba(255,255,255,0.05)' }]}
           onPress={() => navigation.navigate('MainTabs', { screen: 'Browse' })}
         >
-          <Text style={[tw`text-center font-medium`, { color: theme.colors.foreground }]}>
+          <Text style={[tw`text-center font-medium`, { color: theme.colors.saffronBrown }]}>
             Back to Browse
           </Text>
         </TouchableOpacity>

@@ -7,10 +7,10 @@ import {
   isServerError,
   isRetryableError,
   safeJsonParse,
-} from '../app/shared/lib/errorRecovery';
+} from '@/lib/errorRecovery';
 
 // Mock logger
-jest.mock('../app/shared/lib/logger', () => ({
+jest.mock('@/lib/logger', () => ({
   logger: {
     log: jest.fn(),
     error: jest.fn(),

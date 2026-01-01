@@ -7,7 +7,7 @@ import {
   clearLocationPreferences,
   getLastLocation,
   StoredLocationPrefs,
-} from '../app/shared/lib/locationPreferences';
+} from '@/lib/locationPreferences';
 
 jest.mock('@react-native-async-storage/async-storage');
 

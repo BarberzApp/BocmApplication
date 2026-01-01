@@ -7,6 +7,7 @@ import {
   Alert,
   StatusBar,
   Linking,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -214,6 +215,7 @@ export default function NotificationTestPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'expo-platform': Platform.OS,
         },
         body: JSON.stringify({
           barberId: 'test-connection',

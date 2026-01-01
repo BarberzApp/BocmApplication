@@ -199,6 +199,7 @@ export class SecureAPI {
           'X-Requested-With': 'XMLHttpRequest',
           'X-Client-Version': '1.0.0',
           'X-Platform': Platform.OS,
+          'expo-platform': Platform.OS, // Required for Expo Router API routes
           ...options.headers,
         },
       }

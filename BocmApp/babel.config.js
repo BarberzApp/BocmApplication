@@ -8,7 +8,7 @@ module.exports = function (api) {
         {
           root: ['./app'],
           alias: {
-            '@': './app',
+            // Specific aliases must come first to take precedence
             '@/shared': './app/shared',
             '@/components': './app/shared/components',
             '@/hooks': './app/shared/hooks',
@@ -17,6 +17,7 @@ module.exports = function (api) {
             '@/utils': './app/shared/utils',
             '@/pages': './app/pages',
             '@/navigation': './app/navigation',
+            '@': './app', // Generic alias last
           },
         },
       ],

@@ -108,7 +108,7 @@ export function useReviews(barberId?: string) {
   // Submit a new review
   const submitReview = useCallback(async (reviewData: {
     barberId: string;
-    bookingId: string;
+    bookingId: string | null; // Can be null for reviews not tied to a booking
     rating: number;
     comment?: string;
   }) => {
@@ -122,11 +122,11 @@ export function useReviews(barberId?: string) {
         .from('reviews')
         .insert({
           barber_id: reviewData.barberId,
-          booking_id: reviewData.bookingId,
+          booking_id: reviewData.bookingId || null, // Use null if bookingId is null or empty string
           client_id: user.id,
           rating: reviewData.rating,
           comment: reviewData.comment,
-          is_verified: false,
+          is_verified: false, // False for reviews not tied to a booking
           is_public: true,
           is_moderated: false
         })

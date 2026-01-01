@@ -11,14 +11,14 @@ import React from 'react'
 import { render, fireEvent, waitFor, screen } from '@testing-library/react-native'
 import { NavigationContainer } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
-import LoginPage from '../app/pages/LoginPage'
-import SignUpPage from '../app/pages/SignUpPage'
-import { useAuth } from '../app/shared/hooks/useAuth'
-import { supabase } from '../app/shared/lib/supabase'
+import LoginPage from '@/pages/LoginPage'
+import SignUpPage from '@/pages/SignUpPage'
+import { useAuth } from '@/hooks/useAuth'
+import { supabase } from '@/lib/supabase'
 
 // Mock dependencies
-jest.mock('../app/shared/hooks/useAuth')
-jest.mock('../app/shared/lib/supabase')
+jest.mock('@/hooks/useAuth')
+jest.mock('@/lib/supabase')
 jest.mock('expo-haptics', () => ({
   impactAsync: jest.fn(),
 }))

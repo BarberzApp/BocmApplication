@@ -33,9 +33,18 @@ jest.mock('expo-secure-store', () => ({
 
 // Mock Expo Crypto
 jest.mock('expo-crypto', () => ({
-  getRandomBytes: jest.fn(() => ({
-    toString: jest.fn(() => 'mock-random-bytes'),
-  })),
+  getRandomBytes: jest.fn((length) => {
+    // Return a Uint8Array with predictable values that convert to hex
+    // For 'mock-token' in hex (32 chars = 16 bytes): 6d6f636b2d746f6b656e
+    // But we'll use simpler pattern: create bytes that produce predictable hex
+    const bytes = new Uint8Array(length || 16);
+    // Fill with pattern: 0x6d, 0x6f, 0x63, 0x6b, etc. (ASCII for "mock-token")
+    const pattern = new Uint8Array([0x6d, 0x6f, 0x63, 0x6b, 0x2d, 0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x6d, 0x6f, 0x63, 0x6b, 0x2d, 0x74]);
+    for (let i = 0; i < bytes.length; i++) {
+      bytes[i] = pattern[i % pattern.length];
+    }
+    return bytes;
+  }),
   digestStringAsync: jest.fn(() => Promise.resolve('mock-hash')),
   CryptoDigestAlgorithm: {
     SHA256: 'SHA256',
@@ -51,6 +60,21 @@ jest.mock('react-native/Libraries/Utilities/Platform', () => ({
   Version: '15.0',
   select: jest.fn((obj) => obj.ios || obj.default),
 }))
+
+// Mock lucide-react-native to avoid SVG/Platform issues in tests
+jest.mock('lucide-react-native', () => {
+  const createMockIcon = (name: string) => name;
+  return {
+    MailCheck: 'MailCheck',
+    RefreshCw: 'RefreshCw',
+    LogIn: 'LogIn',
+    ArrowLeft: 'ArrowLeft',
+    Scissors: 'Scissors',
+    Eye: 'Eye',
+    EyeOff: 'EyeOff',
+    // Add any other icons as needed
+  };
+})
 
 // Mock React Native Alert
 jest.mock('react-native/Libraries/Alert/Alert', () => ({

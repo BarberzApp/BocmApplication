@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Platform } from 'react-native';
 import { useToast } from '../components/ui/use-toast';
 import { logger } from '../lib/logger';
 
@@ -26,6 +27,7 @@ export function usePayment() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'expo-platform': Platform.OS,
         },
         body: JSON.stringify({
           amount,
@@ -66,6 +68,7 @@ export function usePayment() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'expo-platform': Platform.OS,
         },
         body: JSON.stringify({
           clientSecret,

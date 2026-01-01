@@ -23,6 +23,8 @@ export interface Booking {
   payment_intent_id?: string;
   platform_fee?: number;
   barber_payout?: number;
+  addon_total?: number;
+  service_price?: number; // Historical service price at time of booking
   guest_name?: string;
   guest_email?: string;
   guest_phone?: string;
@@ -234,27 +236,19 @@ class BookingService {
     }
   }
 
-  // Calculate fees (matching website logic)
-  calculateFees(servicePrice: number, paymentType: 'full' | 'fee' = 'full') {
+  // Calculate fees (fee-only payment model)
+  // Customer only pays platform fee, service price paid directly to barber at appointment
+  calculateFees(servicePrice: number) {
     const servicePriceCents = Math.round(servicePrice * 100);
     const platformFee = 203; // $2.03 (60% of $3.38 fee)
     const barberFeeShare = 135; // $1.35 (40% of $3.38 fee)
     
-    if (paymentType === 'fee') {
-      return {
-        total: 338, // Just the $3.38 fee
-        platformFee: platformFee,
-        barberPayout: barberFeeShare,
-        servicePrice: servicePriceCents
-      };
-    } else {
-      return {
-        total: servicePriceCents + 338, // Service + fee
-        platformFee: platformFee,
-        barberPayout: servicePriceCents + barberFeeShare,
-        servicePrice: servicePriceCents
-      };
-    }
+    return {
+      total: 338, // Just the $3.38 platform fee
+      platformFee: platformFee,
+      barberPayout: barberFeeShare,
+      servicePrice: servicePriceCents
+    };
   }
 }
 

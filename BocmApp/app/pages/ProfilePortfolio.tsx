@@ -786,7 +786,13 @@ export default function ProfilePortfolio() {
         </View>
 
         {/* Avatar - Positioned exactly where cover photo ends */}
-        <View style={tw`absolute left-3/8 top-20 -translate-x-1/2  z-20`}>
+        <View style={[
+          tw`absolute top-20 z-20`,
+          { 
+            left: width / 2,
+            transform: [{ translateX: -48 }] // w-24 = 96px, so half is 48px
+          }
+        ]}>
           <View style={[tw`w-24 h-24 rounded-full overflow-hidden border-2`, { borderColor: theme.colors.secondary }]}>
             {profile.avatar_url && !avatarError ? (
               <Image

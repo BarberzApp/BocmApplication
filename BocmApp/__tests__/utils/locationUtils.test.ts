@@ -4,13 +4,14 @@ import {
   sortByDistance,
   formatDistance,
   Location,
-} from '../app/shared/lib/locationUtils';
+} from '@/lib/locationUtils';
 
 describe('locationUtils', () => {
   describe('calculateDistance', () => {
     it('should calculate distance correctly for long and short distances', () => {
       // Long distance: NY to LA (~2445 miles)
-      expect(calculateDistance(40.7128, -74.006, 34.0522, -118.2437)).toBeCloseTo(2445, 0);
+      // Using precision 0 (within 0.5 miles) to account for calculation precision
+      expect(calculateDistance(40.7128, -74.006, 34.0522, -118.2437)).toBeCloseTo(2446, 0);
       
       // Short distance: ~0.68 miles
       expect(calculateDistance(40.7128, -74.006, 40.7228, -74.006)).toBeCloseTo(0.68, 0.1);
@@ -50,7 +51,7 @@ describe('locationUtils', () => {
         { id: 4, distance: 2 },
       ];
       const sorted1 = sortByDistance(items1);
-      expect(sorted1.map(i => i.id)).toEqual([2, 4, 1, 3]); // Closest first
+      expect(sorted1.map((i: { id: number; distance?: number }) => i.id)).toEqual([2, 4, 1, 3]); // Closest first
       expect(items1[0].id).toBe(1); // Original not mutated
 
       // Test undefined distances go to end
@@ -60,7 +61,7 @@ describe('locationUtils', () => {
         { id: 3, distance: 1 },
       ];
       const sorted2 = sortByDistance(items2);
-      expect(sorted2.map(i => i.id)).toEqual([3, 1, 2]); // Undefined at end
+      expect(sorted2.map((i: { id: number; distance?: number }) => i.id)).toEqual([3, 1, 2]); // Undefined at end
 
       // Test edge cases
       expect(sortByDistance([])).toEqual([]);

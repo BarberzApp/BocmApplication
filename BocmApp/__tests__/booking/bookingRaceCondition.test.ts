@@ -1,7 +1,19 @@
-import { supabase } from '../app/shared/lib/supabase';
+// Mock Sentry before any imports that might use it
+jest.mock('@sentry/react-native', () => ({
+  init: jest.fn(),
+  captureException: jest.fn(),
+  captureMessage: jest.fn(),
+}));
+
+jest.mock('@/lib/sentry', () => ({
+  initSentry: jest.fn(),
+  captureException: jest.fn(),
+}));
+
+import { supabase } from '@/lib/supabase';
 
 // Mock supabase
-jest.mock('../app/shared/lib/supabase', () => ({
+jest.mock('@/lib/supabase', () => ({
   supabase: {
     rpc: jest.fn(),
     from: jest.fn(() => ({
@@ -12,7 +24,7 @@ jest.mock('../app/shared/lib/supabase', () => ({
   },
 }));
 
-jest.mock('../app/shared/lib/logger', () => ({
+jest.mock('@/lib/logger', () => ({
   logger: {
     log: jest.fn(),
     error: jest.fn(),
@@ -26,7 +38,7 @@ describe('Booking Race Condition Prevention', () => {
   });
 
   it('should call advisory lock function before creating booking', async () => {
-    const { bookingService } = require('../app/shared/lib/bookingService');
+    const { bookingService } = require('@/lib/bookingService');
     
     // Mock successful lock acquisition
     (supabase.rpc as jest.Mock).mockResolvedValue({ data: true, error: null });
@@ -75,8 +87,8 @@ describe('Booking Race Condition Prevention', () => {
   });
 
   it('should handle advisory lock error gracefully and still create booking', async () => {
-    const { bookingService } = require('../app/shared/lib/bookingService');
-    const { logger } = require('../app/shared/lib/logger');
+    const { bookingService } = require('@/lib/bookingService');
+    const { logger } = require('@/lib/logger');
     
     // Mock lock error (non-fatal)
     (supabase.rpc as jest.Mock).mockResolvedValue({
@@ -128,7 +140,7 @@ describe('Booking Race Condition Prevention', () => {
   });
 
   it('should throw error when booking conflicts with existing booking', async () => {
-    const { bookingService } = require('../app/shared/lib/bookingService');
+    const { bookingService } = require('@/lib/bookingService');
     
     // Mock successful lock
     (supabase.rpc as jest.Mock).mockResolvedValue({ data: true, error: null });

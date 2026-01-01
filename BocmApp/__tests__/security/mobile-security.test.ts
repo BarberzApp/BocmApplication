@@ -1,4 +1,4 @@
-import { MobileSecurity, MobileInputValidator, MobileSecurityLogger, MobileRateLimiter } from '../app/shared/lib/mobile-security'
+import { MobileSecurity, MobileInputValidator, MobileSecurityLogger, MobileRateLimiter } from '@/lib/mobile-security'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as SecureStore from 'expo-secure-store'
 import { Platform } from 'react-native'
@@ -7,7 +7,16 @@ import { Platform } from 'react-native'
 jest.mock('@react-native-async-storage/async-storage')
 jest.mock('expo-secure-store')
 jest.mock('expo-crypto', () => ({
-  getRandomBytes: jest.fn(() => ({ toString: () => 'mock-token' })),
+  getRandomBytes: jest.fn((length) => {
+    // Return a Uint8Array with predictable values that convert to hex
+    const bytes = new Uint8Array(length || 16);
+    // Fill with pattern: 0x6d, 0x6f, 0x63, 0x6b, etc. (ASCII for "mock-token")
+    const pattern = new Uint8Array([0x6d, 0x6f, 0x63, 0x6b, 0x2d, 0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x6d, 0x6f, 0x63, 0x6b, 0x2d, 0x74]);
+    for (let i = 0; i < bytes.length; i++) {
+      bytes[i] = pattern[i % pattern.length];
+    }
+    return bytes;
+  }),
   digestStringAsync: jest.fn(() => Promise.resolve('mock-hash')),
   CryptoDigestAlgorithm: { SHA256: 'SHA256' },
   CryptoEncoding: { HEX: 'hex' },
@@ -78,8 +87,10 @@ describe('MobileSecurity', () => {
     it('should generate a secure token', () => {
       const token = MobileSecurity.generateSecureToken(16)
       
-      expect(token).toBe('mock-token')
+      // Token should be a hex string of length 32 (16 bytes * 2 hex chars per byte)
+      expect(token).toBe('6d6f636b2d746f6b656e6d6f636b2d74')
       expect(typeof token).toBe('string')
+      expect(token.length).toBe(32)
     })
   })
 

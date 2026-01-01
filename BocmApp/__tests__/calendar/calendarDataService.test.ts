@@ -18,13 +18,13 @@ import {
   createManualAppointment,
   updateBookingStatus,
   cancelBooking,
-} from '../app/shared/lib/calendar/calendarDataService';
-import { supabase } from '../app/shared/lib/supabase';
-import { logger } from '../app/shared/lib/logger';
+} from '@/lib/calendar/calendarDataService';
+import { supabase } from '@/lib/supabase';
+import { logger } from '@/lib/logger';
 
 // Mock dependencies
-jest.mock('../app/shared/lib/supabase');
-jest.mock('../app/shared/lib/logger');
+jest.mock('@/lib/supabase');
+jest.mock('@/lib/logger');
 
 const mockSupabase = supabase as jest.Mocked<typeof supabase>;
 
@@ -122,8 +122,11 @@ describe('calendarDataService', () => {
 
       mockSupabase.from = jest.fn().mockReturnValue({
         select: jest.fn().mockReturnValue({
-          eq: jest.fn().mockReturnThis(),
-          order: jest.fn().mockResolvedValue({ data: mockBookings, error: null })
+          eq: jest.fn().mockReturnValue({
+            in: jest.fn().mockReturnValue({
+              order: jest.fn().mockResolvedValue({ data: mockBookings, error: null })
+            })
+          })
         })
       });
 
@@ -155,8 +158,11 @@ describe('calendarDataService', () => {
 
       mockSupabase.from = jest.fn().mockReturnValue({
         select: jest.fn().mockReturnValue({
-          eq: jest.fn().mockReturnThis(),
-          order: jest.fn().mockResolvedValue({ data: mockBookings, error: null })
+          eq: jest.fn().mockReturnValue({
+            in: jest.fn().mockReturnValue({
+              order: jest.fn().mockResolvedValue({ data: mockBookings, error: null })
+            })
+          })
         })
       });
 

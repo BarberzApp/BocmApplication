@@ -1,9 +1,9 @@
-import { SecureAuth, SecureAPI, SecureStorage } from '../app/shared/lib/secure-auth'
-import { MobileSecurity, MobileSecurityLogger, MobileRateLimiter, MobileInputValidator } from '../app/shared/lib/mobile-security'
+import { SecureAuth, SecureAPI, SecureStorage } from '@/lib/secure-auth'
+import { MobileSecurity, MobileSecurityLogger, MobileRateLimiter, MobileInputValidator } from '@/lib/mobile-security'
 import { Platform } from 'react-native'
 
 // Mock dependencies
-jest.mock('../app/shared/lib/mobile-security', () => ({
+jest.mock('@/lib/mobile-security', () => ({
   MobileSecurity: {
     validateDeviceSecurity: jest.fn(),
     hashData: jest.fn(),

@@ -225,15 +225,29 @@ export default function BookingForm({
     try {
       setLoadingSlots(true);
       const dateStr = format(selectedDate, 'yyyy-MM-dd');
-      const slots = await bookingService.getAvailableSlots(
-        barberId,
-        dateStr,
-        selectedService.duration
+      
+      // Add timeout to prevent hanging requests
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout')), 10000)
       );
+      
+      const slots = await Promise.race([
+        bookingService.getAvailableSlots(
+          barberId,
+          dateStr,
+          selectedService.duration
+        ),
+        timeoutPromise
+      ]) as TimeSlot[];
+      
       setTimeSlots(slots);
     } catch (error) {
       logger.error('Error fetching time slots:', error);
-      Alert.alert('Error', 'Failed to load available times. Please try again.');
+      const errorMessage = error instanceof Error && error.message === 'Request timeout'
+        ? 'Request timed out. Please try again.'
+        : 'Failed to load available times. Please try again.';
+      Alert.alert('Error', errorMessage);
+      setTimeSlots([]); // Clear slots on error
     } finally {
       setLoadingSlots(false);
     }
@@ -658,8 +672,7 @@ export default function BookingForm({
                               }
                         ]}>
                           {selectedService?.id === service.id && (
-                            <View style={[tw`absolute top-4 right-4 w-6 h-6 rounded-full items-center justify-center`, { backgroundColor: theme.colors.secondary }]}>
-                              <Icon name="check" size={16} color={theme.colors.background} />
+                            <View style={[tw`absolute bottom-4 right-4 w-15 h-6 rounded-full items-center justify-center`, { backgroundColor: theme.colors.secondary }]}>
                             </View>
                           )}
                           
@@ -999,16 +1012,13 @@ export default function BookingForm({
                 )}
 
                 {/* Notes */}
-                <View>
-                  <Text style={[tw`text-sm font-medium mb-2`, { color: theme.colors.foreground }]}>
-                    Additional Notes (Optional)
-                  </Text>
+                <View style={tw`mt-4`}>
                   <TextInput
                     style={[
                       tw`px-4 py-3 rounded-xl min-h-[100px]`,
                       { backgroundColor: 'rgba(255,255,255,0.1)', color: theme.colors.foreground }
                     ]}
-                    placeholder="Any special requests or notes..."
+                    placeholder="Any special requests or notes... (Optional)"
                     placeholderTextColor={theme.colors.mutedForeground}
                     value={guestInfo.notes}
                     onChangeText={(text) => setGuestInfo({ ...guestInfo, notes: text })}

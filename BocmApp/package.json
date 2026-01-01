@@ -97,7 +97,8 @@
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
-      "expo lint --fix",
+      "prettier --write",
+      "eslint --fix",
       "git add"
     ],
     "*.{json,md}": [
