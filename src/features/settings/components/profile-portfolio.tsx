@@ -14,7 +14,7 @@ import { Play, Instagram, Twitter, Facebook, Edit3, Upload, Video, Plus, X, Load
 import { useAuth } from '@/shared/hooks/use-auth-zustand';
 import { supabase } from '@/shared/lib/supabase';
 import { useToast } from '@/shared/components/ui/use-toast';
-import { EnhancedBarberProfileSettings } from './enhanced-barber-profile-settings';
+import { BarberProfileSettings } from './barber-profile-settings';
 import { useCuts } from '@/shared/hooks/use-cuts';
 import Cropper, { Area } from 'react-easy-crop';
 import getCroppedImg from '@/shared/lib/crop-image';
@@ -2367,14 +2367,12 @@ function ProfileEditorModal({ open, onClose, onProfileUpdated }: { open: boolean
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl w-full p-0 overflow-y-auto max-h-[90vh]">
         <div className="p-6">
-          <EnhancedBarberProfileSettings
+          <BarberProfileSettings
             key={formKey}
             onSave={() => {
               onProfileUpdated();
               onClose();
             }}
-            showPreview={false}
-            showIntegrationGuide={false}
           />
         </div>
       </DialogContent>

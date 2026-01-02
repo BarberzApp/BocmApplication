@@ -1,5 +1,4 @@
 import { BookingService } from '../booking-service'
-import { supabase } from '@/shared/lib/supabase'
 import type { CreateBookingInput } from '../booking-service'
 
 jest.mock('@/shared/lib/supabase', () => ({

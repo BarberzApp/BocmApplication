@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ProfileSettings } from './profile-settings'
+import { ClientProfileSettings } from './client-profile-settings'
 import { ServicesSettings } from './services-settings'
 import { AddonsSettings } from './addons-settings'
 import { ShareSettings } from './share-settings'
-import { EnhancedBarberProfileSettings } from './enhanced-barber-profile-settings'
+import { BarberProfileSettings } from './barber-profile-settings'
 import { useAuth } from '@/shared/hooks/use-auth-zustand'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs'
@@ -474,9 +474,9 @@ export function SettingsPage() {
               <div className="p-6">
                 <TabsContent value="profile" className="mt-0">
                   {user?.role === 'barber' ? (
-                    <EnhancedBarberProfileSettings onSave={loadSettingsData} />
+                    <BarberProfileSettings onSave={loadSettingsData} />
                   ) : (
-                    <ProfileSettings onUpdate={loadSettingsData} />
+                    <ClientProfileSettings onUpdate={loadSettingsData} />
                   )}
                 </TabsContent>
 

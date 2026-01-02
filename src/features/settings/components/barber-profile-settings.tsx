@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
@@ -10,7 +10,6 @@ import { Textarea } from '@/shared/components/ui/textarea'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/shared/components/ui/form'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select'
-import { Badge } from '@/shared/components/ui/badge'
 import { Switch } from '@/shared/components/ui/switch'
 import { Separator } from '@/shared/components/ui/separator'
 import { Alert, AlertDescription } from '@/shared/components/ui/alert'
@@ -18,33 +17,24 @@ import { useToast } from '@/shared/components/ui/use-toast'
 import { supabase } from '@/shared/lib/supabase'
 import { useAuth } from '@/shared/hooks/use-auth-zustand'
 import { 
-  MapPin, 
   Scissors, 
-  DollarSign, 
   Building2, 
-  Instagram,
-  Twitter,
-  Facebook,
-  Music,
   AlertCircle,
   Loader2,
   User,
   Sparkles,
-  Save,
-  Info,
-  Phone,
-  Check,
-  X
+  Save
 } from 'lucide-react'
-// import { BrowseIntegrationGuide } from './browse-integration-guide' // Removed
-import { BARBER_SPECIALTIES } from '@/shared/constants/specialties'
 import { SpecialtyAutocomplete } from '@/shared/components/ui/specialty-autocomplete'
-import { geocodeAddress, getAddressSuggestionsNominatim } from '@/shared/lib/geocode'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
+import { getAddressSuggestionsNominatim } from '@/shared/lib/geocode'
 import { logger } from '@/shared/lib/logger'
+import { PRICE_RANGES, extractHandle } from '@/shared/constants/settings'
+import { CarrierSelect } from '@/shared/components/forms/carrier-select'
+import { SmsNotificationToggle } from '@/shared/components/forms/sms-notification-toggle'
+import { LocationInput } from '@/shared/components/forms/location-input'
+import { SocialMediaInputs } from '@/shared/components/forms/social-media-inputs'
 
 const barberProfileSchema = z.object({
-  // Basic Info
   name: z.string().min(2, 'Name must be at least 2 characters'),
   username: z.string().min(3, 'Username must be at least 3 characters').max(30, 'Username must be less than 30 characters').regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores'),
   businessName: z.string().min(2, 'Business name must be at least 2 characters'),
@@ -53,82 +43,29 @@ const barberProfileSchema = z.object({
   phone: z.string().min(10, 'Please enter a valid phone number'),
   carrier: z.string().min(2, 'Carrier is required'),
   sms_notifications: z.boolean().default(false),
-  
-  // Professional Info
   specialties: z.array(z.string()).min(1, 'Select at least one specialty'),
   priceRange: z.enum(['Budget ($15-$30)', 'Mid-range ($30-$60)', 'Premium ($60+)'], {
     required_error: 'Please select a price range'
   }),
-  
-  // Social Media
   instagram: z.string().optional().or(z.literal('')),
   twitter: z.string().optional().or(z.literal('')),
   tiktok: z.string().optional().or(z.literal('')),
   facebook: z.string().optional().or(z.literal('')),
-  
-  // Visibility
   isPublic: z.boolean(),
 })
 
 type BarberProfileFormData = z.infer<typeof barberProfileSchema>
 
-const PRICE_RANGES = [
-  { value: 'Budget ($15-$30)', label: 'Budget ($15-$30)', description: 'Budget ($15-$30) - Affordable services for everyone' },
-  { value: 'Mid-range ($30-$60)', label: 'Mid-range ($30-$60)', description: 'Mid-range ($30-$60) - Quality services at fair prices' },
-  { value: 'Premium ($60+)', label: 'Premium ($60+)', description: 'Premium ($60+) - High-end services and expertise' }
-]
-
-const CARRIER_OPTIONS = [
-  { value: 'verizon', label: 'Verizon' },
-  { value: 'att', label: 'AT&T' },
-  { value: 'tmobile', label: 'T-Mobile' },
-  { value: 'sprint', label: 'Sprint' },
-  { value: 'boost', label: 'Boost Mobile' },
-  { value: 'uscellular', label: 'US Cellular' },
-  { value: 'cricket', label: 'Cricket' },
-  { value: 'metro', label: 'MetroPCS' },
-  { value: 'googlefi', label: 'Google Fi' },
-];
-
-interface EnhancedBarberProfileSettingsProps {
-  onSave?: () => void;
-  showPreview?: boolean;
-  showIntegrationGuide?: boolean;
+interface BarberProfileSettingsProps {
+  onSave?: () => void
 }
 
-// Utility function to extract handle from URL or return as-is if already a handle
-function extractHandle(input: string): string {
-  if (!input) return '';
-  // Remove leading/trailing whitespace
-  input = input.trim();
-  // If input is a URL, extract the handle
-  try {
-    const url = new URL(input);
-    // Instagram/Twitter/TikTok: last path segment
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    if (pathParts.length > 0) {
-      let handle = pathParts[pathParts.length - 1];
-      // For TikTok, handle may be prefixed with '@'
-      if (handle.startsWith('@')) handle = handle.slice(1);
-      return '@' + handle;
-    }
-  } catch {
-    // Not a URL, fall through
-  }
-  // If input starts with @, return as-is, else add @
-  if (input.startsWith('@')) return input;
-  return '@' + input;
-}
-
-export function EnhancedBarberProfileSettings({ onSave, showPreview = true, showIntegrationGuide = true }: EnhancedBarberProfileSettingsProps) {
+export function BarberProfileSettings({ onSave }: BarberProfileSettingsProps) {
   const { user } = useAuth()
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
-  const [locationInput, setLocationInput] = useState('');
-  const [locationSuggestions, setLocationSuggestions] = useState<any[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [locationLat, setLocationLat] = useState<number | null>(null)
+  const [locationLon, setLocationLon] = useState<number | null>(null)
 
   const form = useForm<BarberProfileFormData>({
     resolver: zodResolver(barberProfileSchema),
@@ -157,96 +94,6 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
     }
   }, [user])
 
-  // Debounced fetch suggestions
-  const debouncedFetchSuggestions = useCallback(async (query: string) => {
-    if (query.length < 3) {
-      setLocationSuggestions([]);
-      return;
-    }
-    
-    setSuggestionsLoading(true);
-    try {
-      const suggestions = await getAddressSuggestionsNominatim(query);
-      setLocationSuggestions(suggestions);
-    } catch (error) {
-      logger.error('Error fetching suggestions', error)
-      setLocationSuggestions([]);
-    } finally {
-      setSuggestionsLoading(false);
-    }
-  }, []);
-
-  // Fetch suggestions as user types
-  useEffect(() => {
-    // Clear previous timer
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-    
-    // Set new timer
-    if (showSuggestions && locationInput.length >= 3) {
-      const timer = setTimeout(() => {
-        debouncedFetchSuggestions(locationInput);
-      }, 300); // 300ms debounce
-      
-      debounceTimerRef.current = timer;
-    } else if (locationInput.length < 3) {
-      setLocationSuggestions([]);
-    }
-    
-    // Cleanup timer on unmount
-    return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
-    };
-  }, [locationInput, showSuggestions, debouncedFetchSuggestions]);
-
-  // Handle location input change
-  const handleLocationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setLocationInput(e.target.value ?? '');
-    setShowSuggestions(true);
-    form.setValue('location', e.target.value ?? '');
-  };
-
-  // Handle suggestion select
-  const handleSuggestionSelect = (suggestion: any) => {
-    // Format: house_number road, city/town, state (e.g., '88 Doe Court, South Brunswick, NJ')
-    const address = suggestion.address || {};
-    const house = address.house_number || '';
-    const road = address.road || '';
-    const city = address.city || address.town || address.village || address.hamlet || '';
-    const state = address.state || address.state_code || '';
-    // Build the formatted string
-    let line1 = [house, road].filter(Boolean).join(' ');
-    let line2 = [city, state].filter(Boolean).join(', ');
-    let formatted = [line1, line2].filter(Boolean).join(', ');
-    setLocationInput(formatted);
-    setShowSuggestions(false);
-    setLocationSuggestions([]); // Clear suggestions immediately
-    form.setValue('location', formatted);
-  };
-
-  // Validate location on blur
-  const handleLocationBlur = async () => {
-    // Add a small delay to allow clicking on suggestions
-    setTimeout(async () => {
-      if (!locationInput) return;
-      // Use Nominatim proxy for geocoding
-      const geoSuggestions = await getAddressSuggestionsNominatim(locationInput);
-      const geo = geoSuggestions && geoSuggestions.length > 0 ? { lat: parseFloat(geoSuggestions[0].lat), lon: parseFloat(geoSuggestions[0].lon) } : null;
-      if (!geo) {
-        toast({
-          title: 'Invalid location',
-          description: 'Please enter a valid place from the suggestions.',
-          variant: 'destructive',
-        });
-        setLocationInput('');
-        form.setValue('location', '');
-      }
-    }, 200);
-  };
-
   const loadBarberProfile = async () => {
     if (!user) return
 
@@ -254,7 +101,6 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
       setLoading(true)
       logger.debug('Loading barber profile for user', { userId: user.id })
 
-      // Fetch profile data
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('*')
@@ -266,9 +112,6 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
         throw profileError
       }
 
-      logger.debug('Profile data loaded', { userId: profile?.id })
-
-      // Fetch barber data
       const { data: barber, error: barberError } = await supabase
         .from('barbers')
         .select('*')
@@ -282,7 +125,6 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
 
       logger.debug('Barber data loaded', { barberId: barber?.id })
 
-      // Update form with fetched data
       const formData = {
         name: profile.name || '',
         username: profile.username || '',
@@ -301,9 +143,12 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
         sms_notifications: profile.sms_notifications ?? false,
       }
 
-      logger.debug('Setting form data', { hasData: !!formData.name })
       form.reset(formData)
-      setLocationInput(profile.location || '');
+      
+      if (barber.latitude && barber.longitude) {
+        setLocationLat(barber.latitude)
+        setLocationLon(barber.longitude)
+      }
 
     } catch (error) {
       logger.error('Error loading barber profile', error)
@@ -321,34 +166,36 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
     if (!user) return
 
     // Validate location before submit
-    // Use Nominatim proxy for geocoding
-    const geoSuggestions = await getAddressSuggestionsNominatim(data.location);
-    const geo = geoSuggestions && geoSuggestions.length > 0 ? { lat: parseFloat(geoSuggestions[0].lat), lon: parseFloat(geoSuggestions[0].lon) } : null;
+    const geoSuggestions = await getAddressSuggestionsNominatim(data.location)
+    const geo = geoSuggestions && geoSuggestions.length > 0 
+      ? { lat: parseFloat(geoSuggestions[0].lat), lon: parseFloat(geoSuggestions[0].lon) } 
+      : null
+    
     if (!geo) {
       toast({
         title: 'Invalid location',
         description: 'Please enter a valid place from the suggestions.',
         variant: 'destructive',
       })
-      return;
+      return
     }
-    let lat = geo.lat, lon = geo.lon
 
     try {
       setLoading(true)
 
-      // If the location is not already formatted, reformat it from the geo suggestion
-      let formattedLocation = data.location;
+      // Format location from geocoding result
+      let formattedLocation = data.location
       if (geoSuggestions && geoSuggestions.length > 0) {
-        const address = geoSuggestions[0].address || {};
-        const house = address.house_number || '';
-        const road = address.road || '';
-        const city = address.city || address.town || address.village || address.hamlet || '';
-        const state = address.state || address.state_code || '';
-        const line1 = [house, road].filter(Boolean).join(' ');
-        const line2 = [city, state].filter(Boolean).join(', ');
-        formattedLocation = [line1, line2].filter(Boolean).join(', ');
+        const address = geoSuggestions[0].address || {}
+        const house = address.house_number || ''
+        const road = address.road || ''
+        const city = address.city || address.town || address.village || address.hamlet || ''
+        const state = address.state || address.state_code || ''
+        const line1 = [house, road].filter(Boolean).join(' ')
+        const line2 = [city, state].filter(Boolean).join(', ')
+        formattedLocation = [line1, line2].filter(Boolean).join(', ')
       }
+
       // Update profile
       const { error: profileError } = await supabase
         .from('profiles')
@@ -377,8 +224,8 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
           twitter: extractHandle(data.twitter || ''),
           tiktok: extractHandle(data.tiktok || ''),
           facebook: extractHandle(data.facebook || ''),
-          latitude: lat,
-          longitude: lon,
+          latitude: geo.lat,
+          longitude: geo.lon,
           updated_at: new Date().toISOString(),
         })
         .eq('user_id', user.id)
@@ -390,7 +237,7 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
         description: 'Profile updated successfully! Your changes will be visible in search results.',
       })
 
-      // After successful save, send test SMS if enabled
+      // Send test SMS if enabled
       if (data.sms_notifications && data.phone && data.carrier) {
         try {
           const res = await fetch('/api/bookings/send-sms', {
@@ -401,30 +248,30 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
               carrier: data.carrier,
               message: 'Thank you for enabling SMS notifications! You will now receive important updates by text.'
             })
-          });
+          })
           if (res.ok) {
             toast({
               title: 'Test SMS sent',
               description: 'A test SMS was sent to your phone to confirm notifications are enabled.'
-            });
+            })
           } else {
-            const err = await res.json();
+            const err = await res.json()
             toast({
               title: 'SMS failed',
               description: err.error || 'Failed to send test SMS. Please check your carrier and phone number.',
               variant: 'destructive',
-            });
+            })
           }
         } catch (e) {
           toast({
             title: 'SMS failed',
             description: 'Could not send test SMS. Please check your connection.',
             variant: 'destructive',
-          });
+          })
         }
       }
 
-      if (onSave) onSave();
+      if (onSave) onSave()
 
     } catch (error) {
       logger.error('Error updating profile', error)
@@ -438,17 +285,13 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
     }
   }
 
-  const toggleSpecialty = (specialty: string) => {
-    const currentValue = form.getValues('specialties')
-    const newValue = currentValue.includes(specialty)
-      ? currentValue.filter(s => s !== specialty)
-      : [...currentValue, specialty]
-    form.setValue('specialties', newValue)
+  const handleLocationGeocode = (lat: number, lon: number) => {
+    setLocationLat(lat)
+    setLocationLon(lon)
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="text-center space-y-4">
         <div className="flex items-center justify-center gap-3 mb-4">
           <div className="p-3 bg-secondary/20 rounded-full">
@@ -562,45 +405,13 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
                     control={form.control}
                     name="location"
                     render={({ field }) => (
-                      <FormItem className="relative">
-                        <FormLabel className="text-white font-semibold">Location *</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-secondary" />
-                            <Input
-                              placeholder="City, State or Zip Code"
-                              className="pl-10 bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-secondary rounded-xl"
-                              value={locationInput ?? ''}
-                              onChange={handleLocationChange}
-                              onFocus={() => setShowSuggestions(true)}
-                              onBlur={handleLocationBlur}
-                              autoComplete="off"
-                            />
-                            {/* Suggestions dropdown */}
-                            {showSuggestions && (locationSuggestions.length > 0 || suggestionsLoading) && (
-                              <div className="absolute z-50 left-0 right-0 mt-1 bg-black border border-white/20 rounded-xl shadow-xl max-h-48 overflow-y-auto">
-                                {suggestionsLoading && (
-                                  <div className="px-4 py-2 text-white/60 text-sm">
-                                    <div className="flex items-center gap-2">
-                                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-secondary"></div>
-                                      Searching...
-                                    </div>
-                                  </div>
-                                )}
-                                {locationSuggestions.map((s, i) => (
-                                  <button
-                                    key={`${s.place_id || i}-${s.display_name}`}
-                                    type="button"
-                                    className="w-full text-left px-4 py-2 text-white hover:bg-secondary/20"
-                                    onMouseDown={() => handleSuggestionSelect(s)}
-                                  >
-                                    {s.display_name || s.name || 'Unknown location'}
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </FormControl>
+                      <FormItem>
+                        <LocationInput
+                          value={field.value}
+                          onChange={field.onChange}
+                          onGeocode={handleLocationGeocode}
+                          error={!!form.formState.errors.location}
+                        />
                         <FormMessage />
                       </FormItem>
                     )}
@@ -626,32 +437,11 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
                   name="carrier"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="flex items-center gap-2">
-                        Carrier *
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <span>We need your carrier to send you free SMS reminders. If you’re unsure, check your phone bill or carrier app.</span>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </FormLabel>
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <SelectTrigger className={`bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-secondary rounded-xl flex items-center gap-2 ${form.formState.errors.carrier ? 'border-red-400' : ''}`}>
-                          <Phone className="h-4 w-4 text-secondary mr-2" />
-                          <SelectValue placeholder="Select your carrier…" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-darkpurple border-white/20 text-white">
-                          {CARRIER_OPTIONS.map((carrier) => (
-                            <SelectItem key={carrier.value} value={carrier.value} className="flex items-center justify-between">
-                              <span>{carrier.label}</span>
-                              {field.value === carrier.value && <Check className="h-4 w-4 text-secondary ml-2" />}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <CarrierSelect
+                        value={field.value}
+                        onChange={field.onChange}
+                        error={!!form.formState.errors.carrier}
+                      />
                       <FormMessage />
                     </FormItem>
                   )}
@@ -661,18 +451,11 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
                   control={form.control}
                   name="sms_notifications"
                   render={({ field }) => (
-                    <FormItem className="mt-2">
-                      <Button
-                        size="sm"
-                        className={
-                          field.value
-                            ? 'bg-green-600 text-white font-semibold rounded-lg px-4 py-2 shadow flex items-center gap-2 hover:bg-green-700 transition'
-                            : 'bg-secondary text-primary font-semibold rounded-lg px-4 py-2 shadow hover:bg-secondary/90 transition'
-                        }
-                        onClick={() => field.onChange(!field.value)}
-                      >
-                        {field.value ? <><Check className="h-4 w-4" /> SMS Notifications Enabled</> : <>Enable SMS Notifications</>}
-                      </Button>
+                    <FormItem>
+                      <SmsNotificationToggle
+                        value={field.value}
+                        onChange={field.onChange}
+                      />
                     </FormItem>
                   )}
                 />
@@ -729,7 +512,6 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
                             <SelectItem key={range.value} value={range.value}>
                               <div className="flex flex-col">
                                 <span className="font-medium">{range.label}</span>
-                                
                               </div>
                             </SelectItem>
                           ))}
@@ -759,87 +541,7 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
                   Add your social media handles (just your @ or username, not the full link).
                 </p>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <FormField
-                    control={form.control}
-                    name="instagram"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2 text-white font-semibold">
-                          <Instagram className="h-4 w-4 text-[#E1306C]" />
-                          Instagram
-                        </FormLabel>
-                        <FormControl>
-                          <Input placeholder="@yourusername" {...field} className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-secondary rounded-xl" />
-                        </FormControl>
-                        <FormDescription className="text-white/60">
-                          Only your handle (e.g., @yourusername)
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="twitter"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2 text-white font-semibold">
-                          <Twitter className="h-4 w-4 text-[#1DA1F2]" />
-                          Twitter/X
-                        </FormLabel>
-                        <FormControl>
-                          <Input placeholder="@yourusername" {...field} className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-secondary rounded-xl" />
-                        </FormControl>
-                        <FormDescription className="text-white/60">
-                          Only your handle (e.g., @yourusername)
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="tiktok"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2 text-white font-semibold">
-                          <Music className="h-4 w-4 text-[#000000]" />
-                          TikTok
-                        </FormLabel>
-                        <FormControl>
-                          <Input placeholder="@yourusername" {...field} className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-secondary rounded-xl" />
-                        </FormControl>
-                        <FormDescription className="text-white/60">
-                          Only your handle (e.g., @yourusername)
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="facebook"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2 text-white font-semibold">
-                          <Facebook className="h-4 w-4 text-[#1877F3]" />
-                          Facebook
-                        </FormLabel>
-                        <FormControl>
-                          <Input placeholder="yourpagename" {...field} className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-secondary rounded-xl" />
-                        </FormControl>
-                        <FormDescription className="text-white/60">
-                          Only your page name (e.g., yourpagename)
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                <SocialMediaInputs control={form.control} />
               </div>
 
               <Separator className="bg-white/20" />
@@ -909,12 +611,7 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
           </Form>
         </CardContent>
       </Card>
-
-      {/* Profile Preview */}
-      {/* Removed profile preview as requested */}
-
-      {/* Integration Guide */}
-              {/* BrowseIntegrationGuide removed */}
     </div>
   )
-} 
+}
+
