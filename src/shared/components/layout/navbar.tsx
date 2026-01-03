@@ -1,6 +1,7 @@
 "use client"
 import Link from "next/link"
 import { useAuth } from "@/shared/hooks/use-auth-zustand"
+import { useAdminAuth } from "@/shared/hooks/useAdminAuth"
 import { logger } from "@/shared/lib/logger"
 import { useEffect, useCallback, useState } from "react"
 import { Button } from "@/shared/components/ui/button"
@@ -34,8 +35,8 @@ import { NotificationBell } from "@/shared/notifications/notification-bell"
 import { LogoBrand } from "@/shared/components/layout/logo-brand"
 
 export function Navbar() {
-  const { user, logout } = useAuth();
-  const isMobile = useMobile();
+  const { user } = useAuth();
+  const { isAdmin } = useAdminAuth();
   const [pathname, setPathname] = useState<string>('');
 
   // Update pathname when component mounts and when route changes
@@ -79,6 +80,16 @@ export function Navbar() {
   const roleSpecificNavItems = () => {
     if (!user) return []
 
+    if (isAdmin) {
+      return [
+        {
+          href: "/super-admin",
+          icon: User,
+          label: "Admin",
+        },
+      ]
+    }
+
     if (user.role === "barber") {
       return [
         {
@@ -99,6 +110,8 @@ export function Navbar() {
   }
 
   const handleLogout = async () => {
+    const { logout } = useAuth();
+
     try {
       await logout()
       window.location.href = "/"
@@ -107,7 +120,7 @@ export function Navbar() {
     }
   }
 
-  if (isMobile) {
+  if (useMobile()) {
     return <MobileNav />
   }
 
@@ -124,7 +137,32 @@ export function Navbar() {
             {/* Role-specific navigation items */}
             {roleSpecificNavItems().map((item) => {
               const isActive = pathname === item.href || 
-                (item.href === "/calendar" && pathname?.startsWith("/calendar"))
+                (item.href === "/calendar" && pathname?.startsWith("/calendar")) ||
+                (isAdmin && item.href === "/super-admin" && pathname?.startsWith("/super-admin"))
+              // If the user is an admin and the href is "/super-admin", show the admin link
+              if (isAdmin && item.href === "/super-admin") {
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "text-white/80 hover:text-saffron transition-all duration-300 font-medium px-4 py-2 rounded-xl flex items-center gap-2 group relative",
+                      isActive 
+                        ? "text-saffron bg-saffron/10 shadow-lg shadow-saffron/20 border border-saffron/30" 
+                        : "hover:bg-white/5 hover:shadow-md"
+                    )}
+                  >
+                    <item.icon className={cn(
+                      "h-4 w-4 transition-all duration-300",
+                      isActive ? "text-saffron scale-110" : "group-hover:scale-105"
+                    )} />
+                    {item.label}
+                    {isActive && (
+                      <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-saffron rounded-full" />
+                    )}
+                  </Link>
+                )
+              }
               
               return (
                 <Link
@@ -147,6 +185,7 @@ export function Navbar() {
                   )}
                 </Link>
               )
+
             })}
             
             {/* Browse link for all users */}

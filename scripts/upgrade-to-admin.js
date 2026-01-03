@@ -107,7 +107,7 @@ async function upgradeToAdmin(email, isSuperAdmin = false) {
       console.log(`   👨‍💻 Developer Status: Enabled`);
     }
 
-    console.log(`\n🚀 You can now access the admin dashboard at /admin`);
+    console.log(`\n🚀 You can now access the super admin panel at /super-admin`);
 
   } catch (error) {
     console.error('❌ Unexpected error:', error);

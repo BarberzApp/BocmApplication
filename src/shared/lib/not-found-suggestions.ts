@@ -95,9 +95,9 @@ export function getNotFoundSuggestions(
   if (lowerPath.includes('admin')) {
     if (user?.email === 'primbocm@gmail.com') {
       suggestions.push({
-        title: 'Admin Dashboard',
+        title: 'Super Admin Panel',
         description: 'Access admin features',
-        href: '/admin',
+        href: '/super-admin',
         icon: 'settings'
       })
     }

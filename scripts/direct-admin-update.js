@@ -83,7 +83,7 @@ async function directAdminUpdate(email) {
     console.log('✅ Super admin barber record created');
 
     console.log(`\n🎉 Successfully upgraded ${email} to SUPER ADMIN!`);
-    console.log(`🚀 You can now access the admin dashboard at /admin`);
+    console.log(`🚀 You can now access the super admin panel at /super-admin`);
 
   } catch (error) {
     console.error('❌ Unexpected error:', error);

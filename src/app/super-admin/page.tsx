@@ -61,6 +61,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '@/shared/lib/supabase'
 import { UserProfileManager } from '@/shared/components/admin/UserProfileManager'
+import { ReviewModeration } from '@/shared/components/admin/ReviewModeration'
 
 interface Barber {
   id: string
@@ -1113,19 +1114,7 @@ export default function SuperAdminPage() {
               </div>
             </div>
             
-            <div className="text-center py-12">
-              <MessageSquare className="h-16 w-16 text-white/40 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-white mb-2">Review Moderation</h3>
-              <p className="text-white/60 mb-4">
-                Access the comprehensive review moderation system
-              </p>
-              <Button 
-                onClick={() => router.push('/admin')}
-                className="bg-secondary text-primary hover:bg-secondary/90"
-              >
-                Go to Admin Dashboard
-              </Button>
-            </div>
+            <ReviewModeration />
           </TabsContent>
 
           {/* System Tab */}

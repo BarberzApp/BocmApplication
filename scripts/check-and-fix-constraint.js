@@ -83,7 +83,7 @@ async function checkAndFixConstraint() {
           } else {
             console.log('✅ Super admin barber record created');
             console.log('\n🎉 Successfully upgraded to SUPER ADMIN!');
-            console.log('🚀 You can now access the admin dashboard at /admin');
+            console.log('🚀 You can now access the super admin panel at /super-admin');
           }
         }
 
@@ -110,7 +110,7 @@ async function checkAndFixConstraint() {
       } else {
         console.log('✅ Super admin barber record created');
         console.log('\n🎉 Successfully upgraded to SUPER ADMIN!');
-        console.log('🚀 You can now access the admin dashboard at /admin');
+        console.log('🚀 You can now access the super admin panel at /super-admin');
       }
     }
 
