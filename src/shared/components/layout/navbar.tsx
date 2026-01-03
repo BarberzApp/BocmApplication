@@ -31,6 +31,7 @@ import {
 import { cn } from "@/shared/lib/utils"
 import { UpdatesBadge } from "@/shared/components/updates/updates-badge"
 import { NotificationBell } from "@/shared/notifications/notification-bell"
+import { LogoBrand } from "@/shared/components/layout/logo-brand"
 
 export function Navbar() {
   const { user, logout } = useAuth();
@@ -114,13 +115,7 @@ export function Navbar() {
     <nav className="sticky top-0 z-50 w-full border-b border-white/10 bg-black/20 backdrop-blur-xl shadow-2xl">
       <div className="container mx-auto flex h-16 items-center justify-between px-6">
         <div className="flex items-center gap-4">
-          <Link href="/" className="flex items-center group">
-            <div className="relative">
-              <img src="/BocmLogo.png" alt="BOCM Logo" className="h-8 w-8 sm:h-10 sm:w-10 transition-transform duration-300 group-hover:scale-110" />
-              <div className="absolute inset-0 bg-saffron/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            </div>
-            <span className="font-bebas text-2xl font-bold text-saffron ml-3 group-hover:text-saffron/90 transition-colors duration-300">BOCM</span>
-          </Link>
+          <LogoBrand size="sm" asLink showGlow />
         </div>
         
         {user ? (
